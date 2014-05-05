@@ -202,15 +202,19 @@ setup_intervals <- function(df, t_cycle) {
 
 
 
-# Graphing ?
+# Used for cleaning bouts that span days
+## This function grabs first part of spanning bout
 first_div <- function(x, t_cycle) {
   #c(I(x$bout_type), I(x$start), I(x$end), I(x$start_day_number), I(x$start_day_labtime), I(x$start_day_number), I(24.0-epoch_length))
-  c(I(x$sleep_wake_period), I(x$start), I(x$end), I(x$length), I(x$start_day_number), I(x$start_day_labtime), I(x$start_day_number), I(t_cycle-epoch_length))  
+  data.frame(sleep_wake_period=x$sleep_wake_period, bout_type=x$bout_type, length=x$length, start_labtime=x$start_labtime, end_labtime=x$end_labtime, start_day_number=x$start_day_number, end_day_number=x$start_day_number, start_day_labtime=x$start_day_labtime, end_day_labtime=(T_CYCLE-EPOCH_LENGTH))
+  
+#  c(I(x$sleep_wake_period), I(x$start_labtime), I(x$end_labtime), I(x$length), I(x$start_day_number), I(x$start_day_labtime), I(x$start_day_number), I(T_CYCLE-EPOCH_LENGTH))  
 }
 
+## This function grabs second part of spanning bout
 second_div <- function(x) {
-  #c(I(x$bout_type), I(x$start), I(x$end), I(x$end_day_number), I(0.00), I(x$end_day_number), I(as.numeric(x$end_day_labtime)))
-  c(I(x$sleep_wake_period), I(x$start), I(x$end), I(x$length), I(x$end_day_number), I(0.00), I(x$end_day_number), I(as.numeric(x$end_day_labtime)))
+  data.frame(sleep_wake_period=x$sleep_wake_period, bout_type=x$bout_type, length=x$length, start_labtime=x$start_labtime, end_labtime=x$end_labtime, start_day_number=x$end_day_number, end_day_number=x$end_day_number, start_day_labtime=0.0, end_day_labtime=x$end_day_labtime)
+  
 }
 
 double_plot <- function(df) {

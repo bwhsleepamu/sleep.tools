@@ -14,6 +14,8 @@ source("R/helpers.R")
 # 2. Have 3 methods for analysis
 # 3. Get stats on all three methods
 T_CYCLE = 24.0
+EPOCH_SECONDS <- 30
+EPOCH_LENGTH <- (EPOCH_SECONDS / 3600)
 REM_MIN_PERIOD_LENGTH = 10
 NREM_MIN_PERIOD_LENGTH = 30
 
@@ -21,28 +23,35 @@ NREM_MIN_PERIOD_LENGTH = 30
 load_sleep_file <- function(file_path) {
   df <- read.csv(file_path)
   colnames(df) <- c("subject_code", "sleep_wake_period", "labtime", "stage")
+  min_day_number <- (min(floor(df$labtime / T_CYCLE)) - 1)
   df <- set_up_data_frame(df, T_CYCLE)
   
+  list(df=df, min_day_number=min_day_number)
 }
 
 # Methods
 ## Method 1
 bouts.changepoint <- function(df) {
   
+  bouts <- ddply(df, .(sleep_wake_period), function(df) {
+    changepoint_results <- processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
+    changepoint_rows <- df[changepoint_results$changePoints,]
+    
+    # Uses changepoint indeces to create two columns, with start and end indeces for each chunk
+    chunks <- as.data.frame(cbind(c(1, changepoint_results$changePoints), c(changepoint_results$changePoints, nrow(df))))
+    colnames(chunks) <- c("start_index", "end_index")
+    
+    # Uses the sleep data to determine the most frequent type of epoch in each chunk
+    # Creates bouts with start and end labtimes
+    bouts <- mdply(chunks, calculate_bouts, df=df)
+    colnames(bouts) <- c("start_index", "end_index", "bout_type", "start_labtime", "end_labtime")
+    bouts$length <- bouts$end_index - bouts$start_index
+    
+    bouts[,3:6]
+  })
   
-  changepoint_results <- processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
-  changepoint_rows <- df[changepoint_results$changePoints,]
   
-  # Uses changepoint indeces to create two columns, with start and end indeces for each chunk
-  chunks <- as.data.frame(cbind(c(1, changepoint_results$changePoints), c(changepoint_results$changePoints, nrow(df))))
-  colnames(chunks) <- c("start_index", "end_index")
   
-  # Uses the sleep data to determine the most frequent type of epoch in each chunk
-  # Creates bouts with start and end labtimes
-  bouts <- mdply(chunks, calculate_bouts, df=df)
-  colnames(bouts) <- c("start_index", "end_index", "bout_type", "start_labtime", "end_labtime")
- 
-  bouts[,3:5]
 }
 
 # Definitions for Methods 2 and 3
@@ -63,11 +72,14 @@ bouts.classic <- function(df) {
     bouts
   })
   
-  bouts[,c(1,2,4,5)]
   
 }
 
 ## Method 3
 bouts.improved <- function(df) {
-  
+  ## TODO
 }
+
+# Cycles
+
+
