@@ -1,3 +1,31 @@
+# Sets up bouts for plotting by dividing them up into days
+setup_bouts_for_raster <- function(bouts, min_day_number, t_cycle) {
+  ## TODO: REFACTOR
+  # set day numbers + labtimes for bouts
+  bouts$start_day_number <- floor(bouts$start_labtime / T_CYCLE)
+  bouts$start_day_labtime <- (bouts$start_labtime - (bouts$start_day_number * T_CYCLE))
+  bouts$start_day_number <- bouts$start_day_number - min_day_number
+  bouts$end_day_number <- floor(bouts$end_labtime / T_CYCLE)
+  bouts$end_day_labtime <- (bouts$end_labtime - (bouts$end_day_number * T_CYCLE))
+  bouts$end_day_number <- bouts$end_day_number - min_day_number
+  
+  # Clean up bouts that span days
+  
+  # Nothing needs to be done to these:
+  clean_bouts <- bouts[bouts$start_day_number == bouts$end_day_number,]
+  
+  # These bouts span days
+  to_be_cleaned <- bouts[bouts$start_day_number != bouts$end_day_number,]
+  
+  first_cleaned <- ddply(to_be_cleaned, .(start_day_number), first_div)
+  second_cleaned <- ddply(to_be_cleaned, .(start_day_number), second_div)
+  bouts <- rbind(first_cleaned, second_cleaned, clean_bouts)
+  
+  bouts$day_number <- bouts$start_day_number
+  
+  bouts[which(bouts$sleep_wake_period > 0),]
+}
+
 # Merges given indexed row into larger neighbor !! Does not delete row
 merge_into_larger_neighbor <- function(i, bouts) {
   if(i == 1)
@@ -145,22 +173,26 @@ map_epoch_type <- function(x) {
 
 # Uses the sleep data to determine the most frequent type of epoch in each chunk
 # Creates bouts with start and end labtimes
-calculate_bouts <- function(start_index=NA, end_index=NA, df=NA) {
+calculate_bouts <- function(chunks, df=NA) {
   # get most frequent type
-  c(names(sort(-table(df[start_index:end_index,]$epoch_type)))[1], df$labtime[start_index], df$labtime[end_index])
+  data.frame(bout_type=names(sort(-table(df[chunks$start_index:chunks$end_index,]$epoch_type)))[1], start_labtime=df$labtime[chunks$start_index], end_labtime=df$labtime[chunks$end_index])
 }
+
 
 
 # Calculates the day number, wake or sleep period, and epoch type
 set_up_data_frame <- function(df, t_cycle) {
+  # DAY NUMBER CALCULATION
   df$day_number <- floor(df$labtime / t_cycle)
   df$day_labtime <- (df$labtime - (df$day_number * t_cycle))
-  df$day_number <- df$day_number - (min(df$day_number) - 1)
+  min_day_number <- (min(df$day_number) - 1)
+  df$day_number <- df$day_number - min_day_number
+
   df$period_type <- factor(df$sleep_wake_period < 0, labels=c("sp", "wp")) 
   
   # Label NREM, REM, WAKE, UNDEF
   df$epoch_type <- factor(sapply(df$stage, map_epoch_type))
-  df
+  list(df=df, min_day_number=min_day_number)
 }
 
 # Sets something up...
