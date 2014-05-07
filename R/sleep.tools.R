@@ -6,6 +6,7 @@
 library("cpm")
 library("ggplot2")
 library(scales)
+library(gdata)
 #library(grid)
 library(plyr)
 library(iterators)
@@ -23,18 +24,7 @@ EPOCH_LENGTH <- (EPOCH_SECONDS / 3600)
 REM_MIN_PERIOD_LENGTH = 10
 NREM_MIN_PERIOD_LENGTH = 30
 
-## Loader
-load_sleep_file <- function(file_path) {
-  df <- read.csv(file_path)
-  colnames(df) <- c("subject_code", "sleep_wake_period", "labtime", "stage")
-  min_day_number <- (min(floor(df$labtime / T_CYCLE)) - 1)
-  res <- set_up_data_frame(df, T_CYCLE)
-  
-  df <- res$df
-  min_day_number <- res$min_day_number
-  
-  list(df=df, min_day_number=min_day_number)
-}
+
 
 # Methods
 ## Method 1
@@ -107,8 +97,8 @@ plot.bouts <- function(df, primary_bouts, secondary_bouts=NULL) {
   if(is.null(secondary_bouts))
     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 10, data = primary_bouts)
   else {
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 5, data = primary_bouts)    
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 5, ymax = 10, data = secondary_bouts)    
+    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 4.5, data = primary_bouts)    
+    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 5.5, ymax = 10, data = secondary_bouts)    
   }
   plot <- plot + geom_point(aes(group=day_number), shape='.')
   
@@ -116,4 +106,50 @@ plot.bouts <- function(df, primary_bouts, secondary_bouts=NULL) {
   
 }
 
+
+# Statistics
+tabulate_periods <- function(periods, df) {
+  res <- ddply(periods, .(bout_type, start_labtime, end_labtime), function(period, df) {  
+    if(nrow(period) > 1)
+      period <- period[1,]
+    
+    period_epochs <- df[which(df$labtime >= period$start_labtime & df$labtime < period$end_labtime),]
+    period_length <- nrow(period_epochs)
+    type_counts <- table(period_epochs$epoch_type)
+    correct_number <- type_counts[[as.character(period$bout_type)]]
+    
+    
+    proportion_correct <- type_counts[[as.character(period$bout_type)]]/period_length
+    
+    
+    data.frame(length=nrow(period_epochs), NREM=type_counts['NREM'], REM=type_counts['REM'], WAKE=type_counts['WAKE'], UNDEF=type_counts['UNDEF'], proportion_correct=proportion_correct)
+    # length, # REM, NREM, WAKE, UNDEF, % correct
+  }, df)
+  
+  res <- res[order(res$start_labtime),]
+  res
+}
+
+calculate_agreement_stats <- function(res) {
+  agreement_stats <- list(NREM=list(), REM=list(), all=list(), REM_NREM=list())
+  
+  d <- res[which(res$bout_type == 'NREM' & !is.nan(res$proportion_correct)),]
+  agreement_stats$NREM$proportion <- mean(d$proportion_correct)
+  agreement_stats$NREM$n <- nrow(d)
+  
+  d <- res[which(res$bout_type == 'REM' & !is.nan(res$proportion_correct)),]
+  agreement_stats$REM$proportion <- mean(d$proportion_correct)
+  agreement_stats$REM$n <- nrow(d)
+  
+  
+  d <- res[which(!is.nan(res$proportion_correct)),]
+  agreement_stats$all$proportion <- mean(d$proportion_correct)
+  agreement_stats$all$n <- nrow(d)
+  
+  d <- res[which((res$bout_type == 'REM' | res$bout_type == 'NREM') & !is.nan(res$proportion_correct)),]
+  agreement_stats$REM_NREM$proportion <- mean(d$proportion_correct)
+  agreement_stats$REM_NREM$n <- nrow(d)
+  
+  agreement_stats
+}
 

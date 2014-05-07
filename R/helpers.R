@@ -1,3 +1,47 @@
+## Loader
+load_sleep_file <- function(file_path) {
+  df <- read.csv(file_path)
+  colnames(df) <- c("subject_code", "sleep_wake_period", "labtime", "stage")
+  min_day_number <- (min(floor(df$labtime / T_CYCLE)) - 1)
+  res <- set_up_data_frame(df, T_CYCLE)
+  
+  df <- res$df
+  min_day_number <- res$min_day_number
+  
+  list(df=df, min_day_number=min_day_number)
+}
+
+# Calculate periods using the 3 methods for a given subject
+calculate_periods <- function(subject_data) {
+  df <- subject_data$df
+  min_day_number <- subject_data$min_day_number
+  
+  changepoint_bouts <- bouts.changepoint(df)
+  classic_bouts <- bouts.classic(df)
+  
+  classic_bouts <- setup_bouts_for_raster(classic_bouts, min_day_number, T_CYCLE)
+  changepoint_bouts <- setup_bouts_for_raster(changepoint_bouts, min_day_number, T_CYCLE)
+  
+  list(changepoint=changepoint_bouts, classic=classic_bouts)  
+}
+
+
+# Calculate periods for a subject list
+calculate_periods_for_subjects <- function(subjects) {
+  dlply(subjects, .(subject_code), function(subject_row){
+    subject_data <- load_sleep_file(as.character(subject_row$file_path))
+    periods <- calculate_periods(subject_data)
+    
+    
+    list(subject_df=subject_data$df, periods=periods)    
+#    periods    
+  })
+}
+
+
+
+
+
 # Sets up bouts for plotting by dividing them up into days
 setup_bouts_for_raster <- function(bouts, min_day_number, t_cycle) {
   ## TODO: REFACTOR
