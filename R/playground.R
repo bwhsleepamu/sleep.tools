@@ -2,41 +2,23 @@ source('R/sleep.tools.R')
 
 
 subjects <-read.xls("data/subject_list.xls")[,c(1,2)]
-
 subject_periods <- calculate_periods_for_subjects(subjects)
 
-
+# Get specific results for a given subject
 plot.bouts(subject_periods[["3335GX"]]$subject_df, subject_periods[["3335GX"]]$periods$changepoint, subject_periods[["3335GX"]]$periods$classic)  
-
-
-stats <- llply(subject_periods, function(subject) {
-  #df <- subject$subject_df
-  #changepoint <- subject$periods$changepoint
-  tab_classic <- tabulate_periods(subject$periods$classic, subject$subject_df)
-  tab_changepoint <- tabulate_periods(subject$periods$changepoint, subject$subject_df)
-  
-  stats_classic <- calculate_agreement_stats(tab_classic)
-  stats_changepoint <- calculate_agreement_stats(tab_changepoint)
-  
-  list(classic=list(tabulated_periods=tab_classic, agreement_stats=stats_classic), changepoint=list(tabulate_periods=tab_changepoint, agreement_stats=stats_changepoint))
-})
-
-stats.df <- data.frame(subject_code=names(stats), classic_nrem_count=)
-
 df <- subject_periods[["3335GX"]]$subject_df
 changepoint_periods <-subject_periods[["3335GX"]]$periods$changepoint 
 classic_periods <-subject_periods[["3335GX"]]$periods$classic
 
+
+stats <- calculate_subject_statistics(subject_periods)
+
+
+
+
 ## Classic vs. Changepoint
 
 ### Stats per period:
-
-tab_classic <- tabulate_periods(classic_periods, df)
-tab_changepoint <- tabulate_periods(changepoint_periods, df)
-
-stats_classic <- calculate_agreement_stats(tab_classic)
-stats_changepoint <- calculate_agreement_stats(tab_changepoint)
-
 
 # smallest - nrem, rem, wake, undef
 # largest - nrem, rem, wake, undef
@@ -44,30 +26,35 @@ stats_changepoint <- calculate_agreement_stats(tab_changepoint)
 # % correct in total
 #   nrem
 #   rem
-stat_df <- ldply(stats, function(subject_stats) {
-  data.frame(
-    n_classic=subject_stats$classic$agreement_stats$all$n, 
-    proportion_classic=subject_stats$classic$agreement_stats$all$proportion,
-    n_changepoint=subject_stats$changepoint$agreement_stats$all$n, 
-    proportion_changepoint=subject_stats$changepoint$agreement_stats$all$proportion,
-    
-    n_classic_rem_nrem=subject_stats$classic$agreement_stats$REM_NREM$n, 
-    proportion_classic_rem_nrem=subject_stats$classic$agreement_stats$REM_NREM$proportion,
-    n_changepoint_rem_nrem=subject_stats$changepoint$agreement_stats$REM_NREM$n, 
-    proportion_changepoint_rem_nrem=subject_stats$changepoint$agreement_stats$REM_NREM$proportion,
-    
-    n_classic_rem=subject_stats$classic$agreement_stats$REM$n, 
-    proportion_classic_rem=subject_stats$classic$agreement_stats$REM$proportion,
-    n_changepoint_rem=subject_stats$changepoint$agreement_stats$REM$n, 
-    proportion_changepoint_rem=subject_stats$changepoint$agreement_stats$REM$proportion,
-    
-    n_classic_nrem=subject_stats$classic$agreement_stats$NREM$n, 
-    proportion_classic_nrem=subject_stats$classic$agreement_stats$NREM$proportion,
-    n_changepoint_nrem=subject_stats$changepoint$agreement_stats$NREM$n, 
-    proportion_changepoint_nrem=subject_stats$changepoint$agreement_stats$NREM$proportion
-  )
-})
 
+DT1a <- as.data.table(stats[["3335GX"]]$classic$tabulated_periods)
+DT1a[,`:=`(subject_code="3335GX", method="classic")]
+DT1b <- as.data.table(stats[["3335GX"]]$changepoint$tabulate_periods)
+DT1b[,`:=`(subject_code="3335GX", method="changepoint")]
 
+DT2a <- as.data.table(stats[["23D8HS"]]$classic$tabulated_periods)
+DT2a[,`:=`(subject_code="23D8HS", method="classic")]
+DT2b <- as.data.table(stats[["23D8HS"]]$changepoint$tabulate_periods)
+DT2b[,`:=`(subject_code="23D8HS", method="changepoint")]
 
-# 
+DT3a <- as.data.table(stats[["2632DX"]]$classic$tabulated_periods)
+DT3a[,`:=`(subject_code="2632DX", method="classic")]
+DT3b <- as.data.table(stats[["2632DX"]]$changepoint$tabulate_periods)
+DT3b[,`:=`(subject_code="2632DX", method="changepoint")]
+
+DT4a <- as.data.table(stats[["28J8X"]]$classic$tabulated_periods)
+DT4a[,`:=`(subject_code="28J8X", method="classic")]
+DT4b <- as.data.table(stats[["28J8X"]]$changepoint$tabulate_periods)
+DT4b[,`:=`(subject_code="28J8X", method="changepoint")]
+
+DT <- rbindlist(list(DT1a, DT1b, DT2a, DT2b, DT3a, DT3b, DT4a, DT4b))
+
+plot <- ggplot(DT, aes(x=length)) + geom_histogram(binwidth=5)
+plot <- plot + facet_grid(subject_code ~ method, scales="free") + scale_x_continuous(limits=c(0, 250))
+plot
+#
+
+# In general, We can bring the comparisons together.
+
+# Determining cycles:
+#  

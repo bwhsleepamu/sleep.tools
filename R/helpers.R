@@ -11,6 +11,18 @@ load_sleep_file <- function(file_path) {
   list(df=df, min_day_number=min_day_number)
 }
 
+# DT Version
+load_sleep_file.dt <- function(file_path) {
+  dt <- fread(file_path)
+  setnames(dt, c("subject_code", "sleep_wake_period", "labtime", "stage"))
+  setkey(dt, sleep_wake_period, labtime)
+  dt <- set_up_data_table(dt, T_CYCLE)
+  
+  min_day_number <- min(dt[,original_day_number])
+
+  list(dt=dt, min_day_number=min_day_number)
+}
+
 # Calculate periods using the 3 methods for a given subject
 calculate_periods <- function(subject_data) {
   df <- subject_data$df
@@ -126,6 +138,35 @@ chunk_epochs <- function(df) {
   bouts
 }
 
+chunk_epochs.dt <- function(dt) {
+  
+  
+  df_iterator <- iter(df, by='row')
+  
+  # Initialize
+  first_row <- nextElem(df_iterator)
+  bouts <- data.frame(bout_type=first_row$epoch_type, length=1, start_labtime=first_row$labtime, end_labtime=first_row$labtime)
+  
+  # Make bouts
+  for(i in 2:df_iterator$length) {
+    row <- nextElem(df_iterator)
+    
+    
+    if(bouts[nrow(bouts),]$bout_type == row$epoch_type) {
+      # Same epoch type - add to existing row
+      bouts[nrow(bouts),]$length <- bouts[nrow(bouts),]$length + 1
+      bouts[nrow(bouts),]$end_labtime <- row$labtime
+    }
+    else {
+      # different epoch - initialize new row
+      bouts <- rbind(bouts, data.frame(bout_type=row$epoch_type, length=1, start_labtime=row$labtime, end_labtime=row$labtime))
+    } 
+  }
+  
+  bouts
+}
+
+
 # Merge undefined bouts into neighbors
 merge_undefined_bouts <- function(bouts) {
   undefined_bouts <- which(bouts$bout_type == 'UNDEF')
@@ -209,10 +250,12 @@ start_end_times <- function(df) { c(min(df$day_labtime), max(df$day_labtime)) }
 
 # Maps numerical values to types of epochs
 map_epoch_type <- function(x) {
-  if (x >= 1 & x <=4) { "NREM" }
-  else if (x == 5) { "WAKE" }
-  else if (x == 6) { "REM" }
-  else { "UNDEF" }
+  if (x >= 1 & x <=4) { res <- "NREM" }
+  else if (x == 5) { res <- "WAKE" }
+  else if (x == 6) { res <- "REM" }
+  else { res <- "UNDEF" }
+  
+  res
 }
 
 # Uses the sleep data to determine the most frequent type of epoch in each chunk
@@ -237,6 +280,17 @@ set_up_data_frame <- function(df, t_cycle) {
   # Label NREM, REM, WAKE, UNDEF
   df$epoch_type <- factor(sapply(df$stage, map_epoch_type))
   list(df=df, min_day_number=min_day_number)
+}
+
+# Calculates the day number, wake or sleep period, and epoch type
+set_up_data_table <- function(dt, t_cycle, min_day_number) {
+  dt[,original_day_number:=floor(labtime/t_cycle)]
+  dt[,day_labtime:=labtime - (day_number * t_cycle)]
+  dt[,day_number:= original_day_number - min(day_number)]
+  dt[,period_type:=factor(sleep_wake_period < 0, labels=c("sp", "wp"))]
+  dt[,epoch_type:=map_epoch_type(stage), by=labtime]
+  
+  dt
 }
 
 # Sets something up...

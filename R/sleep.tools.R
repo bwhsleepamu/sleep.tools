@@ -10,6 +10,7 @@ library(gdata)
 #library(grid)
 library(plyr)
 library(iterators)
+library(data.table)
 
 
 # My Sources
@@ -107,7 +108,7 @@ plot.bouts <- function(df, primary_bouts, secondary_bouts=NULL) {
 }
 
 
-# Statistics
+# Determine how many types of epochs each period has
 tabulate_periods <- function(periods, df) {
   res <- ddply(periods, .(bout_type, start_labtime, end_labtime), function(period, df) {  
     if(nrow(period) > 1)
@@ -130,6 +131,7 @@ tabulate_periods <- function(periods, df) {
   res
 }
 
+# Using the tabulated periods, calculate percentage of epochs in each period that agree with the period type
 calculate_agreement_stats <- function(res) {
   agreement_stats <- list(NREM=list(), REM=list(), all=list(), REM_NREM=list())
   
@@ -153,3 +155,44 @@ calculate_agreement_stats <- function(res) {
   agreement_stats
 }
 
+# Calculates stats for each subject
+calculate_subject_statistics <- function(subject_periods) {
+  llply(subject_periods, function(subject) {
+    #df <- subject$subject_df
+    #changepoint <- subject$periods$changepoint
+    tab_classic <- tabulate_periods(subject$periods$classic, subject$subject_df)
+    tab_changepoint <- tabulate_periods(subject$periods$changepoint, subject$subject_df)
+    
+    stats_classic <- calculate_agreement_stats(tab_classic)
+    stats_changepoint <- calculate_agreement_stats(tab_changepoint)
+    
+    list(classic=list(tabulated_periods=tab_classic, agreement_stats=stats_classic), changepoint=list(tabulate_periods=tab_changepoint, agreement_stats=stats_changepoint))
+  })
+}
+
+# Present stats in a data frame
+present_subject_statistics <- function(stats) {
+  ldply(stats, function(subject_stats) {
+    data.frame(
+      n_classic=subject_stats$classic$agreement_stats$all$n, 
+      proportion_classic=subject_stats$classic$agreement_stats$all$proportion,
+      n_changepoint=subject_stats$changepoint$agreement_stats$all$n, 
+      proportion_changepoint=subject_stats$changepoint$agreement_stats$all$proportion,
+      
+      n_classic_rem_nrem=subject_stats$classic$agreement_stats$REM_NREM$n, 
+      proportion_classic_rem_nrem=subject_stats$classic$agreement_stats$REM_NREM$proportion,
+      n_changepoint_rem_nrem=subject_stats$changepoint$agreement_stats$REM_NREM$n, 
+      proportion_changepoint_rem_nrem=subject_stats$changepoint$agreement_stats$REM_NREM$proportion,
+      
+      n_classic_rem=subject_stats$classic$agreement_stats$REM$n, 
+      proportion_classic_rem=subject_stats$classic$agreement_stats$REM$proportion,
+      n_changepoint_rem=subject_stats$changepoint$agreement_stats$REM$n, 
+      proportion_changepoint_rem=subject_stats$changepoint$agreement_stats$REM$proportion,
+      
+      n_classic_nrem=subject_stats$classic$agreement_stats$NREM$n, 
+      proportion_classic_nrem=subject_stats$classic$agreement_stats$NREM$proportion,
+      n_changepoint_nrem=subject_stats$changepoint$agreement_stats$NREM$n, 
+      proportion_changepoint_nrem=subject_stats$changepoint$agreement_stats$NREM$proportion
+    )
+  } ) 
+}
