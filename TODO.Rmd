@@ -17,7 +17,7 @@ plot(cars)
 
 ## COMPARISONS
 1. Show distribution of consecutive bouts before transformation vs. after transformation
-2. In the distribution graphs, color-code the type of epoch
+2. --In the distribution graphs, color-code the type of epoch--
 
 
 # LIST

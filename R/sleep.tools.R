@@ -71,6 +71,13 @@ bouts.classic <- function(df) {
   
 }
 
+bouts.untransformed <- function(df) {
+  bouts <- ddply(df, .(sleep_wake_period), function(df) {
+    bouts <- chunk_epochs(df)
+    
+    bouts
+  })
+}
 ## Method 3
 bouts.improved <- function(df) {
   ## TODO
@@ -162,11 +169,13 @@ calculate_subject_statistics <- function(subject_periods) {
     #changepoint <- subject$periods$changepoint
     tab_classic <- tabulate_periods(subject$periods$classic, subject$subject_df)
     tab_changepoint <- tabulate_periods(subject$periods$changepoint, subject$subject_df)
+    tab_untransformed <- tabulate_periods(subject$periods$untransformed, subject$subject_df)
     
     stats_classic <- calculate_agreement_stats(tab_classic)
     stats_changepoint <- calculate_agreement_stats(tab_changepoint)
+    stats_untransformed <- calculate_agreement_stats(tab_untransformed)
     
-    list(classic=list(tabulated_periods=tab_classic, agreement_stats=stats_classic), changepoint=list(tabulate_periods=tab_changepoint, agreement_stats=stats_changepoint))
+    list(classic=list(tabulated_periods=tab_classic, agreement_stats=stats_classic), changepoint=list(tabulated_periods=tab_changepoint, agreement_stats=stats_changepoint), untransformed=list(tabulated_periods=tab_untransformed, agreement_stats=stats_untransformed))
   })
 }
 

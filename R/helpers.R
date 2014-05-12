@@ -30,11 +30,13 @@ calculate_periods <- function(subject_data) {
   
   changepoint_bouts <- bouts.changepoint(df)
   classic_bouts <- bouts.classic(df)
+  untransformed_bouts <- bouts.untransformed(df)
   
   classic_bouts <- setup_bouts_for_raster(classic_bouts, min_day_number, T_CYCLE)
   changepoint_bouts <- setup_bouts_for_raster(changepoint_bouts, min_day_number, T_CYCLE)
+  untransformed_bouts <- setup_bouts_for_raster(untransformed_bouts, min_day_number, T_CYCLE)
   
-  list(changepoint=changepoint_bouts, classic=classic_bouts)  
+  list(changepoint=changepoint_bouts, classic=classic_bouts, untransformed=untransformed_bouts)  
 }
 
 
