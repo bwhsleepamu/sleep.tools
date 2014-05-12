@@ -40,3 +40,10 @@ plot(cars)
 1. iteratively take the smallest consecutive bout (low to high)
 2. Merge into the largest neighbor
 3. 
+
+
+## Meeting Friday
+- Boxplot summaries for period lengths
+- Iterative method
+- Comparisions between different subject groups
+

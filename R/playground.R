@@ -12,7 +12,7 @@ classic_periods <-subject_periods[["3335GX"]]$periods$classic
 
 
 stats <- calculate_subject_statistics(subject_periods)
-
+stats_df <- present_subject_statistics(stats)
 
 
 
@@ -58,7 +58,7 @@ DT4c <- as.data.table(stats[["28J8X"]]$untransformed$tabulated_periods)
 DT4c[,`:=`(subject_code="28J8X", method="untransformed")]
 
 DT <- rbindlist(list(DT1a, DT1b, DT1c, DT2a, DT2b, DT2c, DT3a, DT3b, DT3c, DT4a, DT4b, DT4c))
-
+setkey(DT, method)
 plot <- ggplot(DT, aes(x=length, fill=bout_type)) + geom_histogram(binwidth=1)
 plot <- plot + scale_y_continuous(limits=c(0, max(table(DT[c("classic", "changepoint"),length]))))
 plot <- plot + facet_grid(method ~ subject_code, scales="free") 

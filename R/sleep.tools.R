@@ -181,7 +181,8 @@ calculate_subject_statistics <- function(subject_periods) {
 
 # Present stats in a data frame
 present_subject_statistics <- function(stats) {
-  ldply(stats, function(subject_stats) {
+  
+  l <- ldply(stats, function(subject_stats) {
     data.frame(
       n_classic=subject_stats$classic$agreement_stats$all$n, 
       proportion_classic=subject_stats$classic$agreement_stats$all$proportion,
@@ -204,4 +205,6 @@ present_subject_statistics <- function(stats) {
       proportion_changepoint_nrem=subject_stats$changepoint$agreement_stats$NREM$proportion
     )
   } ) 
+  
+  l
 }
