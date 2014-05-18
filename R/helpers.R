@@ -11,18 +11,6 @@ load_sleep_file <- function(file_path) {
   list(df=df, min_day_number=min_day_number)
 }
 
-# DT Version
-load_sleep_file.dt <- function(file_path) {
-  dt <- fread(file_path)
-  setnames(dt, c("subject_code", "sleep_wake_period", "labtime", "stage"))
-  setkey(dt, sleep_wake_period, labtime)
-  dt <- set_up_data_table(dt, T_CYCLE)
-  
-  min_day_number <- min(dt[,original_day_number])
-
-  list(dt=dt, min_day_number=min_day_number)
-}
-
 # Calculate periods using the 3 methods for a given subject
 calculate_periods <- function(subject_data) {
   df <- subject_data$df
@@ -250,15 +238,7 @@ compute_chunk_info <- function(chunk) {
 # Not sure what this function does
 start_end_times <- function(df) { c(min(df$day_labtime), max(df$day_labtime)) }
 
-# Maps numerical values to types of epochs
-map_epoch_type <- function(x) {
-  if (x >= 1 & x <=4) { res <- "NREM" }
-  else if (x == 5) { res <- "WAKE" }
-  else if (x == 6) { res <- "REM" }
-  else { res <- "UNDEF" }
-  
-  res
-}
+
 
 # Uses the sleep data to determine the most frequent type of epoch in each chunk
 # Creates bouts with start and end labtimes

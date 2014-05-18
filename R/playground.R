@@ -1,8 +1,16 @@
-source('R/sleep.tools.R')
+source('R/sleep.tools.data.table.R')
 
+subjects <- read.subject_info("data/subject_list.csv")
+sleep_data <- load_sleep_data.dt(subjects)
 
-subjects <- fread("data/subject_list.csv")#[,c(1:7)]
-setkey(subjects, subject_code)
+subjects <- set_min_day_num(subjects, sleep_data)
+sleep_data[,c('day_number', 'day_labtime'):=set_up_days(labtime, subjects[subject_code]$min_day_number, T_CYCLE),by=subject_code]
+sleep_data[,epoch_type:=lapply(stage, map_epoch_type),]
+sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
+
+processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
+warnings()
+##
 subject_periods <- calculate_periods_for_subjects(subjects)
 
 # Get specific results for a given subject
