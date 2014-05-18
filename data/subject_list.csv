@@ -1,5 +1,38 @@
-subject_code,file_path,,,,,
-23D8HS,/usr/local/htdocs/sleep.tools/data/AMU/23D8H/Sleep/23D8HSSlp.01.csv,,,,,/usr/local/htdocs/sleep.tools/data/AMU/23D8H/Sleep/
-2632DX,/usr/local/htdocs/sleep.tools/data/AMU/23D8H/Sleep/2632DXSlp.01.csv,,,,,Slp.01.csv
-28J8X,/usr/local/htdocs/sleep.tools/data/AMU/23D8H/Sleep/28J8XSlp.01.csv,,,,,
-3335GX,/usr/local/htdocs/sleep.tools/data/AMU/23D8H/Sleep/3335GXSlp.01.csv,,,,,
+subject_code,study,study_group,age_group,gender,t_cycle,file_path
+3227GX,T20CSR,CSR,YOUNG,F,20,/I/AMU Cleaned Data Sets/3227GX/Sleep/3227GXSlp.01.csv
+3228GX,T20CSR,CSR,YOUNG,M,20,/I/AMU Cleaned Data Sets/3228GX/Sleep/3228GXSlp.01.csv
+3232GX,T20CSR,CONTROL,YOUNG,M,20,/I/AMU Cleaned Data Sets/3232GX/Sleep/3232GXSlp.01.csv
+3233GX,T20CSR,CONTROL,YOUNG,M,20,/I/AMU Cleaned Data Sets/3233GX/Sleep/3233GXSlp.01.csv
+3237GX,T20CSR,CONTROL,YOUNG,F,20,/I/AMU Cleaned Data Sets/3237GX/Sleep/3237GXSlp.01.csv
+3319GX,T20CSR,CONTROL,YOUNG,F,20,/I/AMU Cleaned Data Sets/3319GX/Sleep/3319GXSlp.01.csv
+3335GX,T20CSR,CSR,YOUNG,M,20,/I/AMU Cleaned Data Sets/3335GX/Sleep/3335GXSlp.01.csv
+3315GX32,T20CSR,CSR,YOUNG,F,20,/I/AMU Cleaned Data Sets/3315GX32/Sleep/3315GX32Slp.01.csv
+3339GX,T20CSR,CONTROL,YOUNG,F,20,/I/AMU Cleaned Data Sets/3339GX/Sleep/3339GXSlp.01.csv
+3353GX,T20CSR,CONTROL,YOUNG,M,20,/I/AMU Cleaned Data Sets/3353GX/Sleep/3353GXSlp.01.csv
+2709HX,AgingPPGCSR,CSR,OLD,M,28,/I/AMU Cleaned Data Sets/2709HX/Sleep/2709HXSlp.01.csv
+2789HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/2789HX/Sleep/2789HXSlp.01.csv
+27D7HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/27D7HX/Sleep/27D7HXSlp.01.csv
+27H5HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/27H5HX/Sleep/27H5HXSlp.01.csv
+28G1HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/28G1HX/Sleep/28G1HXSlp.01.csv
+28G2HX,AgingPPGCSR,CSR,OLD,M,28,/I/AMU Cleaned Data Sets/28G2HX/Sleep/28G2HXSlp.01.csv
+28Q5HX,AgingPPGCSR,CSR,OLD,M,28,/I/AMU Cleaned Data Sets/28Q5HX/Sleep/28Q5HXSlp.01.csv
+28Q9HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/28Q9HX/Sleep/28Q9HXSlp.01.csv
+2951HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/2951HX/Sleep/2951HXSlp.01.csv
+2970HX,AgingPPGCSR,CSR,OLD,M,28,/I/AMU Cleaned Data Sets/2970HX/Sleep/2970HXSlp.01.csv
+29N1HX,AgingPPGCSR,CSR,OLD,M,28,/I/AMU Cleaned Data Sets/29N1HX/Sleep/29N1HXSlp.01.csv
+29T2HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/29T2HX/Sleep/29T2HXSlp.01.csv
+3007HX,AgingPPGCSR,CSR,OLD,M,28,/I/AMU Cleaned Data Sets/3007HX/Sleep/3007HXSlp.01.csv
+3046HX,AgingPPGCSR,CSR,OLD,F,28,/I/AMU Cleaned Data Sets/3046HX/Sleep/3046HXSlp.01.csv
+2756X,AgingPPGCSR,CSR,YOUNG,M,28,/I/AMU Cleaned Data Sets/2756X/Sleep/2756XSlp.01.csv
+2768X,AgingPPGCSR,CSR,YOUNG,M,28,/I/AMU Cleaned Data Sets/2768X/Sleep/2768XSlp.01.csv
+2788X,AgingPPGCSR,CSR,YOUNG,M,28,/I/AMU Cleaned Data Sets/2788X/Sleep/2788XSlp.01.csv
+27B2X,AgingPPGCSR,CSR,YOUNG,F,28,/I/AMU Cleaned Data Sets/27B2X/Sleep/27B2XSlp.01.csv
+27G5X,AgingPPGCSR,CSR,YOUNG,M,28,/I/AMU Cleaned Data Sets/27G5X/Sleep/27G5XSlp.01.csv
+2819X,AgingPPGCSR,CSR,YOUNG,M,28,/I/AMU Cleaned Data Sets/2819X/Sleep/2819XSlp.01.csv
+2890X,AgingPPGCSR,CSR,YOUNG,F,28,/I/AMU Cleaned Data Sets/2890X/Sleep/2890XSlp.01.csv
+2895X,AgingPPGCSR,CSR,YOUNG,F,28,/I/AMU Cleaned Data Sets/2895X/Sleep/2895XSlp.01.csv
+28B2X,AgingPPGCSR,CSR,YOUNG,F,28,/I/AMU Cleaned Data Sets/28B2X/Sleep/28B2XSlp.01.csv
+2903X,AgingPPGCSR,CSR,YOUNG,F,28,/I/AMU Cleaned Data Sets/2903X/Sleep/2903XSlp.01.csv
+28K5X,AgingPPGCSR,CSR,YOUNG,F,28,/I/AMU Cleaned Data Sets/28K5X/Sleep/28K5XSlp.01.csv
+28Q6X,AgingPPGCSR,CSR,YOUNG,M,28,/I/AMU Cleaned Data Sets/28Q6X/Sleep/28Q6XSlp.01.csv
+29D7X,AgingPPGCSR,CSR,YOUNG,F,28,/I/AMU Cleaned Data Sets/29D7X/Sleep/29D7XSlp.01.csv

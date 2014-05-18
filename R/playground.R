@@ -1,7 +1,8 @@
 source('R/sleep.tools.R')
 
 
-subjects <-read.xls("data/subject_list.xls")[,c(1,2)]
+subjects <- fread("data/subject_list.csv")#[,c(1:7)]
+setkey(subjects, subject_code)
 subject_periods <- calculate_periods_for_subjects(subjects)
 
 # Get specific results for a given subject
