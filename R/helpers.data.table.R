@@ -9,10 +9,12 @@ read.subject_info <- function(file_path) {
 
 ## Load Sleep Stage Data
 load_sleep_data.dt <- function(subjects) {
-  sleep_data <- subjects[, load_sleep_file.dt(file_path), by=subject_code]
-  sleep_data[,V1:=NULL]
+  #sleep_data <- subjects[, load_sleep_file.dt(file_path), by=subject_code]
+  sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file.dt))
+  #sleep_data[,V1:=NULL]
   setnames(sleep_data, c('subject_code', 'sleep_wake_period', 'labtime', 'stage'))
   setkey(sleep_data, subject_code, labtime)
+  sleep_data
 }
 
 load_sleep_file.dt <- function(file_path) {  

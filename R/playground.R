@@ -2,7 +2,7 @@
 
 source('R/sleep.tools.data.table.R')
 
-subjects <- read.subject_info("data/local_subject_list.csv")
+subjects <- read.subject_info("data/full_subject_list.csv")
 sleep_data <- load_sleep_data.dt(subjects)
 
 subjects <- set_min_day_num(subjects, sleep_data)
