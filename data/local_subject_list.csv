@@ -1,0 +1,5 @@
+subject_code,study,study_group,age_group,gender,t_cycle,file_path
+23D8HS,TEST,,,,,data/AMU/23D8HS/Sleep/23D8HSSlp.01.csv
+2632DX,TEST,,,,,data/AMU/2632DX/Sleep/2632DXSlp.01.csv
+28J8X,TEST,,,,,data/AMU/28J8X/Sleep/28J8XSlp.01.csv
+3335GX,TEST,,,,,data/AMU/3335GX/Sleep/3335GXSlp.01.csv

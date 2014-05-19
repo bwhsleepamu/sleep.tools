@@ -14,7 +14,7 @@ library(data.table)
 
 
 # My Sources
-source("R/helpers.data.table.R")
+sourcrce("R/helpers.data.table.R")
 
 # 1. Load the sleep files
 # 2. Have 3 methods for analysis
@@ -26,6 +26,10 @@ REM_MIN_PERIOD_LENGTH = 10
 NREM_MIN_PERIOD_LENGTH = 30
 
 
+## I need period lengths for original, changepoint, classic
+
+# so, a datatable for all subjects with period start and end times, lengths.
+## subject_code, type, start, end, length 
 
 # Methods
 ## Method 1

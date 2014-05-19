@@ -1,6 +1,8 @@
+### ALL THIS IS SETUP, AN WORKS!!!
+
 source('R/sleep.tools.data.table.R')
 
-subjects <- read.subject_info("data/subject_list.csv")
+subjects <- read.subject_info("data/local_subject_list.csv")
 sleep_data <- load_sleep_data.dt(subjects)
 
 subjects <- set_min_day_num(subjects, sleep_data)
@@ -8,9 +10,26 @@ sleep_data[,c('day_number', 'day_labtime'):=set_up_days(labtime, subjects[subjec
 sleep_data[,epoch_type:=lapply(stage, map_epoch_type),]
 sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
 
-processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
-warnings()
-##
+
+### NOW, WE DIVERGE INTO DIFFERENT BOUT DTs
+changepoint.dt <- sleep_data[, bouts.changepoint(.SD), by=subject_code]
+changepoint.dt[, method:='changepoint']
+
+classic.dt <- sleep_data[, bouts.classic(.SD), by=subject_code]
+classic.dt[, method:='classic']
+
+untransformed.dt <- sleep_data[, bouts.untransformed(.SD), by=subject_code]
+untransformed.dt[, method:='untransformed']
+
+periods.dt <- rbindlist(list(changepoint.dt, classic.dt, untransformed.dt))
+clean.periods.dt <- periods.dt[sleep_wake_period > 0]
+
+plot <- ggplot(simple.dt, aes(factor(method), length))
+plot <- plot + facet_wrap(~ subject_code, ncol = 3)
+plot <- plot + geom_boxplot()
+plot <- plot + geom_jitter()
+
+
 subject_periods <- calculate_periods_for_subjects(subjects)
 
 # Get specific results for a given subject
