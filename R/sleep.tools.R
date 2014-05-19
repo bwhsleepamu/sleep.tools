@@ -30,20 +30,23 @@ NREM_MIN_PERIOD_LENGTH = 30
 ## Method 1
 bouts.changepoint <- function(df) {
   
+  
   bouts <- ddply(df, .(sleep_wake_period), function(df) {
-    changepoint_results <- processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
-    changepoint_rows <- df[changepoint_results$changePoints,]
     
-    # Uses changepoint indeces to create two columns, with start and end indeces for each chunk
-    chunks <- as.data.frame(cbind(c(1, changepoint_results$changePoints), c(changepoint_results$changePoints, nrow(df))))
-    colnames(chunks) <- c("start_index", "end_index")
-    
-    # Uses the sleep data to determine the most frequent type of epoch in each chunk
-    # Creates bouts with start and end labtimes
-    bouts <- ddply(chunks, .(start_index, end_index), calculate_bouts, df=df)
-    bouts$length <- bouts$end_index - bouts$start_index
-    
-    bouts
+     changepoint_results <- processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
+     changepoint_rows <- df[changepoint_results$changePoints,]
+     
+     # Uses changepoint indeces to create two columns, with start and end indeces for each chunk
+     chunks <- as.data.frame(cbind(c(1, changepoint_results$changePoints), c(changepoint_results$changePoints, nrow(df))))
+     colnames(chunks) <- c("start_index", "end_index")
+     
+     # Uses the sleep data to determine the most frequent type of epoch in each chunk
+     # Creates bouts with start and end labtimes
+     bouts <- ddply(chunks, .(start_index, end_index), calculate_bouts, df=df)
+     bouts$length <- bouts$end_index - bouts$start_index
+     
+     bouts
+#    data.frame()
   })
   
   bouts[,c(1,4,5,6,7)]

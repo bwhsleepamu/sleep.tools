@@ -1,8 +1,14 @@
 ### ALL THIS IS SETUP, AN WORKS!!!
 
-source('R/sleep.tools.data.table.R')
+source('R/sleep.tools.R')
+source('R/helpers.data.table.R')
 
-subjects <- read.subject_info("data/local_subject_list.csv")
+subjects.local <- read.subject_info("data/local_subject_list.csv")
+subjects.all <- read.subject_info("data/full_subject_list.csv")
+subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
+
+subjects <- subjects.local
+
 sleep_data <- load_sleep_data.dt(subjects)
 
 subjects <- set_min_day_num(subjects, sleep_data)
@@ -10,6 +16,7 @@ sleep_data[,c('day_number', 'day_labtime'):=set_up_days(labtime, subjects[subjec
 sleep_data[,epoch_type:=lapply(stage, map_epoch_type),]
 sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
 
+## FAST UP TO HERE!!
 
 ### NOW, WE DIVERGE INTO DIFFERENT BOUT DTs
 changepoint.dt <- sleep_data[, bouts.changepoint(.SD), by=subject_code]
