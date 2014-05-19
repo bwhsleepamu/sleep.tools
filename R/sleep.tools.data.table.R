@@ -14,7 +14,7 @@ library(data.table)
 
 
 # My Sources
-sourcrce("R/helpers.data.table.R")
+source("R/helpers.data.table.R")
 
 # 1. Load the sleep files
 # 2. Have 3 methods for analysis
@@ -29,7 +29,9 @@ NREM_MIN_PERIOD_LENGTH = 30
 ## I need period lengths for original, changepoint, classic
 
 # so, a datatable for all subjects with period start and end times, lengths.
-## subject_code, type, start, end, length 
+## subject_code, type, start, end, length
+
+
 
 # Methods
 ## Method 1
@@ -105,11 +107,11 @@ bouts.improved <- function(df) {
 # Cycles
 
 # Plotting
-plot.bouts <- function(df, primary_bouts, secondary_bouts=NULL) {  
+plot.periods <- function(sleep_data, periods, selection='changepoint') {  
   # Draw
   .e <- environment()
   # Main Plot
-  plot <- ggplot(df, aes(day_labtime, stage, group=day_number), environment = .e)
+  plot <- ggplot(sleep_data, aes(day_labtime, stage, group=day_number), environment = .e)
   # Faceting
   plot <- plot + facet_grid(day_number ~ .)
   # Scaling and Margins
@@ -120,13 +122,14 @@ plot.bouts <- function(df, primary_bouts, secondary_bouts=NULL) {
   # Colors
   #plot <- plot + scale_fill_manual(values=alpha(c("blue", "red", "black", "purple", "green", "yellow"), 0.8))
   
+  plot <- plot + geom_rect(aes(xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 10, data = primary_bouts)
   
-  if(is.null(secondary_bouts))
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 10, data = primary_bouts)
-  else {
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 4.5, data = primary_bouts)    
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 5.5, ymax = 10, data = secondary_bouts)    
-  }
+#   if(is.null(secondary_bouts))
+#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 10, data = primary_bouts)
+#   else {
+#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 4.5, data = primary_bouts)    
+#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 5.5, ymax = 10, data = secondary_bouts)    
+#   }
   plot <- plot + geom_point(aes(group=day_number), shape='.')
   
   plot

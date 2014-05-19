@@ -21,13 +21,19 @@ classic.dt[, method:='classic']
 untransformed.dt <- sleep_data[, bouts.untransformed(.SD), by=subject_code]
 untransformed.dt[, method:='untransformed']
 
-periods.dt <- rbindlist(list(changepoint.dt, classic.dt, untransformed.dt))
+periods.dt <- rbind(changepoint.dt, classic.dt, untransformed.dt)
+setkey(periods.dt, subject_code, method, start_labtime)
 clean.periods.dt <- periods.dt[sleep_wake_period > 0]
 
-plot <- ggplot(simple.dt, aes(factor(method), length))
+plot <- ggplot(clean.periods.dt, aes(factor(method), length))
+
 plot <- plot + facet_wrap(~ subject_code, ncol = 3)
+
+plot <- plot + geom_boxplot(aes(fill=factor(bout_type)))
 plot <- plot + geom_boxplot()
+
 plot <- plot + geom_jitter()
+plot <- plot + geom_jitter(aes(colour=factor(bout_type)))
 
 
 subject_periods <- calculate_periods_for_subjects(subjects)

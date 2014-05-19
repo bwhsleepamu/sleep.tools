@@ -72,6 +72,17 @@ setup_bouts_for_raster <- function(bouts, min_day_number, t_cycle) {
   bouts[which(bouts$sleep_wake_period > 0),]
 }
 
+setup_periods_for_plot.dt <- function(periods, subjects, t_cycle) {
+  periods[,start_day_number:=floor(start_labtime/t_cycle)]
+  periods[,start_day_labtime:=(start_labtime - (start_day_number * t_cycle))]
+  periods[,start_day_number:=start_day_number - subjects[subject_code]$min_day_number]
+  periods[,end_day_number:=floor(end_labtime/t_cycle)]
+  periods[,end_day_labtime:=(end_labtime - (end_day_number * t_cycle))]
+  periods[,end_day_number:=end_day_number - subjects[subject_code]$min_day_number]
+  
+  periods[start_day_number==end_day_number]
+}
+
 # Merges given indexed row into larger neighbor !! Does not delete row
 merge_into_larger_neighbor <- function(i, bouts) {
   if(i == 1)
