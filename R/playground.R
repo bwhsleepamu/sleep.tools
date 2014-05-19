@@ -1,13 +1,12 @@
 ### ALL THIS IS SETUP, AN WORKS!!!
 
 source('R/sleep.tools.R')
-source('R/helpers.data.table.R')
 
 subjects.local <- read.subject_info("data/local_subject_list.csv")
 subjects.all <- read.subject_info("data/full_subject_list.csv")
 subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
 
-subjects <- subjects.local
+subjects <- subjects.subset
 
 sleep_data <- load_sleep_data.dt(subjects)
 
@@ -19,28 +18,69 @@ sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
 ## FAST UP TO HERE!!
 
 ### NOW, WE DIVERGE INTO DIFFERENT BOUT DTs
+# Parallel plyr functions
+registerDoMC(4)
+
 changepoint.dt <- sleep_data[, bouts.changepoint(.SD), by=subject_code]
-changepoint.dt[, method:='changepoint']
+classic.dt <- sleep_data[, bouts.classic(.SD, subject_code=.BY), by=subject_code]
 
-classic.dt <- sleep_data[, bouts.classic(.SD), by=subject_code]
-classic.dt[, method:='classic']
-
-untransformed.dt <- sleep_data[, bouts.untransformed(.SD), by=subject_code]
-untransformed.dt[, method:='untransformed']
-
-periods.dt <- rbind(changepoint.dt, classic.dt, untransformed.dt)
+periods.dt <- rbind(changepoint.dt, classic.dt, use.names=TRUE)
 setkey(periods.dt, subject_code, method, start_labtime)
+
+# Get rid of wake periods
 clean.periods.dt <- periods.dt[sleep_wake_period > 0]
 
-plot <- ggplot(clean.periods.dt, aes(factor(method), length))
+# Get rid of everything until sleep onset
+clean.periods.dt <- clean.periods.dt[, onset:=start_labtime[match('NREM', bout_type)], by='subject_code,method,sleep_wake_period']
+clean.periods.dt <- clean.periods.dt[start_labtime >= onset]
+clean.periods.dt <- clean.periods.dt[, onset:=NULL]
 
-plot <- plot + facet_wrap(~ subject_code, ncol = 3)
+## PLOTTING
+# Add dummy data
+csr.periods <- clean.periods.dt[subjects[study=='T20CSR-CSR']$subject_code]
+#csr.periods[, group:='csr']
+control.periods <- clean.periods.dt[subjects[study=='T20CSR-Control']$subject_code]
+#control.periods[, group:='control']
 
-plot <- plot + geom_boxplot(aes(fill=factor(bout_type)))
-plot <- plot + geom_boxplot()
+old.periods <- clean.periods.dt[subjects[study=='NIAPPG' & age_group=='O']$subject_code]
+young.periods <- clean.periods.dt[subjects[study=='NIAPPG' & age_group=='Y']$subject_code]
 
-plot <- plot + geom_jitter()
-plot <- plot + geom_jitter(aes(colour=factor(bout_type)))
+
+csr.plot <- plt(csr.periods, "CSR")
+control.plot <- plt(control.periods, "CONTROL")
+young.plot <- plt(young.periods, "YOUNG")
+old.plot <- plt(old.periods, "OLD")
+
+grid.arrange(csr.plot, control.plot, young.plot, old.plot, ncol=1)
+
+
+
+plt <- function(dt, title) {
+  missing <- dt[, generate_missing_combinations(bout_type, .BY), by='subject_code,method']
+  
+  plot <- ggplot(rbind(dt, missing, use.names=TRUE), aes(factor(method), length))
+  
+  plot <- plot + ggtitle(title)
+  
+  #plot <- plot + facet_grid(group ~ subject_code, drop=FALSE)
+  plot <- plot + facet_wrap(~ subject_code, ncol = 7, drop=FALSE)
+  
+  # Scale for outliers
+  #ylimits <- clean.periods.dt[, data.table(lower=boxplot.stats(length)$stats[1], upper=boxplot.stats(length)$stats[5]), by='subject_code,method']
+  ylimits <- clean.periods.dt[, data.table(lower=boxplot.stats(length)$stats[1], upper=boxplot.stats(length)$stats[5]), by='subject_code,method,bout_type']  
+  
+  ylim <- c(0, 480)
+  plot <- plot + coord_cartesian(ylim = ylim)
+  plot <- plot + scale_y_continuous(breaks=seq(0, ylim[2], 60))
+  
+  plot <- plot + geom_boxplot(aes(fill=factor(bout_type)))
+  #plot <- plot + geom_boxplot()
+  
+  #plot <- plot + geom_jitter()
+  #plot <- plot + geom_jitter(aes(colour=factor(bout_type)))
+
+  plot
+}
 
 
 subject_periods <- calculate_periods_for_subjects(subjects)
@@ -55,6 +95,29 @@ classic_periods <-subject_periods[["3335GX"]]$periods$classic
 stats <- calculate_subject_statistics(subject_periods)
 stats_df <- present_subject_statistics(stats)
 
+
+
+###
+# MORE WORK
+joined <- merge(clean.periods.dt, subjects)
+table(joined$bout_type, joined$age_group, joined$method)
+
+    
+period.agreement <- function(subject_code, label, start_time, end_time, sleep_data) {
+  
+  t <- table(sleep_data[subject_code][labtime %between% c(start_time, end_time)]$epoch_type)
+  t[[label]]/sum(t)
+}
+
+period.agreement <- function(df) {
+  dlply(df, .(subject_code, method, start_labtime), function(d){
+    t <- table(sleep_data[d$subject_code][labtime %between% c(d$start_labtime, d$end_labtime)]$epoch_type)
+    t[[d$bout_type]]/sum(t)    
+  })
+}  
+
+
+      
 
 
 ## Classic vs. Changepoint

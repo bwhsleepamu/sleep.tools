@@ -121,21 +121,23 @@ chunk_epochs <- function(df) {
   bouts <- data.frame(bout_type=first_row$epoch_type, length=1, start_labtime=first_row$labtime, end_labtime=first_row$labtime)
   
   # Make bouts
-  for(i in 2:df_iterator$length) {
-    row <- nextElem(df_iterator)
-    
-    
-    if(bouts[nrow(bouts),]$bout_type == row$epoch_type) {
-      # Same epoch type - add to existing row
-      bouts[nrow(bouts),]$length <- bouts[nrow(bouts),]$length + 1
-      bouts[nrow(bouts),]$end_labtime <- row$labtime
+  if(df_iterator$length > 1) {
+    for(i in 2:df_iterator$length) {
+      row <- nextElem(df_iterator)
+      
+      
+      if(bouts[nrow(bouts),]$bout_type == row$epoch_type) {
+        # Same epoch type - add to existing row
+        bouts[nrow(bouts),]$length <- bouts[nrow(bouts),]$length + 1
+        bouts[nrow(bouts),]$end_labtime <- row$labtime
+      }
+      else {
+        # different epoch - initialize new row
+        bouts <- rbind(bouts, data.frame(bout_type=row$epoch_type, length=1, start_labtime=row$labtime, end_labtime=row$labtime))
+      } 
     }
-    else {
-      # different epoch - initialize new row
-      bouts <- rbind(bouts, data.frame(bout_type=row$epoch_type, length=1, start_labtime=row$labtime, end_labtime=row$labtime))
-    } 
   }
-  
+    
   bouts
 }
 
@@ -172,27 +174,37 @@ chunk_epochs.dt <- function(dt) {
 merge_undefined_bouts <- function(bouts) {
   undefined_bouts <- which(bouts$bout_type == 'UNDEF')
   for(undef_i in undefined_bouts) {
+    #cat("ran!\n")
     bouts <- merge_into_larger_neighbor(undef_i, bouts)
   }
-  bouts <- bouts[undefined_bouts*-1,]
+  #cat(sprintf("* %s | %s | %s\n", nrow(bouts), length(undefined_bouts), length(undefined_bouts)))
+  if(length(undefined_bouts) > 0)
+    bouts <- bouts[undefined_bouts*-1,]
+  #cat(sprintf("** %s\n", nrow(bouts)))
   bouts
 }
 
 # Combine neighbors that have identical types
 combine_identical_neighbors <- function(bouts) {
+  # Only combine if more than one bout exists
   if(nrow(bouts) > 1) {
     remove_i <- c()
     for(i in 2:nrow(bouts)) {
+      
       if(bouts[i,]$bout_type == bouts[i-1,]$bout_type) {
         bouts[i,]$length <- bouts[i,]$length + bouts[i-1,]$length
         bouts[i,]$start_labtime <- bouts[i-1,]$start_labtime
         remove_i <- append(remove_i, i-1)
       }
-    }
-    bouts[remove_i*-1,]      
+    }    
+    
+    # Make sure there are items to be removed!
+    if(!is.null(remove_i)) {
+      bouts <- bouts[remove_i*-1,] 
+    }    
   }
-  else
-    bouts
+  
+  bouts
 }
 
 # Merge seed bouts 

@@ -23,6 +23,31 @@ load_sleep_file.dt <- function(file_path) {
   }
 }
 
+# Strip all periods until first NREM
+strip_until_sleep_onset <- function(dt) {
+  #print(typeof(dt))
+  min_labtime <- dt[bout_type=="NREM", min(start_labtime)]
+    
+  nrow(dt) - nrow(dt[start_labtime >= min_labtime])
+      
+}
+
+
+## BOXPLOTS
+
+
+
+## Every combo of subject_code and method needs to have: NREM, REM, WAKE, UNDEF
+generate_missing_combinations <- function(bout_type, by) {
+  if(TRUE %in% !(levels(bout_type) %in% unique(bout_type))) {
+    # cat(sprintf("%s | %s\n", by[[1]], levels(bout_type)[!(levels(bout_type) %in% unique(bout_type))]))
+    data.table(bout_type=levels(bout_type)[!(levels(bout_type) %in% unique(bout_type))],sleep_wake_period=c(0), start_labtime=c(-1), end_labtime=c(-1), length=c(-1))
+#     lapply(, function(level) {
+#       (bout_type=level, )
+#     })
+  }
+}
+
 ## Set up data for transformation
 set_min_day_num <- function(subjects, sleep_data) {
   r <- sleep_data[,(min(floor(labtime / T_CYCLE)) - 1),by=subject_code]
@@ -39,26 +64,7 @@ set_up_days <- function(labtime, min_day_number, t_cycle) {
   list(day_number, day_labtime)
 }
 
-
-set_up_data <- function(subjects, subject_data) {
-  subjects
-}
-
-
-# min_day_number <- (min(floor(df$labtime / T_CYCLE)) - 1)
-# # DAY NUMBER CALCULATION
-# df$day_number <- floor(df$labtime / t_cycle)
-# df$day_labtime <- (df$labtime - (df$day_number * t_cycle))
-# min_day_number <- (min(df$day_number) - 1)
-# df$day_number <- df$day_number - min_day_number
-# 
-# df$period_type <- factor(df$sleep_wake_period < 0, labels=c("sp", "wp")) 
-# 
-# # Label NREM, REM, WAKE, UNDEF
-# df$epoch_type <- factor(sapply(df$stage, map_epoch_type))
-# list(df=df, min_day_number=min_day_number)
-
-
+ 
 ### ACTUAL HELPERS!!
 # Maps numerical values to types of epochs
 map_epoch_type <- function(x) {
@@ -69,12 +75,4 @@ map_epoch_type <- function(x) {
   else { res <- "UNDEF" }
   
   res
-}
-
-
-# Uses the sleep data to determine the most frequent type of epoch in each chunk
-# Creates bouts with start and end labtimes
-calculate_bouts <- function(chunks, epoch_type, labtime) {
-  # get most frequent type
-  data.frame(bout_type=names(sort(-table(epoch_type[chunks$start_index:chunks$end_index])))[1], start_labtime=labtime[chunks$start_index], end_labtime=labtime[chunks$end_index])
 }

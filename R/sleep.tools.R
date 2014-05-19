@@ -9,11 +9,15 @@ library(scales)
 library(gdata)
 library(plyr)
 library(iterators)
+library(foreach)
+library(parallel)
 library(data.table)
+library(doMC)
 
 
 # My Sources
 source("R/helpers.R")
+source("R/data.table.R")
 
 # 1. Load the sleep files
 # 2. Have 3 methods for analysis
@@ -44,9 +48,11 @@ bouts.changepoint <- function(df) {
     bouts$length <- bouts$end_index - bouts$start_index
     
     bouts
-  })
+  }, .parallel=TRUE)
   
-  bouts[,c(1,4,5,6,7)]
+  bouts <- bouts[,c(1,4,5,6,7)]
+  bouts$method <- 'changepoint'
+  bouts
 }
 
 # Definitions for Methods 2 and 3
@@ -57,25 +63,37 @@ bouts.changepoint <- function(df) {
 ### REM Cycle
 ### NREM Cycle
 ## Method 2
-bouts.classic <- function(df) {
-  bouts <- ddply(df, .(sleep_wake_period), function(df) {
-    bouts <- chunk_epochs(df)
-    bouts <- merge_undefined_bouts(bouts)
-    bouts <- combine_identical_neighbors(bouts)
-    bouts <- create_nrem_rem_periods(bouts)
-
-    bouts
-  })
+bouts.classic <- function(df, subject_code=NULL) {
+  cat(sprintf("1. subject_code: %s | dims: %s x %s | first: %s | last: %s \n", subject_code, dim(df)[[1]], dim(df)[[2]], df$labtime[[1]], df$labtime[[length(df$labtime)]]))
   
-  
-}
-
-bouts.untransformed <- function(df) {
   bouts <- ddply(df, .(sleep_wake_period), function(df) {
-    bouts <- chunk_epochs(df)
+    cat(sprintf("2. subject_code: %s | dims: %s x %s | first: %s | last: %s \n", subject_code, dim(df)[[1]], dim(df)[[2]], df$labtime[[1]], df$labtime[[length(df$labtime)]]))
+   
+    untransformed_bouts <- chunk_epochs(df)
+    #cat(sprintf("3. dim: %s x %s\n", dim(untransformed_bouts)[[1]], dim(untransformed_bouts)[[2]]))
+    untransformed_bouts$method <- 'untransformed'
     
-    bouts
-  })
+    bouts <- merge_undefined_bouts(untransformed_bouts)
+    #cat(sprintf("a. %s\n", nrow(bouts)))
+    bouts <- combine_identical_neighbors(bouts)
+    #cat(sprintf("b. %s\n", nrow(bouts)))
+    bouts <- create_nrem_rem_periods(bouts)
+    #cat(sprintf("c. %s\n", nrow(bouts)))
+    #cat(sprintf("4. dim: %s x %s\n", dim(bouts)[[1]], dim(bouts)[[2]]))
+    
+    ## Should not make bouts dissapear
+    if(nrow(bouts) == 0 & nrow(untransformed_bouts > 0))
+    {
+      print(untransformed_bouts)
+      stop("Bouts are empty even though untransformed_bouts are not!")
+    }
+      
+    bouts$method <- 'classic'
+    
+    rbind(untransformed_bouts, bouts)    
+  }, .parallel=TRUE)
+  
+  bouts
 }
 ## Method 3
 bouts.improved <- function(df) {
