@@ -9,13 +9,27 @@ subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR
 subjects <- subjects.subset
 
 sleep_data <- load_sleep_data.dt(subjects)
+# Generate row indeces
 sleep_data[, pk:=.I]
+# Map stages to epoch types
 sleep_data[,epoch_type:=as.vector(lapply(stage, map_epoch_type)),]
 
+# Generate Chunks!
+chunks <- sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
 
+
+
+## HERE WE CAN DO A LOT WITH CHUNKS
+
+## HERE WE ALSO CAN DO CHANGEPOINT ANALYSIS
+
+# Convert chunk positions to labtimes
+chunks[,start_labtime:=sleep_data$labtime[start_position]]
+
+## THIS IS FOR GRAPHING!!!
 subjects <- set_min_day_num(subjects, sleep_data)
 sleep_data[,c('day_number', 'day_labtime'):=set_up_days(labtime, subjects[subject_code]$min_day_number, T_CYCLE),by=subject_code]
-sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
+#sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
 
 ## FAST UP TO HERE!!
 
