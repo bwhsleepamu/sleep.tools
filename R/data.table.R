@@ -76,3 +76,30 @@ map_epoch_type <- function(x) {
   
   res
 }
+
+chunk <- function(categories, indeces) {
+  ## Might be possible to elaborate on this function using the code for rle
+  
+  reference = indeces[1] - 1
+  rle_results <- rle(as.character(categories))
+  
+  # Get positions by cumulative sum of lengths
+  positions <- cumsum(rle_results$lengths)
+  
+  # The ending positions for each chunk are represented by the cumsum of lengths.
+  # The only correction we need is for the reference index
+  
+  # Since each following chunk starts one position after the end of the previous chunk
+  # we calculate the start positions by adding 1 to each end position and artificially inserting
+  # the start position of the first chunk==1. 
+  
+  # Again, we correct for the reference index, and also trim to get rid of the last value
+  # (since it references a bout that does not exist). 
+  
+  start_positions <- (c(0, positions)+1)[1:length(positions)] + reference
+  end_positions <- positions + reference
+  
+  #end_positions <- res$lengths
+  
+  data.table(label=rle_results$values, start_position=start_positions, end_position=end_positions, length=rle_results$lengths)
+}

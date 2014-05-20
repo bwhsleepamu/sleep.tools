@@ -9,10 +9,12 @@ subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR
 subjects <- subjects.subset
 
 sleep_data <- load_sleep_data.dt(subjects)
+sleep_data[, pk:=.I]
+sleep_data[,epoch_type:=as.vector(lapply(stage, map_epoch_type)),]
+
 
 subjects <- set_min_day_num(subjects, sleep_data)
 sleep_data[,c('day_number', 'day_labtime'):=set_up_days(labtime, subjects[subject_code]$min_day_number, T_CYCLE),by=subject_code]
-sleep_data[,epoch_type:=lapply(stage, map_epoch_type),]
 sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
 
 ## FAST UP TO HERE!!

@@ -141,35 +141,6 @@ chunk_epochs <- function(df) {
   bouts
 }
 
-chunk_epochs.dt <- function(dt) {
-  
-  
-  df_iterator <- iter(df, by='row')
-  
-  # Initialize
-  first_row <- nextElem(df_iterator)
-  bouts <- data.frame(bout_type=first_row$epoch_type, length=1, start_labtime=first_row$labtime, end_labtime=first_row$labtime)
-  
-  # Make bouts
-  for(i in 2:df_iterator$length) {
-    row <- nextElem(df_iterator)
-    
-    
-    if(bouts[nrow(bouts),]$bout_type == row$epoch_type) {
-      # Same epoch type - add to existing row
-      bouts[nrow(bouts),]$length <- bouts[nrow(bouts),]$length + 1
-      bouts[nrow(bouts),]$end_labtime <- row$labtime
-    }
-    else {
-      # different epoch - initialize new row
-      bouts <- rbind(bouts, data.frame(bout_type=row$epoch_type, length=1, start_labtime=row$labtime, end_labtime=row$labtime))
-    } 
-  }
-  
-  bouts
-}
-
-
 # Merge undefined bouts into neighbors
 merge_undefined_bouts <- function(bouts) {
   undefined_bouts <- which(bouts$bout_type == 'UNDEF')
