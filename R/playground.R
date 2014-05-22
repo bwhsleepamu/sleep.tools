@@ -17,7 +17,74 @@ sleep_data[,epoch_type:=as.vector(lapply(stage, map_epoch_type)),]
 # Generate Chunks!
 chunks <- sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
 
+######## Classic
+chunks.classic <- chunks
 
+# label all rows to keep
+chunks.classic[,keep:=TRUE]
+chunks.classic[,new_label:=relabel_to_biggest_neighbor(label,length,"UNDEF"),by='subject_code,sleep_wake_period']
+
+# Now, to merge same bouts again, with length consideration...
+
+
+
+chunks.classic[,merge_label(label, length, "UNDEF"),by='subject_code,sleep_wake_period']
+
+
+
+chunks.tmp <- chunks.classic[subject_code=='1105X' & sleep_wake_period==1]
+
+#m <- matrix(c(i-1,i+1), ncol=2, nrow=length(i))
+#mapply(determine_merge_direction, i-1, i+1, MoreArgs=list(chunks.tmp$label, chunks.tmp$length))
+
+
+
+chunks.tmp[,new_label:=testf(label,length,"UNDEF")]
+chunks.tmp[,temp:=NULL]
+
+
+i <- chunks.tmp[label=="UNDEF", which=TRUE]
+
+r <- merge_label(chunks.tmp$label, chunks.tmp$length, "UNDEF")
+
+f <- i + r
+
+chunks.tmp$label[f]
+chunks.tmp[i, new_label:=chunks.tmp$label[f]]
+
+
+i
+f
+r
+c <- c(f[which(r!=0)], c(i[which(r==0)]+1,i[which(r==0)]-1))
+
+ddd <- data.table(dir=r,my_start=chunks.tmp$start_position[i], f_start=chunks.tmp$start_position[f], my_end=chunks.tmp$end_position[i], f_end=chunks.tmp$end_position[f], my_lab=chunks.tmp$label[i],f_lab=chunks.tmp$label[f])
+
+
+chunks.tmp[i, new_length:=length]
+chunks.tmp[i, ]
+chunks.tmp[f]
+
+
+mapply(function(i,f) {
+  
+})
+
+v <- chunks.tmp$length
+len <- apply(m, c(1,2), function(x){chunks.tmp$length[x]})
+lab <- apply(m, c(1,2), function(x){chunks.tmp$label[x]})
+
+len <- apply(m, c(1,2), function(x){v[x]})
+lab <- apply(m, c(1,2), function(x){chunks.tmp$label[x]})
+
+apply(m, c(1), function(x){
+  
+})
+
+## OK SO DEALING WITH UNDEF FIRST
+# To compare label to earlier:
+# To compare label to later:
+# Edge case: if i == first or last of list
 
 ## HERE WE CAN DO A LOT WITH CHUNKS
 

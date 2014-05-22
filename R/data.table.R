@@ -103,3 +103,59 @@ chunk <- function(categories, indeces) {
   
   data.table(label=rle_results$values, start_position=start_positions, end_position=end_positions, length=rle_results$lengths)
 }
+
+
+### CLASSIC
+
+merge_label <- function(labels, lengths, label_to_merge) {
+  i <- which(labels==label_to_merge)
+  #  cat(sprintf("I: %s", i))
+  mapply(determine_merge_direction, i-1, i+1, MoreArgs=list(chunks.tmp$label, chunks.tmp$length))
+}
+
+
+
+# determine_merge_direction <- function(b,a,labels,lengths){  
+#   #   cat(sprintf("label_a: %s\n", labels[a]))
+#   #   cat(sprintf("label_b: %s\n", labels[b]))
+#   #   cat(sprintf("length_a: %s\n", lengths[a]))
+#   #   cat(sprintf("length_b: %s\n", lengths[b]))
+#   #  cat(sprintf("%s | %s || %s | %s"), labels[a], labels[b], lengths[a], lengths[b])
+#   if(length(labels[b])==0L || is.na(labels[b]))
+#     return(1)
+#   if(length(labels[a])==0L || is.na(labels[a]))
+#     return(-1)
+#   if(labels[a]==labels[b])
+#     return(0)
+#   if(lengths[a] >= lengths[b])
+#     return(1)
+#   else
+#     return(-1)
+# }
+
+determine_merge_direction <- function(b,a,labels,lengths){  
+  #   cat(sprintf("label_a: %s\n", labels[a]))
+  #   cat(sprintf("label_b: %s\n", labels[b]))
+  #   cat(sprintf("length_a: %s\n", lengths[a]))
+  #   cat(sprintf("length_b: %s\n", lengths[b]))
+  #  cat(sprintf("%s | %s || %s | %s"), labels[a], labels[b], lengths[a], lengths[b])
+  if(length(labels[b])==0L || is.na(labels[b]))
+    return(1)
+  if(length(labels[a])==0L || is.na(labels[a]))
+    return(-1)
+  if(lengths[a] >= lengths[b])
+    return(1)
+  else
+    return(-1)
+}
+
+#
+relabel_to_biggest_neighbor <- function(labels, lengths, label_to_merge) {
+  i <- which(labels==label_to_merge)
+  if(length(i)!=0L) {
+    r <- merge_label(labels, lengths, label_to_merge)
+    f <- i + r
+    labels[i] = labels[f]    
+  }
+  labels
+}
