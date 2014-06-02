@@ -1,35 +1,100 @@
 ### ALL THIS IS SETUP, AN WORKS!!!
-
 source('R/sleep.tools.R')
 
 subjects.local <- read.subject_info("data/local_subject_list.csv")
 subjects.all <- read.subject_info("data/full_subject_list.csv")
 subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
 
-subjects <- subjects.subset
+subjects <- subjects.local
 
+# Load and set up data
 sleep_data <- load_sleep_data.dt(subjects)
-# Generate row indeces
-sleep_data[, pk:=.I]
-# Map stages to epoch types
-sleep_data[,epoch_type:=as.vector(lapply(stage, map_epoch_type)),]
 
 # Generate Chunks!
-chunks <- sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
+chunks <- preprocess.chunks.dt(sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period'])
 
 ######## Classic
-chunks.classic <- chunks
+bouts.classic <- generate.bouts.classic.dt(chunks, wake=FALSE, min_nrem_length=NREM_MIN_PERIOD_LENGTH, min_rem_length=REM_MIN_PERIOD_LENGTH, min_wake_length=REM_MIN_PERIOD_LENGTH)
 
-# label all rows to keep
-chunks.classic[,keep:=TRUE]
-chunks.classic[,new_label:=relabel_to_biggest_neighbor(label,length,"UNDEF"),by='subject_code,sleep_wake_period']
+
+## to do better bouts:
+# Like classic, but...from around. start small, merge up.
+# lets just do iterations on each, merging everytime
+
+# After getting rid of UNDEFS and merging down:
+#   they're all alternating
+#   go through 
+
+max_nrem_length = NREM_MIN_PERIOD_LENGTH
+max_rem_length = REM_MIN_PERIOD_LENGTH
+
+# temp
+i <- 1
+
+new_chunks <- iterative_merge(chunks)
+# Do this for each sleep_period
+for(i in 1:min(max_nrem_length, max_rem_length)) {
+
+  # Re-label
+  wd[,c('label','group'):=relabel_by_length(i,label,length)]
+
+  # Merge
+  wd <- wd[,merge_group(start_position, end_position, label, length), by='group']
+  wd[,group:=NULL]  
+  # Repeat!
+}
+
+  
+
+
+
+labels <- wd$label
+lengths <- wd$length
+
+
+wake <- FALSE
+
+
+
+  
+
+  unique(chunks.classic[, c(start_position, end_position, label, length):=merge_group(start_position, end_position, label, length),
+  by='subject_code,sleep_wake_period,group'])
 
 # Now, to merge same bouts again, with length consideration...
+# ok, so we can merge undef easily. 
 
 
 
-chunks.classic[,merge_label(label, length, "UNDEF"),by='subject_code,sleep_wake_period']
+#chunks.classic[,merge_label(label, length, "UNDEF"),by='subject_code,sleep_wake_period']
 
+
+
+labels <- chunks.classic$label
+n <- length(labels)
+label_changed <- labels[-1L] != labels[-n]
+change_locations <- c(which(label_changed | is.na(label_changed)), n)
+lengths <- diff(c(0L, change_locations))
+groups <- rep.int(seq(1,length(lengths)), lengths)
+chunks.classic[,groups:=groups]
+
+chunks.classic <- unique(chunks.classic[,`:=`(
+  start_position=min(start_position), 
+  end_position=max(end_position), 
+  sleep_wake_period=sleep_wake_period[1],
+  label=label[1],
+  length=sum(length))
+,by='groups'])
+
+
+
+dt <- data.table(start_position=(change_locations - lengths) + 1, end_position=change_locations)
+setkey(dt, start_position, end_position)
+
+
+dt[,sc:=chunks.classic[start_position]$subject_code]
+dt[,l:=schunks.classic[start_position]$subject_code]
+dt[,sc:=chunks.classic[start_position]$subject_code]
 
 
 chunks.tmp <- chunks.classic[subject_code=='1105X' & sleep_wake_period==1]

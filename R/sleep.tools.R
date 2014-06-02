@@ -12,7 +12,7 @@ library(iterators)
 library(foreach)
 library(parallel)
 library(data.table)
-library(doMC)
+#library(doMC)
 
 
 # My Sources
