@@ -32,73 +32,73 @@ NREM_MIN_PERIOD_LENGTH = 30
 
 # Methods
 ## Method 1
-bouts.changepoint <- function(df) {
-  
-  bouts <- ddply(df, .(sleep_wake_period), function(df) {
-    changepoint_results <- processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
-    changepoint_rows <- df[changepoint_results$changePoints,]
-    
-    # Uses changepoint indeces to create two columns, with start and end indeces for each chunk
-    chunks <- as.data.frame(cbind(c(1, changepoint_results$changePoints), c(changepoint_results$changePoints, nrow(df))))
-    colnames(chunks) <- c("start_index", "end_index")
-    
-    # Uses the sleep data to determine the most frequent type of epoch in each chunk
-    # Creates bouts with start and end labtimes
-    bouts <- ddply(chunks, .(start_index, end_index), calculate_bouts, df=df)
-    bouts$length <- bouts$end_index - bouts$start_index
-    
-    bouts
-  }, .parallel=TRUE)
-  
-  bouts <- bouts[,c(1,4,5,6,7)]
-  bouts$method <- 'changepoint'
-  bouts
-}
+# generate.bouts.changepoint <- function(df, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
+#   
+#   bouts <- ddply(df, .(sleep_wake_period), function(df) {
+#     changepoint_results <- processStream(df$epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20)
+#     changepoint_rows <- df[changepoint_results$changePoints,]
+#     
+#     # Uses changepoint indeces to create two columns, with start and end indeces for each chunk
+#     chunks <- as.data.frame(cbind(c(1, changepoint_results$changePoints), c(changepoint_results$changePoints, nrow(df))))
+#     colnames(chunks) <- c("start_index", "end_index")
+#     
+#     # Uses the sleep data to determine the most frequent type of epoch in each chunk
+#     # Creates bouts with start and end labtimes
+#     bouts <- ddply(chunks, .(start_index, end_index), calculate_bouts, df=df)
+#     bouts$length <- bouts$end_index - bouts$start_index
+#     
+#     bouts
+#   }, .parallel=TRUE)
+#   
+#   bouts <- bouts[,c(1,4,5,6,7)]
+#   bouts$method <- 'changepoint'
+#   bouts
+# }
 
-# Definitions for Methods 2 and 3
-### NREM Period
-# >=15 minute bout of consecutive (stage 2,3,4?) sleep, 
-### REM Period
-# >=5 minute bout of consecutive REM sleep,  
-### REM Cycle
-### NREM Cycle
-## Method 2
-bouts.classic <- function(df, subject_code=NULL) {
-  cat(sprintf("1. subject_code: %s | dims: %s x %s | first: %s | last: %s \n", subject_code, dim(df)[[1]], dim(df)[[2]], df$labtime[[1]], df$labtime[[length(df$labtime)]]))
-  
-  bouts <- ddply(df, .(sleep_wake_period), function(df) {
-    cat(sprintf("2. subject_code: %s | dims: %s x %s | first: %s | last: %s \n", subject_code, dim(df)[[1]], dim(df)[[2]], df$labtime[[1]], df$labtime[[length(df$labtime)]]))
-   
-    untransformed_bouts <- chunk_epochs(df)
-    #cat(sprintf("3. dim: %s x %s\n", dim(untransformed_bouts)[[1]], dim(untransformed_bouts)[[2]]))
-    untransformed_bouts$method <- 'untransformed'
-    
-    bouts <- merge_undefined_bouts(untransformed_bouts)
-    #cat(sprintf("a. %s\n", nrow(bouts)))
-    bouts <- combine_identical_neighbors(bouts)
-    #cat(sprintf("b. %s\n", nrow(bouts)))
-    bouts <- create_nrem_rem_periods(bouts)
-    #cat(sprintf("c. %s\n", nrow(bouts)))
-    #cat(sprintf("4. dim: %s x %s\n", dim(bouts)[[1]], dim(bouts)[[2]]))
-    
-    ## Should not make bouts dissapear
-    if(nrow(bouts) == 0 & nrow(untransformed_bouts > 0))
-    {
-      print(untransformed_bouts)
-      stop("Bouts are empty even though untransformed_bouts are not!")
-    }
-      
-    bouts$method <- 'classic'
-    
-    rbind(untransformed_bouts, bouts)    
-  }, .parallel=TRUE)
-  
-  bouts
-}
-## Method 3
-bouts.improved <- function(df) {
-  ## TODO
-}
+# # Definitions for Methods 2 and 3
+# ### NREM Period
+# # >=15 minute bout of consecutive (stage 2,3,4?) sleep, 
+# ### REM Period
+# # >=5 minute bout of consecutive REM sleep,  
+# ### REM Cycle
+# ### NREM Cycle
+# ## Method 2
+# bouts.classic <- function(df, subject_code=NULL) {
+#   cat(sprintf("1. subject_code: %s | dims: %s x %s | first: %s | last: %s \n", subject_code, dim(df)[[1]], dim(df)[[2]], df$labtime[[1]], df$labtime[[length(df$labtime)]]))
+#   
+#   bouts <- ddply(df, .(sleep_wake_period), function(df) {
+#     cat(sprintf("2. subject_code: %s | dims: %s x %s | first: %s | last: %s \n", subject_code, dim(df)[[1]], dim(df)[[2]], df$labtime[[1]], df$labtime[[length(df$labtime)]]))
+#    
+#     untransformed_bouts <- chunk_epochs(df)
+#     #cat(sprintf("3. dim: %s x %s\n", dim(untransformed_bouts)[[1]], dim(untransformed_bouts)[[2]]))
+#     untransformed_bouts$method <- 'untransformed'
+#     
+#     bouts <- merge_undefined_bouts(untransformed_bouts)
+#     #cat(sprintf("a. %s\n", nrow(bouts)))
+#     bouts <- combine_identical_neighbors(bouts)
+#     #cat(sprintf("b. %s\n", nrow(bouts)))
+#     bouts <- create_nrem_rem_periods(bouts)
+#     #cat(sprintf("c. %s\n", nrow(bouts)))
+#     #cat(sprintf("4. dim: %s x %s\n", dim(bouts)[[1]], dim(bouts)[[2]]))
+#     
+#     ## Should not make bouts dissapear
+#     if(nrow(bouts) == 0 & nrow(untransformed_bouts > 0))
+#     {
+#       print(untransformed_bouts)
+#       stop("Bouts are empty even though untransformed_bouts are not!")
+#     }
+#       
+#     bouts$method <- 'classic'
+#     
+#     rbind(untransformed_bouts, bouts)    
+#   }, .parallel=TRUE)
+#   
+#   bouts
+# }
+# ## Method 3
+# bouts.improved <- function(df) {
+#   ## TODO
+# }
 
 # Cycles
 

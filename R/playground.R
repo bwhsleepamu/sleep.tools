@@ -1,178 +1,53 @@
-### ALL THIS IS SETUP, AN WORKS!!!
 source('R/sleep.tools.R')
 
+## Parallelization (possibly for file loading?)
+registerDoMC(4)
+
+## Variables
+mnl <- 30
+mrl <- 10
+mwl <- 10
+cpmType <- "Mann-Whitney"
+ARL0 <- 10000
+startup <- 20
+
+## Setup
 subjects.local <- read.subject_info("data/local_subject_list.csv")
 subjects.all <- read.subject_info("data/full_subject_list.csv")
 subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
 
 subjects <- subjects.local
+subjects <- subjects.subset
+
 
 # Load and set up data
 sleep_data <- load_sleep_data.dt(subjects)
 
-# Generate Chunks!
-chunks <- preprocess.chunks.dt(sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period'])
+# Use different methods for period calculation
 
 ######## Classic
-bouts.classic <- generate.bouts.classic.dt(chunks, wake=FALSE, min_nrem_length=NREM_MIN_PERIOD_LENGTH, min_rem_length=REM_MIN_PERIOD_LENGTH, min_wake_length=REM_MIN_PERIOD_LENGTH)
+bouts.classic <- generate.bouts.classic.dt(sleep_data, wake=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
 
+######## Iterative
+bouts.iterative <- generate.bouts.iterative.dt(sleep_data, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
 
-## to do better bouts:
-# Like classic, but...from around. start small, merge up.
-# lets just do iterations on each, merging everytime
+######## Changepoint
+bouts.changepoint <- generate.bouts.changepoint.dt(sleep_data, cpmType=cpmType, ARL0=ARL0, startup=startup)
 
-# After getting rid of UNDEFS and merging down:
-#   they're all alternating
-#   go through 
+# Merge methods into one table
+periods <- rbindlist(list(bouts.changepoint,bouts.classic,bouts.iterative))
 
-max_nrem_length = NREM_MIN_PERIOD_LENGTH
-max_rem_length = REM_MIN_PERIOD_LENGTH
-
-# temp
-i <- 1
-
-new_chunks <- iterative_merge(chunks)
-# Do this for each sleep_period
-for(i in 1:min(max_nrem_length, max_rem_length)) {
-
-  # Re-label
-  wd[,c('label','group'):=relabel_by_length(i,label,length)]
-
-  # Merge
-  wd <- wd[,merge_group(start_position, end_position, label, length), by='group']
-  wd[,group:=NULL]  
-  # Repeat!
-}
-
-  
-
-
-
-labels <- wd$label
-lengths <- wd$length
-
-
-wake <- FALSE
-
-
-
-  
-
-  unique(chunks.classic[, c(start_position, end_position, label, length):=merge_group(start_position, end_position, label, length),
-  by='subject_code,sleep_wake_period,group'])
-
-# Now, to merge same bouts again, with length consideration...
-# ok, so we can merge undef easily. 
-
-
-
-#chunks.classic[,merge_label(label, length, "UNDEF"),by='subject_code,sleep_wake_period']
-
-
-
-labels <- chunks.classic$label
-n <- length(labels)
-label_changed <- labels[-1L] != labels[-n]
-change_locations <- c(which(label_changed | is.na(label_changed)), n)
-lengths <- diff(c(0L, change_locations))
-groups <- rep.int(seq(1,length(lengths)), lengths)
-chunks.classic[,groups:=groups]
-
-chunks.classic <- unique(chunks.classic[,`:=`(
-  start_position=min(start_position), 
-  end_position=max(end_position), 
-  sleep_wake_period=sleep_wake_period[1],
-  label=label[1],
-  length=sum(length))
-,by='groups'])
-
-
-
-dt <- data.table(start_position=(change_locations - lengths) + 1, end_position=change_locations)
-setkey(dt, start_position, end_position)
-
-
-dt[,sc:=chunks.classic[start_position]$subject_code]
-dt[,l:=schunks.classic[start_position]$subject_code]
-dt[,sc:=chunks.classic[start_position]$subject_code]
-
-
-chunks.tmp <- chunks.classic[subject_code=='1105X' & sleep_wake_period==1]
-
-#m <- matrix(c(i-1,i+1), ncol=2, nrow=length(i))
-#mapply(determine_merge_direction, i-1, i+1, MoreArgs=list(chunks.tmp$label, chunks.tmp$length))
-
-
-
-chunks.tmp[,new_label:=testf(label,length,"UNDEF")]
-chunks.tmp[,temp:=NULL]
-
-
-i <- chunks.tmp[label=="UNDEF", which=TRUE]
-
-r <- merge_label(chunks.tmp$label, chunks.tmp$length, "UNDEF")
-
-f <- i + r
-
-chunks.tmp$label[f]
-chunks.tmp[i, new_label:=chunks.tmp$label[f]]
-
-
-i
-f
-r
-c <- c(f[which(r!=0)], c(i[which(r==0)]+1,i[which(r==0)]-1))
-
-ddd <- data.table(dir=r,my_start=chunks.tmp$start_position[i], f_start=chunks.tmp$start_position[f], my_end=chunks.tmp$end_position[i], f_end=chunks.tmp$end_position[f], my_lab=chunks.tmp$label[i],f_lab=chunks.tmp$label[f])
-
-
-chunks.tmp[i, new_length:=length]
-chunks.tmp[i, ]
-chunks.tmp[f]
-
-
-mapply(function(i,f) {
-  
-})
-
-v <- chunks.tmp$length
-len <- apply(m, c(1,2), function(x){chunks.tmp$length[x]})
-lab <- apply(m, c(1,2), function(x){chunks.tmp$label[x]})
-
-len <- apply(m, c(1,2), function(x){v[x]})
-lab <- apply(m, c(1,2), function(x){chunks.tmp$label[x]})
-
-apply(m, c(1), function(x){
-  
-})
-
-## OK SO DEALING WITH UNDEF FIRST
-# To compare label to earlier:
-# To compare label to later:
-# Edge case: if i == first or last of list
-
-## HERE WE CAN DO A LOT WITH CHUNKS
-
-## HERE WE ALSO CAN DO CHANGEPOINT ANALYSIS
-
-# Convert chunk positions to labtimes
-chunks[,start_labtime:=sleep_data$labtime[start_position]]
-
-## THIS IS FOR GRAPHING!!!
-subjects <- set_min_day_num(subjects, sleep_data)
-sleep_data[,c('day_number', 'day_labtime'):=set_up_days(labtime, subjects[subject_code]$min_day_number, T_CYCLE),by=subject_code]
-#sleep_data[,epoch_type:=as.factor(as.character(epoch_type))]
 
 ## FAST UP TO HERE!!
 
 ### NOW, WE DIVERGE INTO DIFFERENT BOUT DTs
 # Parallel plyr functions
-registerDoMC(4)
 
-changepoint.dt <- sleep_data[, bouts.changepoint(.SD), by=subject_code]
-classic.dt <- sleep_data[, bouts.classic(.SD, subject_code=.BY), by=subject_code]
+# changepoint.dt <- sleep_data[, bouts.changepoint(.SD), by=subject_code]
+# classic.dt <- sleep_data[, bouts.classic(.SD, subject_code=.BY), by=subject_code]
+# 
+# periods.dt <- rbind(changepoint.dt, classic.dt, use.names=TRUE)
 
-periods.dt <- rbind(changepoint.dt, classic.dt, use.names=TRUE)
 setkey(periods.dt, subject_code, method, start_labtime)
 
 # Get rid of wake periods

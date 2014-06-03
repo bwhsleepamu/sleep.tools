@@ -10,38 +10,63 @@ load_sleep_data.dt <- function(subjects) {
   # Generate row indeces
   sleep_data[, pk:=.I]
   # Map stages to epoch types
-  sleep_data[,epoch_type:=as.vector(lapply(stage, map_epoch_type)),]
+  sleep_data[,epoch_type:=as.factor(as.character(lapply(stage, map_epoch_type))),]
   sleep_data
 }
 
-## Deal with UNDEFS
-preprocess.chunks.dt <- function(chunks) {
-  # Re-label undefs
-  chunks[,label:=relabel_to_biggest_neighbor(label,length,"UNDEF"),by='subject_code,sleep_wake_period']
-  # Group by labels
-  chunks[,group:=set_group(label),by='subject_code,sleep_wake_period']
-  # Collapse groups
-  chunks <- chunks[,merge_group(start_position, end_position, label, length), by='subject_code,sleep_wake_period,group']
-  chunks[,group:=NULL]
-  
-  chunks
-}
 
+#################
 ## Classic Bouts
-generate.bouts.classic.dt <- function(chunks, wake=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
+#################
+generate.bouts.classic.dt <- function(dt, wake=FALSE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
+  chunks <- sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
+  
+  if(!undef)
+    chunks <- remove.target.label.dt(chunks, target_label="UNDEF")    
+  
   # Merge around seeds
   chunks[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,sleep_wake_period']
-  #chunks.classic[,c('label', 'group'):=merge_around_seeds(label, length, TRUE), by='subject_code,sleep_wake_period']
-  # Collapse groups again
-  chunks <- chunks[,merge_group(start_position, end_position, label, length), by='subject_code,sleep_wake_period,group']
-  chunks[,group:=NULL]
+
+  # Collapse groups
+  bouts <- chunks[,merge_group(start_position, end_position, label, length), by='subject_code,sleep_wake_period,group']
+  bouts[,`:=`(group=NULL, method='classic')]
   
-  chunks
+  bouts
 }
 
-generate.bouts.iterative.dt <- function(chunks, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  iterative_merge(chunks)
+##################
+## Iterative Bouts
+##################
+generate.bouts.iterative.dt <- function(dt, wake=TRUE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
+  chunks <- sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
+  
+  if(!undef)
+    remove.target.label.dt(chunks, target_label="UNDEF")  
+  if(!wake)
+    remove.target.label.dt(chunks, target_label="WAKE")
+  
+  bouts <- iterative_merge(chunks)
+  bouts[,method:='classic']
+  
+  bouts
 }
+
+####################
+## Changepoint Bouts
+####################
+generate.bouts.changepoint.dt <- function(dt, wake=TRUE, undef=FALSE, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
+  dt[,group:=set_changepoint_group(epoch_type,cpmType=cpmType,ARL0=ARL0,startup=startup),by='subject_code,sleep_wake_period']
+  bouts <- dt[,merge_epochs(pk,epoch_type),by='subject_code,sleep_wake_period,group']
+  
+  if(!undef)
+    remove.target.label.dt(bouts, target_label="UNDEF")  
+  if(!wake)
+    remove.target.label.dt(bouts, target_label="WAKE")
+  
+  bouts[,`:=`(group=NULL, method='changepoint')]
+  bouts
+}
+
 
 
 ## Read Subject Info
@@ -207,8 +232,13 @@ set_group <- function(labels) {
   groups
 }
 
+merge_epochs <- function(pks, labels) {
+  start_position <- min(pks)
+  end_position <- max(pks)
+  list(start_position=start_position, end_position=end_position, label=names(which.max(table(labels))), length=(end_position - start_position + 1))
+}
 merge_group <- function(start_positions, end_positions, labels, lengths) {
-  list(start_position=min(start_positions), end_position=max(end_positions), label=labels[1], length=sum(lengths))  
+  list(start_position=min(start_positions), end_position=max(end_positions), label=names(which.max(table(labels))), length=sum(lengths))  
 }
 
 # For classic!
@@ -302,3 +332,30 @@ iterative_merge <- function(chunks, min_nrem_length=30, min_rem_length=10) {
   chunks
 }
 
+set_changepoint_group <- function(epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
+  changepoints <- processStream(epoch_type, cpmType=cpmType, ARL0=ARL0, startup=startup)$changePoints
+  
+  # Add end of last group
+  if(!length(epoch_type)%in%changepoints)
+    changepoints <- c(changepoints, length(epoch_type))
+  
+  # Get lengths of each group
+  lengths <- diff(c(0L, changepoints))
+  
+  # Label groups
+  rep.int(seq(1,length(lengths)), lengths)
+}
+
+
+## Get rid of chunks with target label
+remove.target.label.dt <- function(chunks, target_label='UNDEF') {
+  # Re-label undefs
+  chunks[,label:=relabel_to_biggest_neighbor(label,length,target_label),by='subject_code,sleep_wake_period']
+  # Group by labels
+  chunks[,group:=set_group(label),by='subject_code,sleep_wake_period']
+  # Collapse groups
+  chunks <- chunks[,merge_group(start_position, end_position, label, length), by='subject_code,sleep_wake_period,group']
+  chunks[,group:=NULL]
+  
+  chunks
+}
