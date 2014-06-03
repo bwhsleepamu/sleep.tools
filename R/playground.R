@@ -29,13 +29,28 @@ sleep_data <- load_sleep_data.dt(subjects)
 bouts.classic <- generate.bouts.classic.dt(sleep_data, wake=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
 
 ######## Iterative
-bouts.iterative <- generate.bouts.iterative.dt(sleep_data, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
+bouts.iterative <- generate.bouts.iterative.dt(sleep_data, wake=TRUE, undef=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
 
 ######## Changepoint
-bouts.changepoint <- generate.bouts.changepoint.dt(sleep_data, cpmType=cpmType, ARL0=ARL0, startup=startup)
+bouts.changepoint <- generate.bouts.changepoint.dt(sleep_data, wake=TRUE, undef=FALSE, cpmType=cpmType, ARL0=ARL0, startup=startup)
 
 # Merge methods into one table
 periods <- rbindlist(list(bouts.changepoint,bouts.classic,bouts.iterative))
+
+
+
+# OK, now on to Stats and Plotting
+# What we're working with: periods, sleep_data, and subject_list
+
+
+
+
+subjects
+
+
+
+
+
 
 
 ## FAST UP TO HERE!!
@@ -48,7 +63,7 @@ periods <- rbindlist(list(bouts.changepoint,bouts.classic,bouts.iterative))
 # 
 # periods.dt <- rbind(changepoint.dt, classic.dt, use.names=TRUE)
 
-setkey(periods.dt, subject_code, method, start_labtime)
+setkey(periods, subject_code, method, start_labtime)
 
 # Get rid of wake periods
 clean.periods.dt <- periods.dt[sleep_wake_period > 0]

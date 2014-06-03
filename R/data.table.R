@@ -19,7 +19,7 @@ load_sleep_data.dt <- function(subjects) {
 ## Classic Bouts
 #################
 generate.bouts.classic.dt <- function(dt, wake=FALSE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  chunks <- sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
+  chunks <- dt[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
   
   if(!undef)
     chunks <- remove.target.label.dt(chunks, target_label="UNDEF")    
@@ -38,15 +38,15 @@ generate.bouts.classic.dt <- function(dt, wake=FALSE, undef=FALSE, min_nrem_leng
 ## Iterative Bouts
 ##################
 generate.bouts.iterative.dt <- function(dt, wake=TRUE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  chunks <- sleep_data[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
+  chunks <- dt[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
   
   if(!undef)
-    remove.target.label.dt(chunks, target_label="UNDEF")  
+    chunks <- remove.target.label.dt(chunks, target_label="UNDEF")  
   if(!wake)
-    remove.target.label.dt(chunks, target_label="WAKE")
+    chunks <- remove.target.label.dt(chunks, target_label="WAKE")
   
   bouts <- iterative_merge(chunks)
-  bouts[,method:='classic']
+  bouts[,method:='iterative']
   
   bouts
 }
@@ -57,15 +57,22 @@ generate.bouts.iterative.dt <- function(dt, wake=TRUE, undef=FALSE, min_nrem_len
 generate.bouts.changepoint.dt <- function(dt, wake=TRUE, undef=FALSE, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
   dt[,group:=set_changepoint_group(epoch_type,cpmType=cpmType,ARL0=ARL0,startup=startup),by='subject_code,sleep_wake_period']
   bouts <- dt[,merge_epochs(pk,epoch_type),by='subject_code,sleep_wake_period,group']
+  bouts[,group:=NULL]
   
   if(!undef)
-    remove.target.label.dt(bouts, target_label="UNDEF")  
+    bouts <- remove.target.label.dt(bouts, target_label="UNDEF")  
   if(!wake)
-    remove.target.label.dt(bouts, target_label="WAKE")
+    bouts <- remove.target.label.dt(bouts, target_label="WAKE")
   
-  bouts[,`:=`(group=NULL, method='changepoint')]
+  bouts[, method:='changepoint']
   bouts
 }
+
+###############
+## Sleep Cycles
+###############
+# Either REM or NREM
+# For NREM: start at first stage 2 of NREM cycle
 
 
 
@@ -246,8 +253,9 @@ merge_around_seeds <- function(labels, lengths, wake=FALSE, min_wake_length=10, 
   # Find seeds
   seed_nrem <- intersect(which(labels=='NREM'), which(lengths >= min_nrem_length))
   seed_rem <- intersect(which(labels=='REM'), which(lengths >= min_rem_length))
-  if(wake)
-    seed_wake <- intersect(which(labels=='WAKE'), which(lengths >= min_wake_length))
+  if(wake) {
+    seed_wake <- intersect(which(labels=='WAKE'), which(lengths >= min_wake_length))    
+  }
   else
     seed_wake <- c()
   seeds <- sort(c(seed_nrem, seed_rem, seed_wake))
