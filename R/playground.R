@@ -39,7 +39,7 @@ bouts.changepoint <- generate.bouts.changepoint.dt(sleep_data, wake=TRUE, undef=
 periods <- rbindlist(list(bouts.changepoint,bouts.classic,bouts.iterative))
 
 # Get NREM Cycles
-nrem_cycles <- find.nrem.cycles(periods=periods, sleep_data=sleep_data)
+nrem_cycles <- find.nrem.cycles(periods, sleep_data=sleep_data)
 
 # OK, now on to Stats and Plotting
 # What we're working with: periods, sleep_data, and subject_list

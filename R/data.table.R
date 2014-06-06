@@ -74,14 +74,15 @@ generate.bouts.changepoint.dt <- function(dt, wake=TRUE, undef=FALSE, cpmType="M
 # Either REM or NREM
 # For NREM: start at first stage 2 of NREM cycle
 
-find.nrem.cycles <- function(periods, sleep_data) {
-  periods <- copy(periods)
+find.nrem.cycles <- function(dt, sleep_data) {
+  periods <- copy(dt)
   setkey(periods, label)
   stages <- sleep_data$stage
   periods[,pik:=.I]
   periods["NREM",first_stage_2:=get_first_stage(stages,start_position,end_position,2), by=pik]
-  setkey(periods,subject_code,sleep_wake_period,label)
-  periods["NREM",find_nrem_cycles_in_sp(first_stage_2),by='subject_code,sleep_wake_period,method']  
+  cycles <- periods["NREM",find_nrem_cycles_in_sp(first_stage_2),by='subject_code,sleep_wake_period,method']  
+  cycles[,cycle_number:=seq(.N),by='subject_code,sleep_wake_period,method']
+  cycles
 }
 
 

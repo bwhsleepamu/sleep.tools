@@ -5,6 +5,8 @@
 main_vis_setup <- function(sleep_data, periods, nrem_cycles) {
   
   sleep_data.v <- copy(sleep_data)
+  convert_stage_for_raster(sleep_data.v)
+  
   periods.v <- copy(periods)
   nrem_cycles.v <- copy(nrem_cycles)
   
@@ -14,39 +16,58 @@ main_vis_setup <- function(sleep_data, periods, nrem_cycles) {
   
   ## Set up Days and Day labtimes
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
-  periods.v
+  periods.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  nrem_cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   
+  ## Re-scale day numbers
+  periods.v[,day_number:=start_day_number]
+  nrem_cycles.v[,day_number:=start_day_number]
+  periods.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  nrem_cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
   
+  # TODO
   
+  ## Deal with blocks that span multiple days
+  periods.v <- rbindlist(list(periods.v[start_day_number==end_day_number], split_day_spanning_blocks(periods.v[start_day_number!=end_day_number])))
+  nrem_cycles.v <- rbindlist(list(nrem_cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(nrem_cycles.v[start_day_number!=end_day_number])))
   
-  
-  ## Split up blocks spanning two days
-  
-  
-  
+  ## I THINK WE ARE READY TO PLOT
 }
-
-
 
 ## Raster plots!
 # Plotting
-plot.raster <- function(sleep_data, periods, nrem_cycles) {  
+plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LENGTH) {  
   
+  
+  graph_data <- copy(sleep_data.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
+  graph_periods <- copy(periods.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
+  graph_cyles <- copy(nrem_cycles.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
   
   # Draw
   .e <- environment()
 
   # Main Plot
-  plot <- ggplot(df, aes(day_labtime, stage, group=day_number), environment = .e)
+  plot <- ggplot(graph_data, aes(day_labtime, stage_for_raster, group=day_number), environment = .e)
   # Faceting
   plot <- plot + facet_grid(day_number ~ .)
+  
   # Scaling and Margins
   #plot <- plot + theme(panel.margin = unit(0, "npc"))
-  plot <- plot + scale_x_continuous(limits=c(0 - EPOCH_LENGTH, 24 + EPOCH_LENGTH), expand=c(0,0)) 
-  plot <- plot + scale_y_continuous(limits=c(-2, 10))
+  plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0)) 
+  plot <- plot + scale_y_continuous(limits=c(-3, 6), breaks=-3:6, labels=lapply(-3:6,y_axis_formatter))
   
   # Colors
   #plot <- plot + scale_fill_manual(values=alpha(c("blue", "red", "black", "purple", "green", "yellow"), 0.8))
+  
+  
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.5, ymax = -2, data = graph_periods[method=="classic"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color = 'grey20', fill = NA), ymin = -3, ymax = -2.5, data = graph_cyles[method=="classic"])
+  
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.5, ymax = -1, data = graph_periods[method=="iterative"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color = 'grey20', fill = NA), ymin = -2, ymax = -1.5, data = graph_cyles[method=="iterative"])
+  
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -0.5, ymax = 0, data = graph_periods[method=="changepoint"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color="grey20", fill="white"), ymin = -1, ymax = -0.5, data = graph_cyles[method=="changepoint"])
   
   
   if(is.null(secondary_bouts))
@@ -55,7 +76,9 @@ plot.raster <- function(sleep_data, periods, nrem_cycles) {
     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 4.5, data = primary_bouts)    
     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 5.5, ymax = 10, data = secondary_bouts)    
   }
-  plot <- plot + geom_point(aes(group=day_number), shape='.')
+  #plot <- plot + geom_point(shape='.')
+  plot <- plot + geom_line()
+  
   
   plot
   
@@ -64,7 +87,27 @@ plot.raster <- function(sleep_data, periods, nrem_cycles) {
 
 
 
+
 ## Helpers
+
+
+
+
+
+
+split_day_spanning_blocks <- function(dt, t_cycle=T_CYCLE, epoch_length=EPOCH_LENGTH){
+  first_division <- dt
+  second_division <- copy(dt)
+  
+  new_end_day_labtime <- t_cycle-epoch_length
+  
+  first_division[,`:=`(end_day_number=start_day_number, end_day_labtime=new_end_day_labtime)]
+  second_division[,`:=`(start_day_number=end_day_number, start_day_labtime=0)]
+  
+  rbindlist(list(first_division, second_division))
+}
+
+
 convert_length_to_minutes <- function(lengths, epoch_length=EPOCH_LENGTH) {
   lengths * epoch_length * 60
 } 
@@ -81,29 +124,22 @@ set_days <- function(labtimes, t_cycle=T_CYCLE) {
   list(day_numbers, day_labtimes)
 }
 
-setup_bouts_for_raster <- function(bouts, min_day_number, t_cycle) {
-  ## TODO: REFACTOR
-  # set day numbers + labtimes for bouts
-  bouts$start_day_number <- floor(bouts$start_labtime / T_CYCLE)
-  bouts$start_day_labtime <- (bouts$start_labtime - (bouts$start_day_number * T_CYCLE))
-  bouts$start_day_number <- bouts$start_day_number - min_day_number
-  bouts$end_day_number <- floor(bouts$end_labtime / T_CYCLE)
-  bouts$end_day_labtime <- (bouts$end_labtime - (bouts$end_day_number * T_CYCLE))
-  bouts$end_day_number <- bouts$end_day_number - min_day_number
+convert_stage_for_raster <- function(d) {
+  conv_map <- c(2,3,4,5,1,6)
   
-  # Clean up bouts that span days
+  d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
+  d[epoch_type=='UNDEF', stage_for_raster:=0]
+}
+
+y_axis_formatter <- function(x) {
+  if (x == 1) { res <- "WAKE" }
+  else if (x == 2) { res <- "Stage 1" }
+  else if (x == 3) { res <- "Stage 2" }
+  else if (x == 4) { res <- "Stage 3" }
+  else if (x == 5) { res <- "Stage 4" }
+  else if (x == 6) { res <- "REM" }
+  else if (x == 0) { res <- "UNDEF"}
+  else { res <- as.character(x) }
   
-  # Nothing needs to be done to these:
-  clean_bouts <- bouts[bouts$start_day_number == bouts$end_day_number,]
-  
-  # These bouts span days
-  to_be_cleaned <- bouts[bouts$start_day_number != bouts$end_day_number,]
-  
-  first_cleaned <- ddply(to_be_cleaned, .(start_day_number), first_div)
-  second_cleaned <- ddply(to_be_cleaned, .(start_day_number), second_div)
-  bouts <- rbind(first_cleaned, second_cleaned, clean_bouts)
-  
-  bouts$day_number <- bouts$start_day_number
-  
-  bouts[which(bouts$sleep_wake_period > 0),]
+  res
 }
