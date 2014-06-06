@@ -12,11 +12,27 @@ function(){
   clean.periods <- clean.periods[,strip_wake(.SD),by='subject_code,sleep_wake_period']
   
   
-  clean.periods[,period_stats(label),by='subject_code,sleep_wake_period,method']
   
-  clean.periods[,table(label,method), by='subject_code,sleep_wake_period']
+  psts <- clean.periods[,list(count=length(length)),by='subject_code,sleep_wake_period,method,label']
   
-  summary(table(clean.periods$method,clean.periods$label,clean.periods$subject_code,clean.periods$sleep_wake_period))
+  psts[, mean(NREM_count), by='method']
+  
+  
+  
+  plot <- ggplot(psts, aes(method, count))
+  plot <- plot + facet_wrap(~ label)
+  plot + geom_boxplot()
+  
+  
+  plot <- ggplot(psts, aes(x=count))
+  plot <- plot + facet_grid(method ~ label)
+  plot <- plot + geom_histogram()
+  
+  plot
+  
+  #clean.periods[,table(label,method), by='subject_code,sleep_wake_period']
+  
+  #summary(table(clean.periods$method,clean.periods$label,clean.periods$subject_code,clean.periods$sleep_wake_period))
   
 }
 

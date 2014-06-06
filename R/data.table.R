@@ -74,6 +74,15 @@ generate.bouts.changepoint.dt <- function(dt, wake=TRUE, undef=FALSE, cpmType="M
 # Either REM or NREM
 # For NREM: start at first stage 2 of NREM cycle
 
+find.nrem.cycles <- function(periods, sleep_data) {
+  periods <- copy(periods)
+  setkey(periods, label)
+  stages <- sleep_data$stage
+  periods[,pik:=.I]
+  periods["NREM",first_stage_2:=get_first_stage(stages,start_position,end_position,2), by=pik]
+  setkey(periods,subject_code,sleep_wake_period,label)
+  periods["NREM",find_nrem_cycles_in_sp(first_stage_2),by='subject_code,sleep_wake_period,method']  
+}
 
 
 ## Read Subject Info
@@ -366,4 +375,25 @@ remove.target.label.dt <- function(chunks, target_label='UNDEF') {
   chunks[,group:=NULL]
   
   chunks
+  
+}
+
+
+# get index (for main sleep data) of first instance of a given stage in a given list of stages
+get_first_stage <- function(stages,start,end,target) {
+  #print(cat(stages))
+  which(stages[start:end] == target)[1] - 1 + start
+}
+
+# Calculate starts and ends of NREM cycles for a given sleep period
+#   If a nrem period does not include a stage 2 instance, it is ignored!
+find_nrem_cycles_in_sp <- function(border_locations) {
+  #border_locations <- border_locations[-which(is.na(border_locations))]
+  if(anyNA(border_locations))
+    border_locations <- border_locations[-which(is.na(border_locations))]
+  
+  starts <- border_locations[-length(border_locations)]
+  ends <- border_locations[-1L]-1
+  lengths <- ends - starts + 1
+  list(start_position=starts, end_position=ends, length=lengths)  
 }

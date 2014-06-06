@@ -1,7 +1,7 @@
 source('R/sleep.tools.R')
 
 ## Parallelization (possibly for file loading?)
-registerDoMC(4)
+#registerDoMC(4)
 
 ## Variables
 mnl <- 30
@@ -34,10 +34,12 @@ bouts.iterative <- generate.bouts.iterative.dt(sleep_data, wake=TRUE, undef=FALS
 ######## Changepoint
 bouts.changepoint <- generate.bouts.changepoint.dt(sleep_data, wake=TRUE, undef=FALSE, cpmType=cpmType, ARL0=ARL0, startup=startup)
 
+
 # Merge methods into one table
 periods <- rbindlist(list(bouts.changepoint,bouts.classic,bouts.iterative))
 
-
+# Get NREM Cycles
+nrem_cycles <- find.nrem.cycles(periods=periods, sleep_data=sleep_data)
 
 # OK, now on to Stats and Plotting
 # What we're working with: periods, sleep_data, and subject_list
