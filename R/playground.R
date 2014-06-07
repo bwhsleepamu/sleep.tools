@@ -41,6 +41,10 @@ periods <- rbindlist(list(bouts.changepoint,bouts.classic,bouts.iterative))
 # Get NREM Cycles
 nrem_cycles <- find.nrem.cycles(periods, sleep_data=sleep_data)
 
+# Get Sleep Periods
+sleep_periods <- sleep_data[sleep_wake_period>0,list(start_position=min(.I), end_position=max(.I), start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,sleep_wake_period']
+
+
 # OK, now on to Stats and Plotting
 # What we're working with: periods, sleep_data, and subject_list
 

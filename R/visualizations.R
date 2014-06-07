@@ -10,26 +10,34 @@ main_vis_setup <- function(sleep_data, periods, nrem_cycles) {
   periods.v <- copy(periods)
   nrem_cycles.v <- copy(nrem_cycles)
   
+  sleep_periods.v <- copy(sleep_periods)
+  
   ## Get Labtimes
   periods.v[,`:=`(start_labtime=convert_to_labtimes(start_position, sleep_data), end_labtime=convert_to_labtimes(end_position, sleep_data), length=convert_length_to_minutes(length))]
   nrem_cycles.v[,`:=`(start_labtime=convert_to_labtimes(start_position, sleep_data), end_labtime=convert_to_labtimes(end_position, sleep_data), length=convert_length_to_minutes(length))]
   
   ## Set up Days and Day labtimes
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
+  
   periods.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   nrem_cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-  
-  ## Re-scale day numbers
-  periods.v[,day_number:=start_day_number]
-  nrem_cycles.v[,day_number:=start_day_number]
-  periods.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-  nrem_cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-  
-  # TODO
+  sleep_periods.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   
   ## Deal with blocks that span multiple days
   periods.v <- rbindlist(list(periods.v[start_day_number==end_day_number], split_day_spanning_blocks(periods.v[start_day_number!=end_day_number])))
   nrem_cycles.v <- rbindlist(list(nrem_cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(nrem_cycles.v[start_day_number!=end_day_number])))
+  sleep_periods.v <- rbindlist(list(sleep_periods.v[start_day_number==end_day_number], split_day_spanning_blocks(sleep_periods.v[start_day_number!=end_day_number])))
+  
+  ## Re-scale day numbers
+  periods.v[,day_number:=start_day_number]
+  sleep_periods.v[,day_number:=start_day_number]
+  nrem_cycles.v[,day_number:=start_day_number]
+  periods.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  sleep_periods.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  nrem_cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  
+  # TODO
+  
   
   ## I THINK WE ARE READY TO PLOT
 }
@@ -42,6 +50,7 @@ plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LEN
   graph_data <- copy(sleep_data.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
   graph_periods <- copy(periods.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
   graph_cyles <- copy(nrem_cycles.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
+  graph_sleep_periods <- copy(sleep_periods.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
   
   # Draw
   .e <- environment()
@@ -53,30 +62,30 @@ plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LEN
   
   # Scaling and Margins
   #plot <- plot + theme(panel.margin = unit(0, "npc"))
+  y_breaks <- c(-5,-3,-1,0,.5,1.5,2,2.5,3,4)
+
   plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0)) 
-  plot <- plot + scale_y_continuous(limits=c(-3, 6), breaks=-3:6, labels=lapply(-3:6,y_axis_formatter))
+  plot <- plot + scale_y_continuous(limits=c(-6.5, 4.5), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
   # Colors
   #plot <- plot + scale_fill_manual(values=alpha(c("blue", "red", "black", "purple", "green", "yellow"), 0.8))
   
+  ## Periods and Cycles
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1, ymax = 0, data = graph_periods[method=="classic"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color = 'grey20', fill = NA), ymin = -2, ymax = -1, data = graph_cyles[method=="classic"])
   
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.5, ymax = -2, data = graph_periods[method=="classic"])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color = 'grey20', fill = NA), ymin = -3, ymax = -2.5, data = graph_cyles[method=="classic"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3, ymax = -2, data = graph_periods[method=="iterative"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color = 'grey20', fill = NA), ymin = -4, ymax = -3, data = graph_cyles[method=="iterative"])
   
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.5, ymax = -1, data = graph_periods[method=="iterative"])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color = 'grey20', fill = NA), ymin = -2, ymax = -1.5, data = graph_cyles[method=="iterative"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -5, ymax = -4, data = graph_periods[method=="changepoint"])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color="grey20", fill="white"), ymin = -6, ymax = -5, data = graph_cyles[method=="changepoint"])
   
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -0.5, ymax = 0, data = graph_periods[method=="changepoint"])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, color="grey20", fill="white"), ymin = -1, ymax = -0.5, data = graph_cyles[method=="changepoint"])
+  ## Sleep Periods
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, alpha=.5), ymin = 0, ymax = 4, data = graph_sleep_periods)
   
   
-  if(is.null(secondary_bouts))
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 10, data = primary_bouts)
-  else {
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 0, ymax = 4.5, data = primary_bouts)    
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + EPOCH_LENGTH, fill = bout_type), ymin = 5.5, ymax = 10, data = secondary_bouts)    
-  }
-  #plot <- plot + geom_point(shape='.')
+  
+  #plot <- plot + geom_point(shape='.', size=2)
   plot <- plot + geom_line()
   
   
@@ -125,20 +134,23 @@ set_days <- function(labtimes, t_cycle=T_CYCLE) {
 }
 
 convert_stage_for_raster <- function(d) {
-  conv_map <- c(2,3,4,5,1,6)
+  conv_map <- c(1.5,2,2.5,3,.5,4)
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
   d[epoch_type=='UNDEF', stage_for_raster:=0]
 }
 
 y_axis_formatter <- function(x) {
-  if (x == 1) { res <- "WAKE" }
-  else if (x == 2) { res <- "Stage 1" }
-  else if (x == 3) { res <- "Stage 2" }
-  else if (x == 4) { res <- "Stage 3" }
-  else if (x == 5) { res <- "Stage 4" }
-  else if (x == 6) { res <- "REM" }
+  if (x == .5) { res <- "WAKE" }
+  else if (x == 1.5) { res <- "Stage 1" }
+  else if (x == 2) { res <- "Stage 2" }
+  else if (x == 2.5) { res <- "Stage 3" }
+  else if (x == 3) { res <- "Stage 4" }
+  else if (x == 4) { res <- "REM" }
   else if (x == 0) { res <- "UNDEF"}
+  else if (x == -1) { res <- "Classic"}
+  else if (x == -3) { res <- "Iterative"}
+  else if (x == -5) { res <- "Changepoint"}
   else { res <- as.character(x) }
   
   res
