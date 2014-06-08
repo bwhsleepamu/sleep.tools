@@ -1,4 +1,58 @@
+## For periods:
+### NEED: 
+#DONE #### Agreement stats by subject and or subject group FOR EACH METHOD 
+#### Number of periods per sleep episode for each period type by each method
+#### Distribution of period lengths for each type by subject and or subject group for each method
+#### OTHER COMPARISONS??
+
+## For cycles:
+### NEED: distribution of lengths and counts for 1st, 2nd...cycles by subject and/or subject group FOR EACH METHOD
+### Possible others: start times by cycle, 
+
+
+
+
+
 ## Agreement
+function() {
+  # Cleaning:
+  ## No sleep periods
+  clean.periods <- copy(periods)
+  clean.periods <- clean.periods[sleep_wake_period>0]
+  ## Strip wake at beginning and end of sleep periods
+  clean.periods <- clean.periods[,strip_wake(.SD),by='subject_code,sleep_wake_period']
+  
+  clean.periods[,agreement:=sum(sleep_data[start_position:end_position]$epoch_type == label)/length,by='pik']
+  
+  ## Agreement graph
+  p <- ggplot(clean.periods, aes(x=agreement, color=method))
+  p <- p + facet_grid(label ~ subject_code, scales='free_y')
+  p + geom_density(alpha=.3)
+  
+}
+
+function() {
+  # period stats
+  period_counts <- clean.periods[,list(nrem_count=sum(label=='NREM'),rem_count=sum(label=='REM'),wake_count=sum(label=='WAKE')),by='subject_code,sleep_wake_period,method']
+  period_counts <- copy(clean.periods)
+  period_counts <- period_counts[,list(count=.N),by='subject_code,sleep_wake_period,method,label']
+  
+  ## Number of periods of each type per sleep episode
+  p <- ggplot(period_counts, aes(x=count, colour=method))
+  p <- p + facet_grid(label ~ subject_code, scales='free')
+  p + geom_freqpoly(binwidth=1)
+  
+  ## Length distribution of periods
+  period_lengths <- copy(clean.periods)
+  period_lengths[,length:=length*epoch_length*60]
+  
+  
+  p <- ggplot(period_lengths, aes(method, length, color=method))
+  p <- p + facet_grid(. ~ label)
+  p + geom_boxplot()
+
+}
+
 #periods
 function(){
   wd <- periods[subject_code=="3335GX" & sleep_wake_period==2]
@@ -10,8 +64,6 @@ function(){
   clean.periods <- periods[sleep_wake_period>0]
   ## Strip wake at beginning and end of sleep periods
   clean.periods <- clean.periods[,strip_wake(.SD),by='subject_code,sleep_wake_period']
-  
-  
   
   psts <- clean.periods[,list(count=length(length)),by='subject_code,sleep_wake_period,method,label']
   
