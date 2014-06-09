@@ -47,8 +47,28 @@ sleep_periods <- sleep_data[sleep_wake_period>0,list(start_position=min(.I), end
 
 # OK, now on to Stats and Plotting
 # What we're working with: periods, sleep_data, and subject_list
+r <- setup.raster(sleep_data, periods, nrem_cycles)
+p <- plot.raster(r$sleep_data, r$periods, r$nrem_cycles, r$sleep_periods, subject_code='1105X', number_of_days=2, first_day=45, epoch_length=EPOCH_LENGTH)
+p <- plot.raster(r$sleep_data, r$periods, r$nrem_cycles, r$sleep_periods, subject_code='1106X', number_of_days=10, first_day=37, epoch_length=EPOCH_LENGTH)
 
 
+# CSR vs. NOT
+p <- plot.raster(r$sleep_data, r$periods, r$nrem_cycles, r$sleep_periods, subject_code='3319GX', epoch_length=EPOCH_LENGTH, l='full')
+p <- plot.raster(r$sleep_data, r$periods, r$nrem_cycles, r$sleep_periods, subject_code='3319GX', number_of_days=10, first_day=3, epoch_length=EPOCH_LENGTH, l='short')
+p <- plot.raster(r$sleep_data, r$periods, r$nrem_cycles, r$sleep_periods, subject_code='3315GX32', number_of_days=10, first_day=3, epoch_length=EPOCH_LENGTH)
+
+# Young vs. Old
+p <- plot.raster(r$sleep_data, r$periods, r$nrem_cycles, r$sleep_periods, subject_code='1257V', number_of_days=10, first_day=3, epoch_length=EPOCH_LENGTH)
+p <- plot.raster(r$sleep_data, r$periods, r$nrem_cycles, r$sleep_periods, subject_code='1215H', number_of_days=10, first_day=3, epoch_length=EPOCH_LENGTH)
+
+
+p
+
+
+
+svg('/home/pwm4/Desktop/test.svg')
+print(p)
+dev.off()
 
 
 subjects

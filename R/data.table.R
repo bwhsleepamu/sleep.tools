@@ -390,7 +390,7 @@ get_first_stage <- function(stages,start,end,target) {
 #   If a nrem period does not include a stage 2 instance, it is ignored!
 find_nrem_cycles_in_sp <- function(border_locations) {
   #border_locations <- border_locations[-which(is.na(border_locations))]
-  if(anyNA(border_locations))
+  if(any(is.na(border_locations)))
     border_locations <- border_locations[-which(is.na(border_locations))]
   
   starts <- border_locations[-length(border_locations)]

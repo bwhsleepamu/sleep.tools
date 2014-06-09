@@ -2,7 +2,7 @@
 
 
 ## Set up for plotting
-main_vis_setup <- function(sleep_data, periods, nrem_cycles) {
+setup.raster <- function(sleep_data, periods, nrem_cycles) {
   
   sleep_data.v <- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
@@ -40,23 +40,38 @@ main_vis_setup <- function(sleep_data, periods, nrem_cycles) {
   
   
   ## I THINK WE ARE READY TO PLOT
+  list(sleep_data=sleep_data.v, periods=periods.v, nrem_cycles=nrem_cycles.v, sleep_periods=sleep_periods.v)
 }
 
 ## Raster plots!
 # Plotting
-plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LENGTH) {  
+plot.raster <- function(sleep_data, periods, nrem_cycles, sleep_periods, subject_code, number_of_days=NA, first_day=1, epoch_length=EPOCH_LENGTH, output_dir="/home/pwm4/Desktop/rasters", l="") {  
+  # Limit by subject
+  subjects <- c(subject_code)
   
+  # Limit by day
+  days_to_graph <- unique(sleep_data[subject_code %in% subjects]$day_number)
+  if(!is.na(number_of_days))
+    days_to_graph <- days_to_graph[first_day:(first_day+number_of_days-1)]
   
-  graph_data <- copy(sleep_data.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
-  graph_periods <- copy(periods.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
-  graph_cyles <- copy(nrem_cycles.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
-  graph_sleep_periods <- copy(sleep_periods.v[subject_code == '3335GX' & day_number %in% c(175, 176,177)])
+  print(days_to_graph)
+  
+  graph_data <- copy(sleep_data[subject_code %in% subjects & day_number %in% days_to_graph])
+  graph_periods <- copy(periods[subject_code %in% subjects & day_number %in% days_to_graph & sleep_wake_period > 0])
+  graph_cyles <- copy(nrem_cycles[subject_code %in% subjects & day_number %in% days_to_graph & sleep_wake_period > 0])
+  graph_sleep_periods <- copy(sleep_periods[subject_code %in% subjects & day_number %in% days_to_graph])
   
   # Draw
   .e <- environment()
 
   # Main Plot
   plot <- ggplot(graph_data, aes(day_labtime, stage_for_raster, group=day_number), environment = .e)
+  
+  # Labels and theming
+  plot <- plot + ggtitle(subject_code)
+  plot <- plot + theme(axis.title.y=element_blank(), legend.title=element_blank())
+  plot <- plot + xlab("Time (hours)")
+  
   # Faceting
   plot <- plot + facet_grid(day_number ~ .)
   
@@ -80,7 +95,6 @@ plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LEN
     end_pos <- i * -2    
     text_y_pos <- end_pos + 0.5
     
-    print(text_y_pos)
     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = end_pos+1, ymax = end_pos+2, data = graph_periods[method==methods[i]])
     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = end_pos, ymax = end_pos+1, data = graph_cyles[method==methods[i]])    
     plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=graph_cyles[method==methods[i]])
@@ -99,11 +113,15 @@ plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LEN
   
   
   #plot <- plot + geom_point(shape='.', size=2)
-  plot <- plot + geom_line()
+  plot <- plot + geom_line() #aes(colour=epoch_type)
   
+  file_name = file.path(output_dir, paste(subject_code, "_", l, '.svg', sep=''))
+  print(file_name)
+  print(length(days_to_graph))
+  ggsave(plot=plot, file=file_name, height=(length(days_to_graph)*1 + 0.5), width=7, scale=2.5, limitsize=FALSE)
   
   plot
-  
+
 }
 
 
