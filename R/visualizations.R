@@ -64,11 +64,11 @@ plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LEN
   #plot <- plot + theme(panel.margin = unit(0, "npc"))
   y_breaks <- c(-5,-3,-1,0,.5,1.5,2,2.5,3,4)
 
-  plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0)) 
-  plot <- plot + scale_y_continuous(limits=c(-6.5, 4.5), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,12,24), minor_breaks=c(3,6,9,15,18,21)) 
+  plot <- plot + scale_y_continuous(limits=c(-6, 4), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
   # Colors
-  #plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
 
  
   
@@ -78,13 +78,15 @@ plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LEN
   methods <- c('classic', 'iterative', 'changepoint')
   r <- foreach(i=1:3) %do% {
     end_pos <- i * -2    
+    text_y_pos <- end_pos + 0.5
     
+    print(text_y_pos)
     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = end_pos+1, ymax = end_pos+2, data = graph_periods[method==methods[i]])
     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = end_pos, ymax = end_pos+1, data = graph_cyles[method==methods[i]])    
-    #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, y=end_pos + .5, label=cycle_number), data=graph_cyles[method==methods[i]])
+    plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=graph_cyles[method==methods[i]])
   }  
   
-  plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, y=-1.5, label=cycle_number), data=graph_cyles[method='classic'])
+#  plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, y=-1.5, label=cycle_number), data=graph_cyles[method=='classic'])
 #   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3, ymax = -2, data = graph_periods[method=="iterative"])
 #   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), ymin = -4, ymax = -3, data = graph_cyles[method=="iterative"])
 #   
@@ -92,7 +94,7 @@ plot.raster <- function(sleep_data, periods, nrem_cycles, epoch_length=EPOCH_LEN
 #   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), ymin = -6, ymax = -5, data = graph_cyles[method=="changepoint"])
   
   ## Sleep Periods
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, alpha=.5), ymin = 0, ymax = 4, data = graph_sleep_periods)
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), ymin = 0, ymax = 4, alpha=.5, data = graph_sleep_periods)
   
   
   
