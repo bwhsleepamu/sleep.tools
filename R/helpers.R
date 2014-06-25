@@ -1,3 +1,49 @@
+## Loader
+load_sleep_file <- function(file_path) {
+  df <- read.csv(file_path)
+  colnames(df) <- c("subject_code", "sleep_wake_period", "labtime", "stage")
+  min_day_number <- (min(floor(df$labtime / T_CYCLE)) - 1)
+  res <- set_up_data_frame(df, T_CYCLE)
+  
+  df <- res$df
+  min_day_number <- res$min_day_number
+  
+  list(df=df, min_day_number=min_day_number)
+}
+
+# Calculate periods using the 3 methods for a given subject
+calculate_periods <- function(subject_data) {
+  df <- subject_data$df
+  min_day_number <- subject_data$min_day_number
+  
+  changepoint_bouts <- bouts.changepoint(df)
+  classic_bouts <- bouts.classic(df)
+  untransformed_bouts <- bouts.untransformed(df)
+  
+  classic_bouts <- setup_bouts_for_raster(classic_bouts, min_day_number, T_CYCLE)
+  changepoint_bouts <- setup_bouts_for_raster(changepoint_bouts, min_day_number, T_CYCLE)
+  untransformed_bouts <- setup_bouts_for_raster(untransformed_bouts, min_day_number, T_CYCLE)
+  
+  list(changepoint=changepoint_bouts, classic=classic_bouts, untransformed=untransformed_bouts)  
+}
+
+
+# Calculate periods for a subject list
+calculate_periods_for_subjects <- function(subjects) {
+  dlply(subjects, .(subject_code), function(subject_row){
+    subject_data <- load_sleep_file(as.character(subject_row$file_path))
+    periods <- calculate_periods(subject_data)
+    
+    
+    list(subject_df=subject_data$df, periods=periods)    
+#    periods    
+  })
+}
+
+
+
+
+
 # Sets up bouts for plotting by dividing them up into days
 setup_bouts_for_raster <- function(bouts, min_day_number, t_cycle) {
   ## TODO: REFACTOR
@@ -24,6 +70,17 @@ setup_bouts_for_raster <- function(bouts, min_day_number, t_cycle) {
   bouts$day_number <- bouts$start_day_number
   
   bouts[which(bouts$sleep_wake_period > 0),]
+}
+
+setup_periods_for_plot.dt <- function(periods, subjects, t_cycle) {
+  periods[,start_day_number:=floor(start_labtime/t_cycle)]
+  periods[,start_day_labtime:=(start_labtime - (start_day_number * t_cycle))]
+  periods[,start_day_number:=start_day_number - subjects[subject_code]$min_day_number]
+  periods[,end_day_number:=floor(end_labtime/t_cycle)]
+  periods[,end_day_labtime:=(end_labtime - (end_day_number * t_cycle))]
+  periods[,end_day_number:=end_day_number - subjects[subject_code]$min_day_number]
+  
+  periods[start_day_number==end_day_number]
 }
 
 # Merges given indexed row into larger neighbor !! Does not delete row
@@ -64,21 +121,23 @@ chunk_epochs <- function(df) {
   bouts <- data.frame(bout_type=first_row$epoch_type, length=1, start_labtime=first_row$labtime, end_labtime=first_row$labtime)
   
   # Make bouts
-  for(i in 2:df_iterator$length) {
-    row <- nextElem(df_iterator)
-    
-    
-    if(bouts[nrow(bouts),]$bout_type == row$epoch_type) {
-      # Same epoch type - add to existing row
-      bouts[nrow(bouts),]$length <- bouts[nrow(bouts),]$length + 1
-      bouts[nrow(bouts),]$end_labtime <- row$labtime
+  if(df_iterator$length > 1) {
+    for(i in 2:df_iterator$length) {
+      row <- nextElem(df_iterator)
+      
+      
+      if(bouts[nrow(bouts),]$bout_type == row$epoch_type) {
+        # Same epoch type - add to existing row
+        bouts[nrow(bouts),]$length <- bouts[nrow(bouts),]$length + 1
+        bouts[nrow(bouts),]$end_labtime <- row$labtime
+      }
+      else {
+        # different epoch - initialize new row
+        bouts <- rbind(bouts, data.frame(bout_type=row$epoch_type, length=1, start_labtime=row$labtime, end_labtime=row$labtime))
+      } 
     }
-    else {
-      # different epoch - initialize new row
-      bouts <- rbind(bouts, data.frame(bout_type=row$epoch_type, length=1, start_labtime=row$labtime, end_labtime=row$labtime))
-    } 
   }
-  
+    
   bouts
 }
 
@@ -86,27 +145,37 @@ chunk_epochs <- function(df) {
 merge_undefined_bouts <- function(bouts) {
   undefined_bouts <- which(bouts$bout_type == 'UNDEF')
   for(undef_i in undefined_bouts) {
+    #cat("ran!\n")
     bouts <- merge_into_larger_neighbor(undef_i, bouts)
   }
-  bouts <- bouts[undefined_bouts*-1,]
+  #cat(sprintf("* %s | %s | %s\n", nrow(bouts), length(undefined_bouts), length(undefined_bouts)))
+  if(length(undefined_bouts) > 0)
+    bouts <- bouts[undefined_bouts*-1,]
+  #cat(sprintf("** %s\n", nrow(bouts)))
   bouts
 }
 
 # Combine neighbors that have identical types
 combine_identical_neighbors <- function(bouts) {
+  # Only combine if more than one bout exists
   if(nrow(bouts) > 1) {
     remove_i <- c()
     for(i in 2:nrow(bouts)) {
+      
       if(bouts[i,]$bout_type == bouts[i-1,]$bout_type) {
         bouts[i,]$length <- bouts[i,]$length + bouts[i-1,]$length
         bouts[i,]$start_labtime <- bouts[i-1,]$start_labtime
         remove_i <- append(remove_i, i-1)
       }
-    }
-    bouts[remove_i*-1,]      
+    }    
+    
+    # Make sure there are items to be removed!
+    if(!is.null(remove_i)) {
+      bouts <- bouts[remove_i*-1,] 
+    }    
   }
-  else
-    bouts
+  
+  bouts
 }
 
 # Merge seed bouts 
@@ -163,13 +232,7 @@ compute_chunk_info <- function(chunk) {
 # Not sure what this function does
 start_end_times <- function(df) { c(min(df$day_labtime), max(df$day_labtime)) }
 
-# Maps numerical values to types of epochs
-map_epoch_type <- function(x) {
-  if (x >= 1 & x <=4) { "NREM" }
-  else if (x == 5) { "WAKE" }
-  else if (x == 6) { "REM" }
-  else { "UNDEF" }
-}
+
 
 # Uses the sleep data to determine the most frequent type of epoch in each chunk
 # Creates bouts with start and end labtimes
@@ -193,6 +256,17 @@ set_up_data_frame <- function(df, t_cycle) {
   # Label NREM, REM, WAKE, UNDEF
   df$epoch_type <- factor(sapply(df$stage, map_epoch_type))
   list(df=df, min_day_number=min_day_number)
+}
+
+# Calculates the day number, wake or sleep period, and epoch type
+set_up_data_table <- function(dt, t_cycle, min_day_number) {
+  dt[,original_day_number:=floor(labtime/t_cycle)]
+  dt[,day_labtime:=labtime - (day_number * t_cycle)]
+  dt[,day_number:= original_day_number - min(day_number)]
+  dt[,period_type:=factor(sleep_wake_period < 0, labels=c("sp", "wp"))]
+  dt[,epoch_type:=map_epoch_type(stage), by=labtime]
+  
+  dt
 }
 
 # Sets something up...
