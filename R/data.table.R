@@ -5,7 +5,7 @@ load_sleep_data.dt <- function(subjects) {
   #sleep_data <- subjects[, load_sleep_file.dt(file_path), by=subject_code]
   sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file.dt))
   #sleep_data[,V1:=NULL]
-  setnames(sleep_data, c('subject_code', 'sleep_wake_period', 'labtime', 'stage'))
+  setnames(sleep_data, c('subject_code', 'activity_or_bedrest_episode', 'labtime', 'stage'))
   setkey(sleep_data, subject_code, labtime)
   # Generate row indeces
   sleep_data[, pk:=.I]
@@ -18,54 +18,54 @@ load_sleep_data.dt <- function(subjects) {
 #################
 ## Classic Bouts
 #################
-generate.bouts.classic.dt <- function(dt, wake=FALSE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  chunks <- dt[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
+generate.episodes.classic.dt <- function(dt, wake=FALSE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
+  sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
   
   if(!undef)
-    chunks <- remove.target.label.dt(chunks, target_label="UNDEF")    
+    sequences <- remove.target.label.dt(sequences, target_label="UNDEF")    
   
   # Merge around seeds
-  chunks[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,sleep_wake_period']
+  sequences[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,activity_or_bedrest_episode']
 
   # Collapse groups
-  bouts <- chunks[,merge_group(start_position, end_position, label, length), by='subject_code,sleep_wake_period,group']
-  bouts[,`:=`(group=NULL, method='classic')]
+  episodes <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
+  episodes[,`:=`(group=NULL, method='classic')]
   
-  bouts
+  episodes
 }
 
 ##################
 ## Iterative Bouts
 ##################
-generate.bouts.iterative.dt <- function(dt, wake=TRUE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  chunks <- dt[, chunk(epoch_type, pk), by='subject_code,sleep_wake_period']
+generate.episodes.iterative.dt <- function(dt, wake=TRUE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
+  sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
   
   if(!undef)
-    chunks <- remove.target.label.dt(chunks, target_label="UNDEF")  
+    sequences <- remove.target.label.dt(sequences, target_label="UNDEF")  
   if(!wake)
-    chunks <- remove.target.label.dt(chunks, target_label="WAKE")
+    sequences <- remove.target.label.dt(sequences, target_label="WAKE")
   
-  bouts <- iterative_merge(chunks)
-  bouts[,method:='iterative']
+  episodes <- iterative_merge(sequences)
+  episodes[,method:='iterative']
   
-  bouts
+  episodes
 }
 
 ####################
 ## Changepoint Bouts
 ####################
-generate.bouts.changepoint.dt <- function(dt, wake=TRUE, undef=FALSE, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
-  dt[,group:=set_changepoint_group(epoch_type,cpmType=cpmType,ARL0=ARL0,startup=startup),by='subject_code,sleep_wake_period']
-  bouts <- dt[,merge_epochs(pk,epoch_type),by='subject_code,sleep_wake_period,group']
-  bouts[,group:=NULL]
+generate.episodes.changepoint.dt <- function(dt, wake=TRUE, undef=FALSE, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
+  dt[,group:=set_changepoint_group(epoch_type,cpmType=cpmType,ARL0=ARL0,startup=startup),by='subject_code,activity_or_bedrest_episode']
+  episodes <- dt[,merge_epochs(pk,epoch_type),by='subject_code,activity_or_bedrest_episode,group']
+  episodes[,group:=NULL]
   
   if(!undef)
-    bouts <- remove.target.label.dt(bouts, target_label="UNDEF")  
+    episodes <- remove.target.label.dt(episodes, target_label="UNDEF")  
   if(!wake)
-    bouts <- remove.target.label.dt(bouts, target_label="WAKE")
+    episodes <- remove.target.label.dt(episodes, target_label="WAKE")
   
-  bouts[, method:='changepoint']
-  bouts
+  episodes[, method:='changepoint']
+  episodes
 }
 
 ###############
@@ -73,17 +73,56 @@ generate.bouts.changepoint.dt <- function(dt, wake=TRUE, undef=FALSE, cpmType="M
 ###############
 # Either REM or NREM
 # For NREM: start at first stage 2 of NREM cycle
-
-find.nrem.cycles <- function(dt, sleep_data) {
-  periods <- copy(dt)
-  setkey(periods, label)
-  stages <- sleep_data$stage
-  periods[,pik:=.I]
-  periods["NREM",first_stage_2:=get_first_stage(stages,start_position,end_position,2), by=pik]
-  cycles <- periods["NREM",find_nrem_cycles_in_sp(first_stage_2),by='subject_code,sleep_wake_period,method']  
-  cycles[,cycle_number:=seq(.N),by='subject_code,sleep_wake_period,method']
+find.cycles <- function(dt, sleep_data, type="NREM", start_fn=find_nrem_start, until_end=TRUE) {
+  episodes <- copy(dt)
+  setkey(episodes, label)
+  stages <- copy(sleep_data$stage)
+  setkey(sleep_data, subject_code, activity_or_bedrest_episode)
+  episodes[,pik:=.I]
+  episodes[, last_position:=last_se_position(sleep_data, subject_code, activity_or_bedrest_episode), by='subject_code,activity_or_bedrest_episode']
+  episodes[type, cycle_start:=start_fn(stages[start_position:end_position], start_position), by=pik]
+  cycles <- episodes[type,find_cycles_in_sleep_episode(cycle_start, last_position, until_end),by='subject_code,activity_or_bedrest_episode,method']  
+  cycles[,cycle_number:=seq(.N),by='subject_code,activity_or_bedrest_episode,method']
+  setkey(sleep_data, pk)
   cycles
 }
+
+# Get last position of a sleep episode
+last_se_position <- function(sd, sc, e) {
+  max(sd[subject_code==sc & activity_or_bedrest_episode==e]$pk)
+}
+
+# First occurance of Stage 2
+find_nrem_start <- function(stages, start_position) {
+  get_first_stage(stages, start_position, 2)
+}
+
+find_rem_start <- function(stages, start_position) {
+  get_first_stage(stages, start_position, 6)
+}
+# 
+# find.nrem.cycles <- function(dt, sleep_data) {
+#   episodes <- copy(dt)
+#   setkey(episodes, label)
+#   stages <- sleep_data$stage
+#   episodes[,pik:=.I]
+#   episodes["NREM",first_stage_2:=get_first_stage(stages,start_position,end_position,2), by=pik]
+#   cycles <- episodes["NREM",find_cycles_in_sleep_episode(first_stage_2),by='subject_code,activity_or_bedrest_episode,method']  
+#   cycles[,cycle_number:=seq(.N),by='subject_code,activity_or_bedrest_episode,method']
+#   cycles
+# }
+# 
+# 
+# find.rem.cycles <- function(dt, sleep_data) {
+#   periods <- copy(dt)
+#   setkey(periods, label)
+#   stages <- sleep_data$stage
+#   periods[,pik:=.I]
+#   #periods["REM", rem_start:=start_position,2), by=pik]
+#   cycles <- periods["REM",find_cycles_in_sp(start_position),by='subject_code,activity_or_bedrest_episode,method']  
+#   cycles[,cycle_number:=seq(.N),by='subject_code,activity_or_bedrest_episode,method']
+#   cycles
+# }
 
 
 ## Read Subject Info
@@ -120,7 +159,7 @@ strip_until_sleep_onset <- function(dt) {
 generate_missing_combinations <- function(bout_type, by) {
   if(TRUE %in% !(levels(bout_type) %in% unique(bout_type))) {
     # cat(sprintf("%s | %s\n", by[[1]], levels(bout_type)[!(levels(bout_type) %in% unique(bout_type))]))
-    data.table(bout_type=levels(bout_type)[!(levels(bout_type) %in% unique(bout_type))],sleep_wake_period=c(0), start_labtime=c(-1), end_labtime=c(-1), length=c(-1))
+    data.table(bout_type=levels(bout_type)[!(levels(bout_type) %in% unique(bout_type))],activity_or_bedrest_episode=c(0), start_labtime=c(-1), end_labtime=c(-1), length=c(-1))
 #     lapply(, function(level) {
 #       (bout_type=level, )
 #     })
@@ -335,19 +374,19 @@ relabel_by_length <- function(target_length, labels, lengths) {
   list(label=labels, group=groups)  
 }
 
-iterative_merge <- function(chunks, min_nrem_length=30, min_rem_length=10) {
+iterative_merge <- function(sequences, min_nrem_length=30, min_rem_length=10) {
   for(i in 1:min(min_nrem_length, min_rem_length)) {
     
     # Re-label
-    chunks[,c('label','group'):=relabel_by_length(i,label,length),by='subject_code,sleep_wake_period']
+    sequences[,c('label','group'):=relabel_by_length(i,label,length),by='subject_code,activity_or_bedrest_episode']
     
     # Merge
-    chunks <- chunks[,merge_group(start_position, end_position, label, length), by='subject_code,sleep_wake_period,group']
-    chunks[,group:=NULL]  
+    sequences <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
+    sequences[,group:=NULL]  
     # Repeat!
   }
   
-  chunks
+  sequences
 }
 
 set_changepoint_group <- function(epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
@@ -365,31 +404,47 @@ set_changepoint_group <- function(epoch_type, cpmType="Mann-Whitney", ARL0=10000
 }
 
 
-## Get rid of chunks with target label
-remove.target.label.dt <- function(chunks, target_label='UNDEF') {
+## Get rid of sequences with target label
+remove.target.label.dt <- function(sequences, target_label='UNDEF') {
   # Re-label undefs
-  chunks[,label:=relabel_to_biggest_neighbor(label,length,target_label),by='subject_code,sleep_wake_period']
+  sequences[,label:=relabel_to_biggest_neighbor(label,length,target_label),by='subject_code,activity_or_bedrest_episode']
   # Group by labels
-  chunks[,group:=set_group(label),by='subject_code,sleep_wake_period']
+  sequences[,group:=set_group(label),by='subject_code,activity_or_bedrest_episode']
   # Collapse groups
-  chunks <- chunks[,merge_group(start_position, end_position, label, length), by='subject_code,sleep_wake_period,group']
-  chunks[,group:=NULL]
+  sequences <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
+  sequences[,group:=NULL]
   
-  chunks
+  sequences
   
 }
 
 
 # get index (for main sleep data) of first instance of a given stage in a given list of stages
-get_first_stage <- function(stages,start,end,target) {
+get_first_stage <- function(stages, start_position, target, not_found=NA) {
   #print(cat(stages))
-  which(stages[start:end] == target)[1] - 1 + start
+  first_occurance <- (which(stages == target)[1] - 1 + start_position)
+  
+  if(is.na(first_occurance)) {
+    first_occurance <- not_found
+  }
+   
+  as.integer(first_occurance)
 }
 
 # Calculate starts and ends of NREM cycles for a given sleep period
 #   If a nrem period does not include a stage 2 instance, it is ignored!
-find_nrem_cycles_in_sp <- function(border_locations) {
+find_cycles_in_sleep_episode <- function(border_locations, sleep_episode_end, include_end=FALSE) {
   #border_locations <- border_locations[-which(is.na(border_locations))]
+#   cat(subject_code, " ", activity_or_bedrest_episode)
+#   
+#   cat(dim(sleep_data[J(subject_code, activity_or_bedrest_episode)]))
+#   
+  #sleep_episode_end <- max(sleep_data[J(subject_code, activity_or_bedrest_episode)]$pk)
+  sleep_episode_end <- max(sleep_episode_end)
+  
+  if(include_end)
+    border_locations <- c(border_locations, sleep_episode_end)
+  
   if(any(is.na(border_locations)))
     border_locations <- border_locations[-which(is.na(border_locations))]
   

@@ -20,6 +20,7 @@ source("R/helpers.R")
 source("R/data.table.R")
 source("R/statistics.R")
 source("R/visualizations.R")
+source("R/blocks.R")
 
 # 1. Load the sleep files
 # 2. Have 3 methods for analysis

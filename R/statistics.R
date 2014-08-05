@@ -11,10 +11,10 @@
 
 
 
-young_s <- subjects[study=="NIAPPG" & age_group=='Y']
-old_s <- subjects[study=="NIAPPG" & age_group=='O']
-csr_s <- subjects[study=="T20CSR-CSR"]
-control_s <- subjects[study=="T20CSR-Control"]
+# young_s <- subjects[study=="NIAPPG" & age_group=='Y']
+# old_s <- subjects[study=="NIAPPG" & age_group=='O']
+# csr_s <- subjects[study=="T20CSR-CSR"]
+# control_s <- subjects[study=="T20CSR-Control"]
 
 
 ## Agreement
