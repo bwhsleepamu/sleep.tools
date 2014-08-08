@@ -11,6 +11,7 @@ cpmType <- "Mann-Whitney"
 ARL0 <- 10000
 startup <- 20
 block_length <- 30
+epoch_length <- .5
 
 
 ## Setup
@@ -20,6 +21,7 @@ subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR
 
 #subjects <- subjects.local
 subjects <- subjects.subset
+subjects <- subjects.all
 
 
 # Load and set up data
@@ -58,6 +60,8 @@ sleep_episodes[,`:=`(start_position=sleep_onset, sleep_onset=NULL)]
 
 # Join subject data
 fd_times <- subjects[, list(subject_code, start_analysis, end_analysis)]
+fd_times <- fd_times[!is.null(subject_code) & !is.na(start_analysis) & !is.na(end_analysis)]
+
 setkey(fd_times, subject_code)
 setkey(nrem_cycles, subject_code)
 setkey(rem_cycles, subject_code)
@@ -75,6 +79,12 @@ by_sleep_episode <- sleep_episodes[start_labtime >= start_analysis & end_labtime
 by_nrem_cycle <- nrem_cycles[start_labtime >= start_analysis & end_labtime <= end_analysis,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,method,cycle_number']
 by_rem_cycle <- rem_cycles[start_labtime >= start_analysis & end_labtime <= end_analysis,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,method,cycle_number']
 by_bedrest_episode <- bedrest_episodes[start_labtime >= start_analysis & end_labtime <= end_analysis,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode']
+
+beth_sleep_episode <- sleep_episodes[start_labtime >= start_analysis & end_labtime <= end_analysis,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length=block_length, in_minutes=TRUE, epoch_length=epoch_length), by='subject_code,activity_or_bedrest_episode']
+beth_nrem_cycle <- nrem_cycles[start_labtime >= start_analysis & end_labtime <= end_analysis,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length=block_length, in_minutes=TRUE, epoch_length=epoch_length), by='subject_code,activity_or_bedrest_episode,method,cycle_number']
+beth_rem_cycle <- rem_cycles[start_labtime >= start_analysis & end_labtime <= end_analysis,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length=block_length, in_minutes=TRUE, epoch_length=epoch_length), by='subject_code,activity_or_bedrest_episode,method,cycle_number']
+beth_bedrest_episode <- bedrest_episodes[start_labtime >= start_analysis & end_labtime <= end_analysis,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length=block_length, in_minutes=TRUE, epoch_length=epoch_length), by='subject_code,activity_or_bedrest_episode']
+
 
 collapsed_sleep_episode <- by_sleep_episode[,collapse_blocks(.SD),by='subject_code,block_number']
 collapsed_nrem_cycle <- by_nrem_cycle[,collapse_blocks(.SD),by='subject_code,method,cycle_number,block_number']

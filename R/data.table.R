@@ -136,9 +136,30 @@ read.subject_info <- function(file_path) {
 
 
 load_sleep_file.dt <- function(file_path) {  
+  use <- TRUE
+  results <- data.table(character())
+  
   if(file.exists(file_path)) {
-    fread(file_path)
+    tryCatch(
+      results<-fread(file_path), 
+      error = function(e) { print(paste("ERROR!", file_path)); use <- FALSE }, 
+      warning = function(w) {print(paste("WARNING!", file_path)); use <- FALSE}, 
+      finally = {
+        if(ncol(results) == 4)
+          print(paste(file_path, ncol(results)))
+        else
+          use <- FALSE
+      }
+    )
+  
   }
+  
+  if(use) {
+    results
+  } else {
+    NULL
+  }
+
 }
 
 # Strip all periods until first NREM

@@ -28,28 +28,38 @@
 # we have start and end points
 # first step, divide them into 30s
 
-blocks <- function(start, end, stages, block_length=30) {
-  dt <- data.table(stages=stages)
-  starts <- seq(start, end, by=30)
-  ids <- 1:length(starts)
-  lengths <- rep(block_length, length(starts))
-  blocks <- rep.int(ids, lengths)[1:nrow(dt)]
-  dt[,block_number:=blocks]
-  dt[,block_stats(stages), by=block_number]
+blocks <- function(start, end, stages, block_length=30, in_minutes=FALSE, epoch_length=.5) {
+      dt <- data.table(stages=stages)
+      starts <- seq(start, end, by=30)
+      ids <- 1:length(starts)
+      lengths <- rep(block_length, length(starts))
+      blocks <- rep.int(ids, lengths)[1:nrow(dt)]
+      dt[,block_number:=blocks]
+      dt[,block_stats(stages, in_minutes=in_minutes, epoch_length=epoch_length), by=block_number]
 }
 
-block_stats <- function(stages) {
+block_stats <- function(stages, epoch_length=.5, in_minutes=FALSE) {
   len <- length(stages)
   counts <- count(stages)
   
-  nrem_freq <- sum(counts$freq[which(counts$x %in% c(2,3,4))])/len
-  slow_wave_sleep_freq <- sum(counts$freq[which(counts$x %in% c(3,4))])/len
-  total_sleep_freq <- sum(counts$freq[which(counts$x %in% c(1,2,3,4,6))])/len
-  rem_freq <- sum(counts$freq[which(counts$x == 6)])/len
-  wake_freq <- sum(counts$freq[which(counts$x == 5)])/len
-  missing_freq <- sum(counts$freq[which(!(counts$x %in% c(1,2,3,4,5,6)))])
-
-  data.table(total_sleep=total_sleep_freq, nrem=nrem_freq, slow_wave_sleep=slow_wave_sleep_freq, rem=rem_freq, wake=wake_freq, missing=missing_freq, length=len)
+  if(in_minutes) {
+    block_length <- len*epoch_length
+    denom <- 1/epoch_length  
+  }    
+  else {
+    denom <- len
+    block_length <- len
+  }
+    
+  
+  nrem_freq <- sum(counts$freq[which(counts$x %in% c(2,3,4))])/denom
+  slow_wave_sleep_freq <- sum(counts$freq[which(counts$x %in% c(3,4))])/denom
+  total_sleep_freq <- sum(counts$freq[which(counts$x %in% c(1,2,3,4,6))])/denom
+  rem_freq <- sum(counts$freq[which(counts$x == 6)])/denom
+  wake_freq <- sum(counts$freq[which(counts$x == 5)])/denom
+  missing_freq <- sum(counts$freq[which(!(counts$x %in% c(1,2,3,4,5,6)))])/denom
+  
+  data.table(total_sleep=total_sleep_freq, nrem_sleep=nrem_freq, slow_wave_sleep=slow_wave_sleep_freq, rem_sleep=rem_freq, wake=wake_freq, missing=missing_freq, block_length=block_length)
 }
 
 collapse_blocks <- function(dt) {
