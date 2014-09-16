@@ -29,7 +29,7 @@
 # first step, divide them into 30s
 
 blocks <- function(start, end, stages, block_length=30, in_minutes=FALSE, epoch_length=.5) {
-      dt <- data.table(stages=stages)
+      dt <- data.table(stages=stages)      
       starts <- seq(start, end, by=30)
       ids <- 1:length(starts)
       lengths <- rep(block_length, length(starts))

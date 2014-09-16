@@ -89,7 +89,10 @@ find.cycles <- function(dt, sleep_data, type="NREM", start_fn=find_nrem_start, u
 
 # Get last position of a sleep episode
 last_se_position <- function(sd, sc, e) {
-  max(sd[subject_code==sc & activity_or_bedrest_episode==e]$pk)
+  cat(sc, " ", e, "\n")
+  max(sd[c(sc, e)]$pk)
+  
+  #max(sd[subject_code==sc & activity_or_bedrest_episode==e]$pk)
 }
 
 # First occurance of Stage 2
@@ -456,7 +459,6 @@ get_first_stage <- function(stages, start_position, target, not_found=NA) {
 #   If a nrem period does not include a stage 2 instance, it is ignored!
 find_cycles_in_sleep_episode <- function(border_locations, sleep_episode_end, include_end=FALSE) {
   #border_locations <- border_locations[-which(is.na(border_locations))]
-#   cat(subject_code, " ", activity_or_bedrest_episode)
 #   
 #   cat(dim(sleep_data[J(subject_code, activity_or_bedrest_episode)]))
 #   

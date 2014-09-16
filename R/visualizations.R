@@ -2,38 +2,42 @@
 
 
 ## Set up for plotting
-setup.raster <- function(sleep_data, periods, nrem_cycles) {
+setup.raster <- function(sleep_data, episodes, nrem_cycles) {
   
   sleep_data.v <- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
   
-  periods.v <- copy(periods)
-  nrem_cycles.v <- copy(nrem_cycles)
+  #periods.v <- copy(periods)
+  episodes.v <- copy(episodes.iterative)
   
-  sleep_periods.v <- copy(sleep_periods)
+  #nrem_cycles.v <- copy(nrem_cycles)
+  nrem_cycles.v <- copy(nrem_cycles_fd)
+  
+  #sleep_periods.v <- copy(sleep_periods)
+  sleep_episodes.v <- copy(sleep_episodes_fd)
   
   ## Get Labtimes
-  periods.v[,`:=`(start_labtime=convert_to_labtimes(start_position, sleep_data), end_labtime=convert_to_labtimes(end_position, sleep_data), length=convert_length_to_minutes(length))]
+  episodes.v[,`:=`(start_labtime=convert_to_labtimes(start_position, sleep_data), end_labtime=convert_to_labtimes(end_position, sleep_data), length=convert_length_to_minutes(length))]
   nrem_cycles.v[,`:=`(start_labtime=convert_to_labtimes(start_position, sleep_data), end_labtime=convert_to_labtimes(end_position, sleep_data), length=convert_length_to_minutes(length))]
   
   ## Set up Days and Day labtimes
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
-  periods.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   nrem_cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-  sleep_periods.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  sleep_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   
   ## Deal with blocks that span multiple days
-  periods.v <- rbindlist(list(periods.v[start_day_number==end_day_number], split_day_spanning_blocks(periods.v[start_day_number!=end_day_number])))
+  episodes.v <- rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number])))
   nrem_cycles.v <- rbindlist(list(nrem_cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(nrem_cycles.v[start_day_number!=end_day_number])))
-  sleep_periods.v <- rbindlist(list(sleep_periods.v[start_day_number==end_day_number], split_day_spanning_blocks(sleep_periods.v[start_day_number!=end_day_number])))
+  sleep_episodes.v <- rbindlist(list(sleep_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(sleep_episodes.v[start_day_number!=end_day_number])))
   
   ## Re-scale day numbers
-  periods.v[,day_number:=start_day_number]
-  sleep_periods.v[,day_number:=start_day_number]
+  episodes.v[,day_number:=start_day_number]
+  sleep_episodes.v[,day_number:=start_day_number]
   nrem_cycles.v[,day_number:=start_day_number]
-  periods.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-  sleep_periods.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  sleep_episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
   nrem_cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
   
   # TODO
@@ -45,7 +49,7 @@ setup.raster <- function(sleep_data, periods, nrem_cycles) {
 
 ## Raster plots!
 # Plotting
-plot.raster <- function(sleep_data, periods, nrem_cycles, sleep_periods, subject_code, number_of_days=NA, first_day=1, epoch_length=EPOCH_LENGTH, output_dir="/home/pwm4/Desktop/rasters", l="") {  
+plot.raster <- function(sleep_data, episodes, nrem_cycles, sleep_episodes, subject_code, number_of_days=NA, first_day=1, epoch_length=EPOCH_LENGTH, output_dir="/home/pwm4/Desktop/rasters", l="") {  
   # Limit by subject
   subjects <- c(subject_code)
   
