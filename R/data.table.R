@@ -2,9 +2,7 @@
 
 ## Load Sleep Stage Data
 load_sleep_data.dt <- function(subjects) {
-  #sleep_data <- subjects[, load_sleep_file.dt(file_path), by=subject_code]
   sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file.dt))
-  #sleep_data[,V1:=NULL]
   setnames(sleep_data, c('subject_code', 'activity_or_bedrest_episode', 'labtime', 'stage'))
   setkey(sleep_data, subject_code, labtime)
   # Generate row indeces
@@ -84,6 +82,7 @@ find.cycles <- function(dt, sleep_data, type="NREM", start_fn=find_nrem_start, u
   cycles <- episodes[type,find_cycles_in_sleep_episode(cycle_start, last_position, until_end),by='subject_code,activity_or_bedrest_episode,method']  
   cycles[,cycle_number:=seq(.N),by='subject_code,activity_or_bedrest_episode,method']
   setkey(sleep_data, pk)
+  cycles[,type:=type]
   cycles
 }
 

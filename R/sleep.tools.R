@@ -1,21 +1,7 @@
-# TODO
-# 1. Speed up! (maybe using data tables??)
-# Stats!
+# Sources
+source("R/libraries.R")
+source("R/variables.R")
 
-# Required Packages
-library("cpm")
-library("ggplot2")
-library(scales)
-library(gdata)
-library(plyr)
-library(iterators)
-library(foreach)
-library(parallel)
-library(data.table)
-#library(doMC)
-
-
-# My Sources
 source("R/helpers.R")
 source("R/data.table.R")
 source("R/statistics.R")
@@ -25,18 +11,8 @@ source("R/blocks.R")
 # 1. Load the sleep files
 # 2. Have 3 methods for analysis
 # 3. Get stats on all three methods
-T_CYCLE = 24.0
-EPOCH_SECONDS <- 30
-EPOCH_LENGTH <- (EPOCH_SECONDS / 3600)
-REM_MIN_PERIOD_LENGTH = 10
-NREM_MIN_PERIOD_LENGTH = 30
 
-# Color Palettes
-# The palette with grey:
-cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
-# The palette with black:
-cbbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
 
 
 
