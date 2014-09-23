@@ -151,6 +151,16 @@ agg_se <- to_plot_se[,list(slow_wave_sleep=mean(slow_wave_sleep)), by='block_num
 
 
 ####### Plotting the blocks
+dt <- to_plot_c[include == TRUE & type == "NREM" & method == "changepoint" & cycle_number < 6 & block_number < 10]
+
+
+plot <- ggplot(dt, aes(x=block_number, y=nrem_sleep))
+plot <- plot + geom_point(aes(color=schedule_label))
+plot <- plot + facet_grid(. ~ cycle_number, scales='free')
+plot <- plot + geom_smooth(aes(group=schedule_label, color=schedule_label), method=loess)
+plot
+
+
 
 qplot(block_number, total_sleep, data=to_plot_nc, facet=.~cycle_number)
 qplot(block_number, total_sleep, data=to_plot_nc, facets=cycle_number~.)
