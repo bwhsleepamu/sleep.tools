@@ -1,87 +1,22 @@
 source("R/libraries.R")
 source("R/variables.R")
-source("R/data.table.R")
+source("R/helper_methods.R")
+
 source("R/setup.R")
+source("R/episodes.R")
+source("R/cycles.R")
 source("R/blocks.R")
 
-#source('R/sleep.tools.R')
-
-### episodes
-## Calculate episodes using different methods.
-######## Classic
-episodes.classic <- generate.episodes.classic.dt(sleep_data, wake=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
-
-######## Iterative
-episodes.iterative <- generate.episodes.iterative.dt(sleep_data, wake=TRUE, undef=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
-
-######## Changepoint
-episodes.changepoint <- generate.episodes.changepoint.dt(sleep_data, wake=TRUE, undef=FALSE, cpmType=cpmType, ARL0=ARL0, startup=startup)
-
-
-## Merge methods into one table
-episodes <- rbindlist(list(episodes.changepoint,episodes.classic,episodes.iterative))
-# Get rid of wake episodes
-episodes <- episodes[activity_or_bedrest_episode > 0]
 
 
 
-### cycles
-# Get NREM Cycles
-nrem_cycles <- find.cycles(episodes, sleep_data, type="NREM", start_fn=find_nrem_start, until_end=TRUE) 
-rem_cycles <- find.cycles(episodes, sleep_data, type="REM", start_fn=find_nrem_start, until_end=TRUE) 
-cycles <- rbind(nrem_cycles, rem_cycles)
-cycles[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
-cycles <- cycles[length > 0]
-
-### sleep_episodes and bedrest_episodes
-# Get Sleep Episodes (from sleep onset) and Bedrest episodes
-bedrest_episodes <- sleep_data[activity_or_bedrest_episode>0,list(start_position=min(.I), end_position=max(.I), start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
-sleep_episodes <- copy(bedrest_episodes)
-sleep_episodes[,sleep_onset:=get_first_stage(sleep_data$stage[start_position:end_position], start_position, 2, not_found=start_position), by='subject_code,activity_or_bedrest_episode']
-sleep_episodes[,`:=`(start_position=sleep_onset, sleep_onset=NULL)]
-#sleep_episodes <- sleep_episodes[!is.na(start_position)]
-
-# Join subject data with episodes and cycles
-fd_times <- subjects[, list(subject_code, start_analysis, end_analysis)]
-fd_times <- fd_times[!is.null(subject_code) & !is.na(start_analysis) & !is.na(end_analysis)]
-
-setkey(fd_times, subject_code)
-setkey(cycles, subject_code)
-setkey(bedrest_episodes, subject_code)
-setkey(sleep_episodes, subject_code)
-
-cycles <- cycles[fd_times]
-bedrest_episodes <- bedrest_episodes[fd_times]
-sleep_episodes <- sleep_episodes[fd_times]
 
 # ahahhaa
 #start_labtime < start_analysis | end_labtime > end_analysis
 #start_labtime >= start_analysis & end_labtime <= end_analysis
 
-## Label the part of protocol each episode or cycle is in
-sleep_episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
-bedrest_episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
-cycles[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
 
-## FIX FOR NA start and end??
-sleep_episodes <- sleep_episodes[!is.na(start_position) & !is.na(end_position)]
-cycles <- cycles[!is.na(start_position) & !is.na(end_position)]
-bedrest_episodes <- bedrest_episodes[!is.na(start_position) & !is.na(end_position)]
 
-## Calculate Block Stats (SO SLOW!)
-by_sleep_episode <- sleep_episodes[,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,schedule_label']
-by_cycle <- cycles[,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,type,schedule_label,method,cycle_number']
-by_bedrest_episode <- bedrest_episodes[,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,schedule_label']
-
-collapsed_sleep_episode <- by_sleep_episode[,collapse_blocks(.SD),by='subject_code,schedule_label,block_number']
-collapsed_cycle <- by_cycle[,collapse_blocks(.SD),by='subject_code,type,schedule_label,method,cycle_number,block_number']
-collapsed_bedrest_episode <- by_bedrest_episode[,collapse_blocks(.SD),by='subject_code,schedule_label,block_number']
-
-## JOIN SUBJECT DATA!
-setkey(collapsed_sleep_episode, subject_code)
-setkey(collapsed_cycle, subject_code)
-setkey(collapsed_bedrest_episode, subject_code)
-setkey(subjects, subject_code)
 
 to_plot_se <- merge(collapsed_sleep_episode, subjects, all.x=TRUE, all.y=FALSE)
 to_plot_c <- merge(collapsed_cycle, subjects, all.x=TRUE, all.y=FALSE)
