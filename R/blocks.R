@@ -32,13 +32,14 @@
 # first step, divide them into 30s
 
 blocks <- function(start, end, stages, block_length=30, in_minutes=FALSE, epoch_length=.5) {
-      dt <- data.table(stages=stages)      
-      starts <- seq(start, end, by=30)
-      ids <- 1:length(starts)
-      lengths <- rep(block_length, length(starts))
-      blocks <- rep.int(ids, lengths)[1:nrow(dt)]
-      dt[,block_number:=blocks]
-      dt[,block_stats(stages, in_minutes=in_minutes, epoch_length=epoch_length), by=block_number]
+  print(cat("Running from ", start, " to ", end))      
+  dt <- data.table(stages=stages)      
+  starts <- seq(start, end, by=30)
+  ids <- 1:length(starts)
+  lengths <- rep(block_length, length(starts))
+  blocks <- rep.int(ids, lengths)[1:nrow(dt)]
+  dt[,block_number:=blocks]
+  dt[,block_stats(stages, in_minutes=in_minutes, epoch_length=epoch_length), by=block_number]
 }
 
 block_stats <- function(stages, epoch_length=.5, in_minutes=FALSE) {
@@ -80,14 +81,15 @@ collapse_blocks <- function(dt) {
 ## Calculate Block Stats (SO SLOW!)
 by_sleep_episode <- sleep_episodes[,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,schedule_label,se_label']
 by_cycle <- cycles[,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,type,schedule_label,se_label,method,cycle_number']
-by_bedrest_episode <- bedrest_episodes[,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,schedule_label, se_label']
+by_bedrest_episode <- bedrest_episodes[,blocks(start_position, end_position, sleep_data$stage[start_position:end_position], block_length), by='subject_code,activity_or_bedrest_episode,schedule_label,se_label']
 
-collapsed_sleep_episode <- by_sleep_episode[,collapse_blocks(.SD),by='subject_code,schedule_label,block_number']
-collapsed_cycle <- by_cycle[,collapse_blocks(.SD),by='subject_code,type,schedule_label,method,cycle_number,block_number']
-collapsed_bedrest_episode <- by_bedrest_episode[,collapse_blocks(.SD),by='subject_code,schedule_label,block_number']
+collapsed_sleep_episode <- by_sleep_episode[,collapse_blocks(.SD),by='subject_code,schedule_label,se_label,block_number']
+collapsed_cycle <- by_cycle[,collapse_blocks(.SD),by='subject_code,type,schedule_label,se_label,method,cycle_number,block_number']
+collapsed_bedrest_episode <- by_bedrest_episode[,collapse_blocks(.SD),by='subject_code,schedule_label,se_label,block_number']
 
 ## JOIN SUBJECT DATA!
 setkey(collapsed_sleep_episode, subject_code)
 setkey(collapsed_cycle, subject_code)
 setkey(collapsed_bedrest_episode, subject_code)
 setkey(subjects, subject_code)
+

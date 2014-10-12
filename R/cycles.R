@@ -49,7 +49,8 @@ cycles <- cycles[fd_times]
 cycles[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
 
 ## FIX FOR NA start and end??
-cycles <- cycles[!is.na(start_position) & !is.na(end_position)]
 
 setkey(cycles, subject_code, activity_or_bedrest_episode)
 cycles <- cycles[sleep_efficiency]
+
+cycles <- cycles[!is.na(start_position) & !is.na(end_position)]

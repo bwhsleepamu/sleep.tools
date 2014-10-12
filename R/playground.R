@@ -22,18 +22,45 @@ to_plot_se <- merge(collapsed_sleep_episode, subjects, all.x=TRUE, all.y=FALSE)
 to_plot_c <- merge(collapsed_cycle, subjects, all.x=TRUE, all.y=FALSE)
 to_plot_be <- merge(collapsed_bedrest_episode, subjects, all.x=TRUE, all.y=FALSE)
 
+
+
+
+
+
+
 ## Create trend lines across subjects (might need to be done on a graph by graph basis, or in bulk)
-agg_nc <- to_plot_nc[,list(slow_wave_sleep=mean(slow_wave_sleep)), by='method,cycle_number,t_cycle,block_number,age_group']
+agg_nc <- to_plot_c[,list(slow_wave_sleep=mean(slow_wave_sleep)), by='sujbect_code,type,schedule_label,method,cycle_number,t_cycle,block_number,age_group']
 agg_se <- to_plot_se[,list(slow_wave_sleep=mean(slow_wave_sleep)), by='block_number,age_group,t_cycle']
+agg_se <- to_plot_be[,list(slow_wave_sleep=mean(slow_wave_sleep)), by='block_number,age_group,t_cycle']
 
 
 ####### Plotting the blocks
-dt <- to_plot_c[include == TRUE & type == "NREM" & method == "changepoint" & cycle_number < 6 & block_number < 10]
 
-plot <- ggplot(dt, aes(x=block_number, y=nrem_sleep))
-plot <- plot + geom_point(aes(color=schedule_label))
-plot <- plot + facet_grid(. ~ cycle_number, scales='free')
-plot <- plot + geom_smooth(aes(group=schedule_label, color=schedule_label), method=loess)
+
+plot_survival.cycles <- function(data, type="NREM", method="changepoint", max_cycle=6, max_block=10, y_var="nrem_sleep", compare_by="se_label", facet_by="age_group", sleep_efficiency_labels=c("100%", "80%", "60%", "40%", "20%"), include=c(TRUE, FALSE)) {
+  plot_data <- data[include %in% include & type == type & method == method & cycle_number <= max_cycle & block_number <= max_block & se_label %in% sleep_efficiency_labels]
+  trend_lines <- plot_data[, list(y=mean(get(y_var))), by=c("block_number","cycle_number",compare_by,facet_by)]
+  
+  plot <- ggplot(plot_data, aes_string(x="block_number", y=y_var))
+  plot <- plot + geom_point(aes_string(color=compare_by))
+
+  plot <- plot + geom_line(aes_string(color=compare_by, y="y", x="block_number"), data=trend_lines)
+  plot <- plot + facet_grid(paste(facet_by, " ~ cycle_number"), scales='free')
+  
+  plot
+}
+  
+plot_survival.episodes <- function(dt, )
+
+
+
+dt <- to_plot_se[include == TRUE & block_number < 30 & se_label %in% c("100%", "20%")]
+
+
+plot <- ggplot(dt, aes_string(x="block_number", y="nrem_sleep"))
+plot <- plot + geom_point(aes_string(color="se_label"))
+plot <- plot + facet_grid(paste("age_group", " ~ cycle_number"), scales='free')
+plot <- plot + geom_smooth(aes_string(group="se_label", color="se_label"), method=loess)
 plot
 
 qplot(block_number, total_sleep, data=to_plot_nc, facet=.~cycle_number)
