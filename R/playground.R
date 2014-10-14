@@ -18,10 +18,6 @@ source("R/blocks.R")
 
 
 
-to_plot_se <- merge(collapsed_sleep_episode, subjects, all.x=TRUE, all.y=FALSE)
-to_plot_c <- merge(collapsed_cycle, subjects, all.x=TRUE, all.y=FALSE)
-to_plot_be <- merge(collapsed_bedrest_episode, subjects, all.x=TRUE, all.y=FALSE)
-
 
 
 
