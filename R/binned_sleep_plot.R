@@ -37,7 +37,7 @@ plot_binned_sleep <- function(data, cycle_type="NREM", cycle_method="changepoint
   plot <- ggplot(plot_data, aes_string(x="block_number", y=y_var))
   
   # Theme
-  plot <- plot + theme_minimal()
+  plot <- plot + theme_mine()
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
   
   plot <- plot + geom_point(aes_string(color=compare_by), shape='.')
@@ -56,13 +56,15 @@ plot_binned_sleep <- function(data, cycle_type="NREM", cycle_method="changepoint
 }
 
 # Workspace
-to_plot_se <- merge(collapsed_sleep_episode, subjects, all.x=TRUE, all.y=FALSE)
-to_plot_c <- merge(collapsed_cycle, subjects, all.x=TRUE, all.y=FALSE)
-to_plot_be <- merge(collapsed_bedrest_episode, subjects, all.x=TRUE, all.y=FALSE)
-
-
-plot_binned_sleep(to_plot_c, age_groups=c("Y"), max_cycle=5, max_block=10)
-
-plot_binned_sleep(to_plot_c, age_groups=c("Y"), sleep_efficiency_labels=c("20%", "100%"), facet_by=NULL, compare_by="se_label", max_cycle=5, max_block=10)
-
-plot_binned_sleep(to_plot_c, y_var="slow_wave_sleep", age_groups=c("Y"), sleep_efficiency_labels=c("20%", "100%"), facet_by=NULL, compare_by="se_label", max_cycle=5, max_block=10)
+binned_sleep_plot <- function() {
+  to_plot_se <<- merge(collapsed_sleep_episode, subjects, all.x=TRUE, all.y=FALSE)
+  to_plot_c <<- merge(collapsed_cycle, subjects, all.x=TRUE, all.y=FALSE)
+  to_plot_be <<- merge(collapsed_bedrest_episode, subjects, all.x=TRUE, all.y=FALSE)
+  
+  
+  plot_binned_sleep(to_plot_c, age_groups=c("Y"), max_cycle=5, max_block=10)
+  
+  plot_binned_sleep(to_plot_c, age_groups=c("Y"), sleep_efficiency_labels=c("20%", "100%"), facet_by=NULL, compare_by="se_label", max_cycle=5, max_block=10)
+  
+  plot_binned_sleep(to_plot_c, y_var="slow_wave_sleep", age_groups=c("Y"), sleep_efficiency_labels=c("20%", "100%"), facet_by=NULL, compare_by="se_label", max_cycle=5, max_block=10)
+}

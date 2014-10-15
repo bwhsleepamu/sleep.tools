@@ -39,18 +39,14 @@ rem_cycles <- find.cycles(episodes, sleep_data, type="REM", start_fn=find_nrem_s
 cycles <- rbind(nrem_cycles, rem_cycles)
 cycles[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
 cycles <- cycles[length > 0]
+cycles <- cycles[!is.na(start_position) & !is.na(end_position)]
 
-setkey(cycles, subject_code)
-cycles <- cycles[fd_times]
-
-
+cycles <- merge(cycles, fd_times, all.x=TRUE, all.y=FALSE, by='subject_code')
 
 ## Label the part of protocol each episode or cycle is in
 cycles[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
 
 ## FIX FOR NA start and end??
 
-setkey(cycles, subject_code, activity_or_bedrest_episode)
-cycles <- cycles[sleep_efficiency]
-
-cycles <- cycles[!is.na(start_position) & !is.na(end_position)]
+cycles <- merge(cycles,sleep_efficiency,all.x=TRUE,all.y=FALSE,by=c('subject_code','activity_or_bedrest_episode'))
+cycles <- merge(cycles,subjects,all.x=TRUE, all.y=FALSE,by='subject_code')
