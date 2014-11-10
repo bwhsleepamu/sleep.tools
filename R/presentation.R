@@ -1,4 +1,4 @@
-# Possible groupings:
+g# Possible groupings:
 
 # se_label:  c("20%", "40%", "60%", "80%", "100%") - Sleep Efficiency Quintiles, labeled by upper limit
 # sleep_wake_label: c("SLEEP", "WAKE") - Within a sleep episode, SLEEP includes episodes from sleep onset to wake.
