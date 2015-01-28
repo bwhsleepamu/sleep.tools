@@ -1,4 +1,4 @@
-library("cpm")
+library("changepoint")
 library("grid")
 library("ggplot2")
 library(scales)

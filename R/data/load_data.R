@@ -1,3 +1,18 @@
+## HELPERS
+
+# Maps numerical values to types of epochs
+## USED IN LOAD_DATA
+map_epoch_type <- function(x) {
+  ## Possibly speed up if x is a factor??
+  if (x >= 1 & x <=4) { res <- "NREM" }
+  else if (x == 5) { res <- "WAKE" }
+  else if (x == 6) { res <- "REM" }
+  else { res <- "UNDEF" }
+  
+  res
+}
+
+
 ## Methods
 # Load epochs for a given subject list
 load_sleep_data <- function(subjects) {

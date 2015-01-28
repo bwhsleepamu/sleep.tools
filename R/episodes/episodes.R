@@ -1,142 +1,3 @@
-## Methods
-
-
-
-##################
-## Classic V1
-##################
-
-generate_episodes.classic <- function(dt, wake=FALSE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  # Take series of epochs and collapse them into sequences of the same type  
-  sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
-  
-  # Re-label undefined sequences as their biggest neighbor
-  ## TODO: NAs show up!
-  if(!undef)
-    sequences <- remove.target.label.dt(sequences, target_label="UNDEF")    
-  
-  # Merge around seeds by setting a label and group number for each sequence.
-  sequences[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,activity_or_bedrest_episode']
-  
-  # Collapse all sequences within a group number into one episode
-  episodes <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
-  episodes[,`:=`(group=NULL, method='classic')]
-  
-  episodes
-}
-
-##################
-## Classic V2
-##################
-
-### THIS IS A METHOD THAT JUMPS STRAIGHT TO CYCLES
-
-generate_episodes.classic.strict <- function(dt, min_nrem_length=30, min_rem_length=10, completion_cuttoff=10) {
-  # Take series of epochs and collapse them into sequences of the same type  
-  sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
-  
-  # Re-label undefined sequences as their biggest neighbor
-  ## TODO: NAs show up!
-  sequences <- sequences[label %in% c("NREM", "REM")]
-  
-  ## Combine neigboring sequences of same type
-  sequences <- sequences[,merge_same_neighbors(.SD),by='subject_code,activity_or_bedrest_episode']
-  
-  ## Number sequences in each bedrest episode
-  sequences[,`:=`(seq_id=seq(1,.N),seq_num=.N),by='subject_code,activity_or_bedrest_episode,label']
-  
-  ## Tag last sequence that can signify completion
-  sequences[, last:=FALSE]
-  View(sequences[length >= completion_cuttoff])
-  
-    
-  
-  ## Keep sequences above thresholds
-  sequences[,keep:=FALSE]
-  sequences[label=="NREM" & length >= min_nrem_length, keep:=TRUE]
-  sequences[label == "REM" & (length >= min_rem_length | seq_num == 1), keep:=TRUE]
-  
-  
-  
-  episodes <- copy(sequences[keep==TRUE])
-  episodes[,`:=`(group=NULL,seq_num=NULL,keep=NULL)]
-  
-  episodes <- r <- episodes[,merge_same_neighbors(.SD),by='subject_code,activity_or_bedrest_episode']
-  
-  episodes
-  
-  #   
-#   
-#   # Merge around seeds by setting a label and group number for each sequence.
-#   sequences[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,activity_or_bedrest_episode']
-#   
-#   # Collapse all sequences within a group number into one episode
-#   episodes <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
-#   episodes[,`:=`(group=NULL, method='classic')]
-#   
-#   episodes
-}
-
-generate_cycles.classic.strict <- function(dt, ) {
-  
-}
-
-merge_same_neighbors <- function(dt) {
-  
-  n <- nrow(dt)
-  y <- dt$label[-1L] != dt$label[-n]
-  i <- c(which(y | is.na(y)), n)
-  
-  diffs <- diff(c(0L, i))
-  values <- labels[i]
-  
-  result <- copy(dt)
-  result[,group:=rep(seq(1,length(values)), diffs)]
-  result <- result[,list(start_position=min(start_position), end_position=max(end_position), length=sum(length)), by='group']
-  result[,label:=values]
-
-  result
-}
-
-
-
-
-##################
-## Iterative
-##################
-generate.episodes.iterative <- function(dt, wake=TRUE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  # Take series of epochs and collapse them into sequences of the same type  
-  sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
-  
-  if(!undef)
-    sequences <- remove.target.label.dt(sequences, target_label="UNDEF")  
-  if(!wake)
-    sequences <- remove.target.label.dt(sequences, target_label="WAKE")
-  
-  episodes <- iterative_merge(sequences)
-  
-  episodes[,method:='iterative']
-  
-  episodes
-}
-
-####################
-## Changepoint Bouts
-####################
-generate.episodes.changepoint <- function(dt, wake=TRUE, undef=FALSE, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
-  dt[,group:=set_changepoint_group(epoch_type,cpmType=cpmType,ARL0=ARL0,startup=startup),by='subject_code,activity_or_bedrest_episode']
-  episodes <- dt[,merge_epochs(pk,epoch_type),by='subject_code,activity_or_bedrest_episode,group']
-  episodes[,group:=NULL]
-  
-  if(!undef)
-    episodes <- remove.target.label.dt(episodes, target_label="UNDEF")  
-  if(!wake)
-    episodes <- remove.target.label.dt(episodes, target_label="WAKE")
-  
-  episodes[, method:='changepoint']
-  episodes
-}
-
 
 ## HELPERS
 label_wake <- function(dt) {
@@ -145,6 +6,33 @@ label_wake <- function(dt) {
   sleep_end <- (length(dt$label) - min(match(c("NREM", "REM"), rev(dt$label), nomatch=1L))) + 1L
   
   dt[sleep_onset:sleep_end]
+}
+
+chunk <- function(categories, indeces) {
+  ## Might be possible to elaborate on this function using the code for rle
+  
+  reference = indeces[1] - 1
+  rle_results <- rle(as.character(categories))
+  
+  # Get positions by cumulative sum of lengths
+  positions <- cumsum(rle_results$lengths)
+  
+  # The ending positions for each chunk are represented by the cumsum of lengths.
+  # The only correction we need is for the reference index
+  
+  # Since each following chunk starts one position after the end of the previous chunk
+  # we calculate the start positions by adding 1 to each end position and artificially inserting
+  # the start position of the first chunk==1. 
+  
+  # Again, we correct for the reference index, and also trim to get rid of the last value
+  # (since it references a bout that does not exist). 
+  
+  start_positions <- (c(0, positions)+1)[1:length(positions)] + reference
+  end_positions <- positions + reference
+  
+  #end_positions <- res$lengths
+  
+  data.table(label=rle_results$values, start_position=start_positions, end_position=end_positions, length=rle_results$lengths)
 }
 
 

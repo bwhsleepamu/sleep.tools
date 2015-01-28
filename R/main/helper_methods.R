@@ -1,3 +1,4 @@
+## USED IN CYCLES AND EPISODES
 label_by_schedule <- function(start_labtime, end_labtime, start_analysis, end_analysis) {
   labels <- rep(NA, length(start_labtime))
   labels[which(start_labtime >= start_analysis & end_labtime <= end_analysis)] <- "fd"
@@ -7,25 +8,19 @@ label_by_schedule <- function(start_labtime, end_labtime, start_analysis, end_an
   labels
 }
 
-# First occurance of Stage 2
-find_nrem_start <- function(stages, start_position) {
-  get_first_stage(stages, start_position, 2)
-}
 
-find_rem_start <- function(stages, start_position) {
-  get_first_stage(stages, start_position, 6)
-}
 
-strip_until_sleep_onset <- function(dt) {
-  #print(typeof(dt))
-  min_labtime <- dt[bout_type=="NREM", min(start_labtime)]
-  
-  nrow(dt) - nrow(dt[start_labtime >= min_labtime])
-  
-}
+# strip_until_sleep_onset <- function(dt) {
+#   #print(typeof(dt))
+#   min_labtime <- dt[bout_type=="NREM", min(start_labtime)]
+#   
+#   nrow(dt) - nrow(dt[start_labtime >= min_labtime])
+#   
+# }
 
 
 ## Every combo of subject_code and method needs to have: NREM, REM, WAKE, UNDEF
+## USED IN PLAYGROUND
 generate_missing_combinations <- function(bout_type, by) {
   if(TRUE %in% !(levels(bout_type) %in% unique(bout_type))) {
     # cat(sprintf("%s | %s\n", by[[1]], levels(bout_type)[!(levels(bout_type) %in% unique(bout_type))]))
@@ -37,70 +32,29 @@ generate_missing_combinations <- function(bout_type, by) {
 }
 
 ## Set up data for transformation
-set_min_day_num <- function(subjects, sleep_data) {
-  r <- sleep_data[,(min(floor(labtime / T_CYCLE)) - 1),by=subject_code]
-  setnames(r, c('subject_code', 'min_day_number'))
-  
-  merge(subjects, r, all.x=TRUE)           
-}
+# set_min_day_num <- function(subjects, sleep_data) {
+#   r <- sleep_data[,(min(floor(labtime / T_CYCLE)) - 1),by=subject_code]
+#   setnames(r, c('subject_code', 'min_day_number'))
+#   
+#   merge(subjects, r, all.x=TRUE)           
+# }
 
-set_up_days <- function(labtime, min_day_number, t_cycle) {
-  day_number <- floor(labtime / t_cycle)
-  day_labtime <- labtime - (day_number * t_cycle)
-  day_number <- day_number - min_day_number
-  
-  list(day_number, day_labtime)
-}
+# set_up_days <- function(labtime, min_day_number, t_cycle) {
+#   day_number <- floor(labtime / t_cycle)
+#   day_labtime <- labtime - (day_number * t_cycle)
+#   day_number <- day_number - min_day_number
+#   
+#   list(day_number, day_labtime)
+# }
 
 
 ### ACTUAL HELPERS!!
-# Maps numerical values to types of epochs
-map_epoch_type <- function(x) {
-  ## Possibly speed up if x is a factor??
-  if (x >= 1 & x <=4) { res <- "NREM" }
-  else if (x == 5) { res <- "WAKE" }
-  else if (x == 6) { res <- "REM" }
-  else { res <- "UNDEF" }
-  
-  res
-}
 
-chunk <- function(categories, indeces) {
-  ## Might be possible to elaborate on this function using the code for rle
-  
-  reference = indeces[1] - 1
-  rle_results <- rle(as.character(categories))
-  
-  # Get positions by cumulative sum of lengths
-  positions <- cumsum(rle_results$lengths)
-  
-  # The ending positions for each chunk are represented by the cumsum of lengths.
-  # The only correction we need is for the reference index
-  
-  # Since each following chunk starts one position after the end of the previous chunk
-  # we calculate the start positions by adding 1 to each end position and artificially inserting
-  # the start position of the first chunk==1. 
-  
-  # Again, we correct for the reference index, and also trim to get rid of the last value
-  # (since it references a bout that does not exist). 
-  
-  start_positions <- (c(0, positions)+1)[1:length(positions)] + reference
-  end_positions <- positions + reference
-  
-  #end_positions <- res$lengths
-  
-  data.table(label=rle_results$values, start_position=start_positions, end_position=end_positions, length=rle_results$lengths)
-}
 
 
 ### CLASSIC
 
-merge_label <- function(labels, lengths, label_to_merge) {
-  i <- which(labels==label_to_merge)
-  #  cat(sprintf("I: %s", i))
-  mapply(determine_merge_direction, i-1, i+1, MoreArgs=list(labels, lengths))
-}
-
+# USED HERE IN MERGE LABEL
 determine_merge_direction <- function(b,a,labels,lengths){  
   #   cat(sprintf("label_a: %s\n", labels[a]))
   #   cat(sprintf("label_b: %s\n", labels[b]))
@@ -117,7 +71,15 @@ determine_merge_direction <- function(b,a,labels,lengths){
     return(-1)
 }
 
-#
+# USED HERE in relabel_to_biggest_neighbor
+merge_label <- function(labels, lengths, label_to_merge) {
+  i <- which(labels==label_to_merge)
+  #  cat(sprintf("I: %s", i))
+  mapply(determine_merge_direction, i-1, i+1, MoreArgs=list(labels, lengths))
+}
+
+
+# USED HERE in remove.target.label.dt
 relabel_to_biggest_neighbor <- function(labels, lengths, label_to_merge) {
   i <- which(labels==label_to_merge)
   if(length(i)!=0L) {
@@ -129,6 +91,7 @@ relabel_to_biggest_neighbor <- function(labels, lengths, label_to_merge) {
 }
 
 # Sets groups according to consecutive same labels
+# USED HERE in remove.target.label.dt, merge_around_seeds, relabel_by_length
 set_group <- function(labels) {
   n <- length(labels)
   label_changed <- labels[-1L] != labels[-n]
@@ -138,16 +101,20 @@ set_group <- function(labels) {
   groups
 }
 
+## USED IN EPISODES
 merge_epochs <- function(pks, labels) {
   start_position <- min(pks)
   end_position <- max(pks)
   list(start_position=start_position, end_position=end_position, label=names(which.max(table(labels))), length=(end_position - start_position + 1))
 }
+
+## USED IN EPISODES
 merge_group <- function(start_positions, end_positions, labels, lengths) {
   list(start_position=min(start_positions), end_position=max(end_positions), label=names(which.max(table(labels))), length=sum(lengths))  
 }
 
-# For classic!
+# For classic! 
+## Used In Episodes (classic)
 merge_around_seeds <- function(labels, lengths, wake=FALSE, min_wake_length=10, min_rem_length=10, min_nrem_length=30) {
   # Find the seed sequences of each type
   seed_nrem <- intersect(which(labels=='NREM'), which(lengths >= min_nrem_length))
@@ -196,6 +163,7 @@ merge_around_seeds <- function(labels, lengths, wake=FALSE, min_wake_length=10, 
   list(labels=new_labels, groups=groups)
 }
 
+## Used here in iterative merge
 relabel_by_length <- function(target_length, labels, lengths) {
   # Re-label
   targets <- which(lengths==target_length)
@@ -220,6 +188,7 @@ relabel_by_length <- function(target_length, labels, lengths) {
   list(label=labels, group=groups)  
 }
 
+## Used in episodes (iterative)
 iterative_merge <- function(sequences, min_nrem_length=30, min_rem_length=10) {
   for(i in 1:min(min_nrem_length, min_rem_length)) {
     print(i)
@@ -236,6 +205,7 @@ iterative_merge <- function(sequences, min_nrem_length=30, min_rem_length=10) {
   sequences
 }
 
+## used in episodes (changepoint)
 set_changepoint_group <- function(epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
   changepoints <- processStream(epoch_type, cpmType=cpmType, ARL0=ARL0, startup=startup)$changePoints
   
@@ -252,6 +222,7 @@ set_changepoint_group <- function(epoch_type, cpmType="Mann-Whitney", ARL0=10000
 
 
 ## Get rid of sequences with target label
+## USED IN ALL EPISODES!!
 remove.target.label.dt <- function(sequences, target_label='UNDEF') {
   # Re-label undefs
   sequences[,label:=relabel_to_biggest_neighbor(label,length,target_label),by='subject_code,activity_or_bedrest_episode']
@@ -267,6 +238,7 @@ remove.target.label.dt <- function(sequences, target_label='UNDEF') {
 
 
 # get index (for main sleep data) of first instance of a given stage in a given list of stages
+## USED IN EPISODES AND CYCLES
 get_first_stage <- function(stages, start_position, target, not_found=NA) {
   #print(cat(stages))
   first_occurance <- (which(stages == target)[1] - 1 + start_position)
@@ -280,6 +252,7 @@ get_first_stage <- function(stages, start_position, target, not_found=NA) {
 
 # Calculate starts and ends of NREM cycles for a given sleep period
 #   If a nrem period does not include a stage 2 instance, it is ignored!
+## USED IN CYCLES
 find_cycles_in_sleep_episode <- function(border_locations, sleep_episode_end, include_end=FALSE) {
   sleep_episode_end <- max(sleep_episode_end)
   

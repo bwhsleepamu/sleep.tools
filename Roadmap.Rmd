@@ -1,0 +1,15 @@
+---
+title: "Roadmap"
+author: "Piotr Mankowski"
+date: "01/26/2015"
+output: html_document
+---
+
+# Outline
+1. Updated `classic` method.
+
+2. Fixed and updated Changepoint method.
+
+```{r}
+```
+

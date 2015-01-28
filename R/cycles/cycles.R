@@ -1,6 +1,18 @@
 ###############
 ## Sleep Cycles
 ###############
+# HELPERS
+## USED IN CYCLES
+# First occurance of Stage 2
+find_nrem_start <- function(stages, start_position) {
+  get_first_stage(stages, start_position, 2)
+}
+
+find_rem_start <- function(stages, start_position) {
+  get_first_stage(stages, start_position, 6)
+}
+
+
 # Either REM or NREM
 # For NREM: start at first stage 2 of NREM cycle
 find.cycles <- function(dt, sleep_data, type="NREM", start_fn=find_nrem_start, until_end=TRUE) {
