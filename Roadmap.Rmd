@@ -6,9 +6,27 @@ output: html_document
 ---
 
 # Outline
-1. Updated `classic` method.
 
-2. Fixed and updated Changepoint method.
+## R Package
+1. Refactor and clean up code.
+  - Get rid of old and deprecated methods.
+  - Add comments for complex logic
+  - Be more modular with grouping of methods in order to be able to more quickly understand the code, pinpoint bugs, and make improvements
+  - Add testing?
+
+2. Update `classic` method, which follows Eva's methodology on determining cycles.
+
+3. Fix and updated Changepoint method.
+
+## Publication
+1. Re-run visualizations for paper
+- agreement
+- episode length
+- post-wake statistics
+- raster plots for cycles
+2. Re-run episode and cycle calculations
+3. 
+
 
 ```{r}
 ```
