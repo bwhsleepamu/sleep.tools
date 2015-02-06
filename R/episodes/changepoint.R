@@ -14,3 +14,20 @@ generate.episodes.changepoint <- function(dt, wake=TRUE, undef=FALSE, cpmType="M
   episodes[, method:='changepoint']
   episodes
 }
+
+## used in episodes (changepoint)
+set_changepoint_group <- function(epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
+  changepoints <- processStream(epoch_type, cpmType=cpmType, ARL0=ARL0, startup=startup)$changePoints
+  
+  # Add end of last group
+  if(!length(epoch_type)%in%changepoints)
+    changepoints <- c(changepoints, length(epoch_type))
+  
+  # Get lengths of each group
+  lengths <- diff(c(0L, changepoints))
+  
+  # Label groups
+  rep.int(seq(1,length(lengths)), lengths)
+}
+
+

@@ -95,3 +95,50 @@ merge_same_neighbors <- function(dt) {
 }
 
 
+merge_around_seeds <- function(labels, lengths, wake=FALSE, min_wake_length=10, min_rem_length=10, min_nrem_length=30) {
+  # Find the seed sequences of each type
+  seed_nrem <- intersect(which(labels=='NREM'), which(lengths >= min_nrem_length))
+  seed_rem <- intersect(which(labels=='REM'), which(lengths >= min_rem_length))
+  if(wake) {
+    seed_wake <- intersect(which(labels=='WAKE'), which(lengths >= min_wake_length))    
+  }
+  else
+    seed_wake <- c()
+  
+  # Sort the seed sequences
+  seeds <- sort(c(seed_nrem, seed_rem, seed_wake))
+  
+  if(length(seeds) > 0) {
+    # Label everything until first NREM Sequence as WAKE
+    if(length(seed_nrem) > 0) {
+      first_nrem <- min(seed_nrem)    
+      if(first_nrem > 1) {
+        labels[1] = 'WAKE'
+        seeds <- c(1L, seeds[which(seeds >= first_nrem)])
+      }
+    }
+    # If no first NREM Sequence, everything until first sequence as wake.    
+    else {
+      if(min(seeds) > 1) {
+        labels[1] = 'WAKE'
+        seeds <- c(1L, seeds)
+      }        
+    }
+    
+    
+    group_lengths <- diff(c(seeds, (length(labels)+1)))
+    new_labels <- rep.int(labels[seeds], group_lengths)
+    
+    groups <- set_group(new_labels)
+  }
+  # 
+  else {
+    #new_labels <- rep.int(labels[seeds], group_lengths)
+    groups <- rep.int(1L, length(labels))#rep.int(seq(1, length(group_lengths)), group_lengths)
+    new_labels <- labels
+    # list(labels=labels, groups=groups)
+    #    list(labels=labels, groups=rep.int(1, length(labels)))  
+    
+  }  
+  list(labels=new_labels, groups=groups)
+}
