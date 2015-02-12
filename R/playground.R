@@ -1,13 +1,13 @@
 source("R/main/libraries.R")
 source("R/main/variables.R")
-#source("R/main/helper_methods.R")
+source("R/main/helper_methods.R")
 
-source("R/setup.R")
-source("R/episodes.R")
-source("R/cycles.R")
-source("R/blocks.R")
+source("R/data/load_data.R")
+source("R/episodes/episodes.R")
+source("R/cycles/cycles.R")
 
 
+load_data()
 
 
 
