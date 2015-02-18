@@ -8,6 +8,11 @@ source("R/cycles/cycles.R")
 
 
 load_data()
+setup_episodes()
+setup_cycles()
+
+
+
 
 
 

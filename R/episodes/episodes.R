@@ -1,3 +1,6 @@
+source("R/episodes/classic.R")
+source("R/episodes/changepoint.R")
+source("R/episodes/iterative.R")
 
 ## HELPERS
 label_wake <- function(dt) {
@@ -118,11 +121,11 @@ setup_episodes <- function() {
   ### NREM and REM Episodes
   ## Calculate episodes using different methods.
   ######## Classic
-  episodes.classic <- generate.episodes.classic(sleep_data, wake=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
+  episodes.classic <- generate_episodes.classic(sleep_data, wake=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
   ######## Iterative
-  episodes.iterative <- generate.episodes.iterative(sleep_data, wake=TRUE, undef=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
+  episodes.iterative <- generate_episodes.iterative(sleep_data, wake=TRUE, undef=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
   ######## Changepoint
-  episodes.changepoint <- generate.episodes.changepoint(sleep_data, wake=TRUE, undef=FALSE, cpmType=cpmType, ARL0=ARL0, startup=startup)
+  episodes.changepoint <- generate_episodes.changepoint(sleep_data, wake=TRUE, undef=FALSE, cpmType=cpmType, ARL0=ARL0, startup=startup)
   ## Merge methods into one table
   episodes <<- rbindlist(list(episodes.changepoint,episodes.classic,episodes.iterative))
   # Get rid of wake episodes

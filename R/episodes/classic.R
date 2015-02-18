@@ -9,7 +9,7 @@ generate_episodes.classic <- function(dt, wake=FALSE, undef=FALSE, min_nrem_leng
   # Re-label undefined sequences as their biggest neighbor
   ## TODO: NAs show up!
   if(!undef)
-    sequences <- remove.target.label.dt(sequences, target_label="UNDEF")    
+    sequences <- remove.target.label(sequences, target_label="UNDEF")    
   
   # Merge around seeds by setting a label and group number for each sequence.
   sequences[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,activity_or_bedrest_episode']
@@ -73,7 +73,7 @@ classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completi
   #   episodes
 }
 
-generate_cycles.classic.strict <- function(dt, ) {
+generate_cycles.classic.strict <- function(dt) {
   
 }
 
