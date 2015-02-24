@@ -2,40 +2,40 @@
 
 
 ## Set up for plotting
-setup_raster_data <- function(sleep_data, episodes, cycles, bedrest_episodes) {
+setup_raster_data <- function(sleep_data, episodes) { #, cycles, bedrest_episodes) {
   
   sleep_data.v <<- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
   
   episodes.v <<- copy(episodes)
   
-  cycles.v <<- copy(cycles)
+  #cycles.v <<- copy(cycles)
   
-  bedrest_episodes.v <<- copy(bedrest_episodes)
+  #bedrest_episodes.v <<- copy(bedrest_episodes)
   
   ## Get Labtimes
   episodes.v[,`:=`(length=convert_length_to_minutes(length))]
-  cycles.v[,`:=`(length=convert_length_to_minutes(length))]
+  #cycles.v[,`:=`(length=convert_length_to_minutes(length))]
   
   ## Set up Days and Day labtimes
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
   episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-  cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-  bedrest_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  #cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  #bedrest_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   
   ## Deal with blocks that span multiple days
-  episodes.v <- rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number])))
-  cycles.v <- rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number])))
-  bedrest_episodes.v <- rbindlist(list(bedrest_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(bedrest_episodes.v[start_day_number!=end_day_number])))
+  episodes.v <<- rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number])))
+  #cycles.v <- rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number])))
+  #bedrest_episodes.v <- rbindlist(list(bedrest_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(bedrest_episodes.v[start_day_number!=end_day_number])))
   
   ## Re-scale day numbers
   episodes.v[,day_number:=start_day_number]
-  bedrest_episodes.v[,day_number:=start_day_number]
-  cycles.v[,day_number:=start_day_number]
+  #bedrest_episodes.v[,day_number:=start_day_number]
+  #cycles.v[,day_number:=start_day_number]
   episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-  bedrest_episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-  cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  #bedrest_episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  #cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
   
   # TODO
   
@@ -46,10 +46,10 @@ setup_raster_data <- function(sleep_data, episodes, cycles, bedrest_episodes) {
 
 ## Raster plots!
 # Plotting
-plot_raster <- function(subject_code, epoch_length=EPOCH_LENGTH, output_dir="/home/pwm4/Desktop/", l="",
+plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="/home/pwm4/Desktop/", l="",
                         number_of_days=NA, 
-                        first_day=1, 
-                        cycle_types=c("NREM")
+                        first_day=1 #, 
+                        #cycle_types=c("NREM")
                         ) {  
   # Limit by subject
   subject_list <- c(subject_code)
@@ -63,8 +63,8 @@ plot_raster <- function(subject_code, epoch_length=EPOCH_LENGTH, output_dir="/ho
   
   graph_data <- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_episodes <- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
-  graph_cycles <- copy(cycles.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & type %in% cycle_types])
-  graph_bedrest_episodes <- copy(bedrest_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  #graph_cycles <- copy(cycles.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & type %in% cycle_types])
+  #graph_bedrest_episodes <- copy(bedrest_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   
   # Draw
   .e <- environment()
@@ -96,17 +96,19 @@ plot_raster <- function(subject_code, epoch_length=EPOCH_LENGTH, output_dir="/ho
   
   ## Episodes and Cycles
   methods <- c('classic', 'iterative', 'changepoint')
-  r <- foreach(i=1:length(methods)) %do% {
-    end_pos <- i * -2    
-    text_y_pos <- end_pos + 0.5
-    
-    for_this_graph <- graph_cycles[method==methods[i]]
-    #print(nrow(for_this_graph))
-    #print(end_pos)
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = end_pos+1, ymax = end_pos+2, data = graph_episodes[method==methods[i]])
-    plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = end_pos, ymax = end_pos+1, data=for_this_graph)    
-    plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=for_this_graph)
-  }  
+#   r <- foreach(i=1:length(methods)) %do% {
+#     end_pos <- i * -2    
+#     text_y_pos <- end_pos + 0.5
+#     
+#     for_this_graph <- graph_cycles[method==methods[i]]
+#     #print(nrow(for_this_graph))
+#     #print(end_pos)
+#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = end_pos+1, ymax = end_pos+2, data = graph_episodes[method==methods[i]])
+#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = end_pos, ymax = end_pos+1, data=for_this_graph)    
+#     plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=for_this_graph)
+#   }  
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1, ymax = 0, data = graph_episodes)
+  
   
 #  plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, y=-1.5, label=cycle_number), data=graph_cyles[method=='classic'])
 #   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3, ymax = -2, data = graph_periods[method=="iterative"])
@@ -116,17 +118,17 @@ plot_raster <- function(subject_code, epoch_length=EPOCH_LENGTH, output_dir="/ho
 #   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), ymin = -6, ymax = -5, data = graph_cyles[method=="changepoint"])
   
   ## Bedrest Episodes
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), ymin = 0, ymax = 4, alpha=.5, data = graph_bedrest_episodes)
+#  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), ymin = 0, ymax = 4, alpha=.5, data = graph_bedrest_episodes)
   
   
   
   #plot <- plot + geom_point(shape='.', size=2)
   plot <- plot + geom_line() #aes(colour=epoch_type)
   
-  file_name = file.path(output_dir, paste(subject_code, "_", l, '.svg', sep=''))
-  print(file_name)
-  print(length(days_to_graph))
-  ggsave(plot=plot, file=file_name, height=(length(days_to_graph)*1 + 0.5), width=7, scale=2.5, limitsize=FALSE)
+  #file_name = file.path(output_dir, paste(subject_code, "_", l, '.svg', sep=''))
+  #print(file_name)
+  #print(length(days_to_graph))
+  #ggsave(plot=plot, file=file_name, height=(length(days_to_graph)*1 + 0.5), width=7, scale=2.5, limitsize=FALSE)
   
   plot
 
