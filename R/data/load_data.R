@@ -16,7 +16,7 @@ map_epoch_type <- function(x) {
 ## Methods
 # Load epochs for a given subject list
 load_sleep_data <- function(subjects) {
-  sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file.dt))
+  sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file.dt), fill=TRUE)
   setnames(sleep_data, c('subject_code', 'activity_or_bedrest_episode', 'labtime', 'stage'))
   setkey(sleep_data, subject_code, labtime)
   # Generate row indeces
@@ -63,21 +63,10 @@ load_sleep_file.dt <- function(file_path) {
   
 }
 
-
-load_data <- function() {
-  ## Environment Setup
-  # Load Subject Groups
-  subjects.local <<- read.subject_info(subject_fp.local)
-  subjects.all <<- read.subject_info(subject_fp.all)
-  subjects.subset <<- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
-  
-  # Select main subject group
-  subjects <<- subjects.all
-  
-  # Load and set up data for subject group
-  sleep_data <<- load_sleep_data(subjects)
-  
+load_sleep_statistics <- function() {
   # Load and set up sleep stats
+  ## LOAD FROM NETWORK DRIVE!
+  ## PARAMETERIZE PATHS
   sleep_stats <<- as.data.table(read.csv("/home/pwm4/Desktop/sleep_stats.csv"))
   sleep_stats[,Sleep.Efficiency:=as.numeric(as.character(Sleep.Efficiency))]
   setnames(sleep_stats, c("Subject", "SPn"), c("subject_code", "activity_or_bedrest_episode"))
@@ -98,9 +87,29 @@ load_data <- function() {
   setkey(sleep_efficiency, subject_code, activity_or_bedrest_episode)
   
   
+}
+
+
+load_fd_times <- function() {
   # Get FD times
   fd_times <<- subjects[, list(subject_code, start_analysis, end_analysis)]
   fd_times <<- fd_times[!is.null(subject_code) & !is.na(start_analysis) & !is.na(end_analysis)]
   
-  setkey(fd_times, subject_code)  
+  setkey(fd_times, subject_code)   
+}
+
+load_data <- function() {
+  ## Environment Setup
+  # Load Subject Groups
+  subjects.local <- read.subject_info(subject_fp.local)
+  subjects.all <- read.subject_info(subject_fp.all)
+  subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
+  
+  # Select main subject group
+  subjects <<- subjects.local
+  
+  # Load and set up data for subject group
+  sleep_data <<- load_sleep_data(subjects)
+  
+ 
 }

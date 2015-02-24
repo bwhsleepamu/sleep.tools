@@ -1,5 +1,5 @@
 source("R/episodes/classic.R")
-source("R/episodes/changepoint.R")
+#source("R/episodes/changepoint.R")
 source("R/episodes/iterative.R")
 
 ## HELPERS
@@ -78,7 +78,7 @@ merge_label <- function(labels, lengths, label_to_merge) {
 # USED HERE in remove.target.label.dt
 relabel_to_biggest_neighbor <- function(labels, lengths, label_to_merge) {
   i <- which(labels==label_to_merge)
-  if(length(i)!=0L) {
+  if(length(i)!=0L & length(labels) > 1) {
     r <- merge_label(labels, lengths, label_to_merge)
     f <- i + r
     labels[i] = labels[f]    

@@ -1,27 +1,81 @@
+##### NEWWW #######
+
+### Distances:
+
+# 3/4 --> 2 109
+# 2 --> 1 97
+# 2 --> REM 95
+# 2 --> Wake 150
+
+# 145
+# 200
+# 245
+# 300
+# 375
+
+
+tr_dt <- copy(sleep_data)
+
+
+sleep_data
+
+sequences <- tr_dt[, chunk(stage, pk), by='subject_code,activity_or_bedrest_episode']
+sequences[,label:=relabel_to_biggest_neighbor(label, length, '7'),by='subject_code,activity_or_bedrest_episode']
+sequences[,label:=relabel_to_biggest_neighbor(label, length, '0'),by='subject_code,activity_or_bedrest_episode']
+sequences[,label:=relabel_to_biggest_neighbor(label, length, '9'),by='subject_code,activity_or_bedrest_episode']
+sequences[,label:=relabel_to_biggest_neighbor(label, length, '8'),by='subject_code,activity_or_bedrest_episode']
+sequences
+
+length(as.numeric(rep(sequences$label, sequences$length)))
+dim(tr_dt)
+tr_dt[,stage:=as.numeric(rep(sequences$label, sequences$length))]
+tr_dt
+
+tr_dt[stage == 5, dist:=5]
+tr_dt[stage == 1, dist:=6.1]
+tr_dt[stage == 6, dist:=7]
+tr_dt[stage == 2, dist:=8.1]
+tr_dt[stage == 3 | stage == 4, dist:=9.6]
+
+
+test <- tr_dt[activity_or_bedrest_episode ==10 & subject_code=='3335GX']
+
+test
+
+res <- cpt.mean(test$dist, method = "PELT", penalty="AIC1", pen.value=0.001)
+plot(res, type = 'l', cpt.col = "blue")
+
 ####################
 ## Changepoint Bouts
 ####################
-generate_episodes.changepoint <- function(dt, wake=TRUE, undef=FALSE, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
-  dt[,group:=set_changepoint_group(epoch_type,cpmType=cpmType,ARL0=ARL0,startup=startup),by='subject_code,activity_or_bedrest_episode']
-  episodes <- dt[,merge_epochs(pk,epoch_type),by='subject_code,activity_or_bedrest_episode,group']
+generate_episodes.changepoint <- function(dt) {
+  sequences <- dt[, chunk(stage, pk), by='subject_code,activity_or_bedrest_episode']
+  
+  # Re-label undefined sequences as their biggest neighbor
+  sequences[,label:=relabel_to_biggest_neighbor(label, length, '7'),by='subject_code,activity_or_bedrest_episode']
+  sequences[,label:=relabel_to_biggest_neighbor(label, length, '0'),by='subject_code,activity_or_bedrest_episode']
+  sequences[,label:=relabel_to_biggest_neighbor(label, length, '9'),by='subject_code,activity_or_bedrest_episode']
+  sequences[,label:=relabel_to_biggest_neighbor(label, length, '8'),by='subject_code,activity_or_bedrest_episode']
+  
+  dt[,stage:=as.numeric(rep(sequences$label, sequences$length))]
+  
+  
+  dt[,group:=set_changepoint_group(stage),by='subject_code,activity_or_bedrest_episode']
+  episodes <- dt[,merge_epochs(pk,stage),by='subject_code,activity_or_bedrest_episode,group']
   episodes[,group:=NULL]
   
-  if(!undef)
-    episodes <- remove.target.label(episodes, target_label="UNDEF")  
-  if(!wake)
-    episodes <- remove.target.label(episodes, target_label="WAKE")
   
   episodes[, method:='changepoint']
   episodes
 }
 
 ## used in episodes (changepoint)
-set_changepoint_group <- function(epoch_type, cpmType="Mann-Whitney", ARL0=10000, startup=20) {
-  changepoints <- processStream(epoch_type, cpmType=cpmType, ARL0=ARL0, startup=startup)$changePoints
+set_changepoint_group <- function(stages) {
+  changepoints <- cpt.mean(stages, method="PELT", penalty="AIC")@cpts
   
   # Add end of last group
-  if(!length(epoch_type)%in%changepoints)
-    changepoints <- c(changepoints, length(epoch_type))
+  if(!length(stages)%in%changepoints)
+    changepoints <- c(changepoints, length(stages))
   
   # Get lengths of each group
   lengths <- diff(c(0L, changepoints))
