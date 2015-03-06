@@ -85,7 +85,7 @@ set_changepoint_group <- function(stages) {
   stages[stage == 3 | stage == 4, dist:=9.6]
   
   #print(stages)
-  changepoints <- cpt.mean(stages$dist, method="PELT", penalty="AIC")@cpts
+  changepoints <- cpt.mean(stages$dist, method="PELT", penalty="BIC")@cpts
   #print(changepoints)
   # Add end of last group
   if(!nrow(stages)%in%changepoints)

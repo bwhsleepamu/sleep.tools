@@ -28,6 +28,10 @@ generate_episodes.classic <- function(dt, wake=FALSE, undef=FALSE, min_nrem_leng
 ### THIS IS A METHOD THAT JUMPS STRAIGHT TO CYCLES
 
 classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completion_cuttoff=10) {
+  min_nrem_length=30
+  min_rem_length=10
+  completion_cuttoff=10
+  
   # Take series of epochs and collapse them into sequences of the same type  
   sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
   
@@ -46,12 +50,8 @@ classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completi
   sequences[of_interest==TRUE,`:=`(seq_id=seq(1,.N),seq_num=.N),by='subject_code,activity_or_bedrest_episode,label']
   
   ## Tag last sequence that can signify completion
-  u <- ws[label=="NREM"]$length
-  
-  r <- c(sum(u), sum(u) - cumsum(u))
-  
-  i <- c(which(ws$label == "NREM"))
-  n <- diff(i)
+  sequences[,remaining_nrem:=remaining_length(length, label, "NREM"), by='subject_code,activity_or_bedrest_episode']
+  sequences[,remaining_rem:=remaining_length(length, label, "REM"), by='subject_code,activity_or_bedrest_episode']
   
   sequences[, last:=FALSE]
   
@@ -85,6 +85,38 @@ classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completi
   #   
   #   episodes
 }
+
+remaining_length <- function(lengths, labels, target) {
+  nrow <- length(labels)
+  i <- which(labels == target)
+  target_lengths <- lengths[i]
+  length_diffs <- c(sum(target_lengths), sum(target_lengths) - cumsum(target_lengths))
+  
+  
+  # Add beginning
+  i <- c(0, i)
+  
+  # Add end if not included
+  if(!nrow%in%i)
+    i <- c(i, nrow)
+  repeat_n <- diff(i)
+  
+  # Get rid of trailing 0
+  #if(length_diffs[length(length_diffs)] == 0)
+  #length_diffs <- length_diffs[-length(length_diffs)]
+  if(length(repeat_n) < length(length_diffs))
+    length_diffs <- length_diffs[-length(length_diffs)]
+  
+  print(repeat_n)
+  
+  g_lengths <<- lengths
+  g_labels <<- labels
+  g_target <<- target
+  
+  rep(length_diffs, repeat_n)
+  
+}
+
 
 generate_cycles.classic.strict <- function(dt) {
   
