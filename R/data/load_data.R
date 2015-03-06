@@ -98,15 +98,20 @@ load_fd_times <- function() {
   setkey(fd_times, subject_code)   
 }
 
-load_data <- function() {
+load_data <- function(local=TRUE) {
   ## Environment Setup
   # Load Subject Groups
   subjects.local <- read.subject_info(subject_fp.local)
   subjects.all <- read.subject_info(subject_fp.all)
+  
   subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
   
   # Select main subject group
-  subjects <<- subjects.local
+  
+  if(local)
+    subjects <<- subjects.local
+  else
+    subjects <<- subjects.all
   
   # Load and set up data for subject group
   sleep_data <<- load_sleep_data(subjects)

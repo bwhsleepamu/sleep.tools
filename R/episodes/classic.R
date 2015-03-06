@@ -31,18 +31,30 @@ classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completi
   # Take series of epochs and collapse them into sequences of the same type  
   sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
   
-  # Re-label undefined sequences as their biggest neighbor
-  ## TODO: NAs show up!
-  sequences <- sequences[label %in% c("NREM", "REM")]
+  # Focus only on sequences of interest
+  sequences[, of_interest:=FALSE]
+  sequences[label %in% c("NREM", "REM"), of_interest:=TRUE]
     
-  ## Combine neigboring sequences of same type
-  sequences <- sequences[,merge_same_neighbors(.SD),by='subject_code,activity_or_bedrest_episode']
+  # How do we interpret this: 
+  
+  # Episodes of REM sleep shorter than 5 min were added to the previous complete REMP. A REMP interrupted by less 
+  # than 15 min of continuous NREM sleep was treated as a single episode with any intereurrent NREM sleep added to the previous complete 
+  # NREMP. These episodes were extremely rare. If the interruption of REM by NREM sleep was 15 min or longer, each part of the REM episode was 
+  # treated as a separate REMP, if longer than 5 min
   
   ## Number sequences in each bedrest episode
-  sequences[,`:=`(seq_id=seq(1,.N),seq_num=.N),by='subject_code,activity_or_bedrest_episode,label']
+  sequences[of_interest==TRUE,`:=`(seq_id=seq(1,.N),seq_num=.N),by='subject_code,activity_or_bedrest_episode,label']
   
   ## Tag last sequence that can signify completion
+  u <- ws[label=="NREM"]$length
+  
+  r <- c(sum(u), sum(u) - cumsum(u))
+  
+  i <- c(which(ws$label == "NREM"))
+  n <- diff(i)
+  
   sequences[, last:=FALSE]
+  
   View(sequences[length >= completion_cuttoff])
   
   
@@ -53,6 +65,7 @@ classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completi
   sequences[label == "REM" & (length >= min_rem_length | seq_num == 1), keep:=TRUE]
   
   
+  sequences[,remaining_rem]
   
   episodes <- copy(sequences[keep==TRUE])
   episodes[,`:=`(group=NULL,seq_num=NULL,keep=NULL)]
@@ -79,12 +92,13 @@ generate_cycles.classic.strict <- function(dt) {
 
 merge_same_neighbors <- function(dt) {
   
+  
   n <- nrow(dt)
-  y <- dt$label[-1L] != dt$label[-n]
+  y <- (dt$label[-1L] != dt$label[-n])
   i <- c(which(y | is.na(y)), n)
   
   diffs <- diff(c(0L, i))
-  values <- labels[i]
+  values <- dt$label[i]
   
   result <- copy(dt)
   result[,group:=rep(seq(1,length(values)), diffs)]
