@@ -26,11 +26,14 @@ generate_episodes.classic <- function(dt, wake=FALSE, undef=FALSE, min_nrem_leng
 ##################
 
 ### THIS IS A METHOD THAT JUMPS STRAIGHT TO CYCLES
+sequences <- function(dt) {
+  dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
+}
 
-classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completion_cuttoff=10) {
+classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completion_cutoff=10) {
   min_nrem_length=30
   min_rem_length=10
-  completion_cuttoff=10
+  completion_cutoff=10
   
   # Take series of epochs and collapse them into sequences of the same type  
   sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
@@ -53,37 +56,20 @@ classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completi
   sequences[,remaining_nrem:=remaining_length(length, label, "NREM"), by='subject_code,activity_or_bedrest_episode']
   sequences[,remaining_rem:=remaining_length(length, label, "REM"), by='subject_code,activity_or_bedrest_episode']
   
-  sequences[, last:=FALSE]
+  sequences[,completed:=FALSE]
+  sequences[label=="NREM" & remaining_rem > completion_cutoff,completed:=TRUE]
+  sequences[label=="REM" & remaining_nrem > completion_cutoff,completed:=TRUE]
   
-  View(sequences[length >= completion_cuttoff])
-  
-  
-  
-  ## Keep sequences above thresholds
   sequences[,keep:=FALSE]
-  sequences[label=="NREM" & length >= min_nrem_length, keep:=TRUE]
-  sequences[label == "REM" & (length >= min_rem_length | seq_num == 1), keep:=TRUE]
+  sequences[label=="NREM" & length >= min_nrem_length & completed == TRUE, keep:=TRUE]
+  sequences[label == "REM" & (length >= min_rem_length | seq_num == 1) & completed == TRUE, keep:=TRUE]
+  
+  sequences[keep==TRUE,group_number:=find_first_instance(.SD), by='subject_code,activity_or_bedrest_episode']
+  sequences[keep==TRUE & group_number != 1, keep:=FALSE]
+
+  sequences[keep==TRUE]
   
   
-  sequences[,remaining_rem]
-  
-  episodes <- copy(sequences[keep==TRUE])
-  episodes[,`:=`(group=NULL,seq_num=NULL,keep=NULL)]
-  
-  episodes <- r <- episodes[,merge_same_neighbors(.SD),by='subject_code,activity_or_bedrest_episode']
-  
-  episodes
-  
-  #   
-  #   
-  #   # Merge around seeds by setting a label and group number for each sequence.
-  #   sequences[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,activity_or_bedrest_episode']
-  #   
-  #   # Collapse all sequences within a group number into one episode
-  #   episodes <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
-  #   episodes[,`:=`(group=NULL, method='classic')]
-  #   
-  #   episodes
 }
 
 remaining_length <- function(lengths, labels, target) {
@@ -139,6 +125,25 @@ merge_same_neighbors <- function(dt) {
   
   result
 }
+
+find_first_instance <- function(dt) {
+  
+  
+  n <- nrow(dt)
+  y <- (dt$label[-1L] != dt$label[-n])
+  i <- c(which(y | is.na(y)), n)
+  
+  diffs <- diff(c(0L, i))
+  values <- dt$label[i]
+  print(diffs)
+  print(values)
+  
+  result <- copy(dt)
+  result[,group_id:=rep(seq(1,length(values)), diffs)]
+  result[,group_number:=seq(.N),by='group_id']
+  result$group_number
+}
+
 
 
 merge_around_seeds <- function(labels, lengths, wake=FALSE, min_wake_length=10, min_rem_length=10, min_nrem_length=30) {
