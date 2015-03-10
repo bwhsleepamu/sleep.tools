@@ -48,21 +48,28 @@
 ####################
 ## Changepoint Bouts
 ####################
-generate_episodes.changepoint <- function(dt) {
+generate_episodes.changepoint <- function(dt, distances=list(wake=5.5, rem=6.5, stage1=6.1, stage2=8.3, stage3=9.6), stage1=FALSE, clean=TRUE, ic="SIC") {
   
   # Re-label undefined epochs
+  dt <- copy(dt)
   sequences <- dt[, chunk(stage, pk), by='subject_code,activity_or_bedrest_episode']
-  sequences <- remove.target.label(sequences, target_label='7')
-  sequences <- remove.target.label(sequences, target_label='0')
-  sequences <- remove.target.label(sequences, target_label='9')
-  sequences <- remove.target.label(sequences, target_label='8')
+  
+  if(clean) {
+    sequences <- remove.target.label(sequences, target_label='7')
+    sequences <- remove.target.label(sequences, target_label='0')
+    sequences <- remove.target.label(sequences, target_label='9')
+    sequences <- remove.target.label(sequences, target_label='8')    
+  }
+  if(!stage1)
+    sequences <- remove.target.label(sequences, target_label='1')
+  
   
   #print(sequences[label%in%c('7','0','9','8')]$label)
   dt[,stage:=as.numeric(rep(sequences$label, sequences$length))]
   
   #print(dt[stage%in%c(7,0,9,8)])
   
-  dt[,group:=set_changepoint_group(as.data.table(stage)),by='subject_code,activity_or_bedrest_episode']
+  dt[,group:=set_changepoint_group(as.data.table(stage), distances, stage1, ic),by='subject_code,activity_or_bedrest_episode']
   episodes <- dt[,merge_epochs(pk,stage),by='subject_code,activity_or_bedrest_episode,group']
   episodes[,group:=NULL]
   
@@ -70,22 +77,27 @@ generate_episodes.changepoint <- function(dt) {
   episodes[, method:='changepoint']
   episodes[,pk:=.I]
   episodes[,episode_type:=map_epoch_type(label),by='pk']
+  episodes[label=="3" | label=="4",label:='3/4']
+  episodes[label=="5", label:="WAKE"]
+  episodes[label=="6" | label==6, label:="REM"]
   episodes[,pk:=NULL]
   episodes
+  
 }
 
 ## used in episodes (changepoint)
-set_changepoint_group <- function(stages) {
+set_changepoint_group <- function(stages, distances, stage1, ic) {
   # Set distances for cpm.mean
   stages[,dist:=0]
-  stages[stage == 5, dist:=5]
-  stages[stage == 1, dist:=6.1]
-  stages[stage == 6, dist:=7]
-  stages[stage == 2, dist:=8.1]
-  stages[stage == 3 | stage == 4, dist:=9.6]
+  stages[stage == 5, dist:=distances$wake]
+  if(stage1)
+    stages[stage == 1, dist:=distances$stage1]
+  stages[stage == 6, dist:=distances$rem]
+  stages[stage == 2, dist:=distances$stage2]
+  stages[stage == 3 | stage == 4, dist:=distances$stage3]
   
   #print(stages)
-  changepoints <- cpt.mean(stages$dist, method="PELT", penalty="BIC")@cpts
+  changepoints <- cpt.mean(stages$dist, method="PELT", penalty=ic)@cpts
   #print(changepoints)
   # Add end of last group
   if(!nrow(stages)%in%changepoints)

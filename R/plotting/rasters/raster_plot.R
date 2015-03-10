@@ -51,6 +51,9 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
                         first_day=1 #, 
                         #cycle_types=c("NREM")
                         ) {  
+  
+  epoch_length = EPOCH_LENGTH
+  
   # Limit by subject
   subject_list <- c(subject_code)
   
@@ -61,8 +64,8 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
   
   print(days_to_graph)
   
-  graph_data <- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
-  graph_episodes <- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
+  graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
   #graph_cycles <- copy(cycles.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & type %in% cycle_types])
   #graph_bedrest_episodes <- copy(bedrest_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   
@@ -95,19 +98,26 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
   #plot <- plot + scale_fill_manual(values=alpha(c("blue", "red", "black", "purple", "green", "yellow"), 0.8))
   
   ## Episodes and Cycles
-  methods <- c('classic', 'iterative', 'changepoint')
+#   methods <- c('raw')#, 'classic')#, 'changepoint')
 #   r <- foreach(i=1:length(methods)) %do% {
 #     end_pos <- i * -2    
 #     text_y_pos <- end_pos + 0.5
 #     
-#     for_this_graph <- graph_cycles[method==methods[i]]
+#     #for_this_graph <- graph_cycles[method==methods[i]]
 #     #print(nrow(for_this_graph))
 #     #print(end_pos)
-#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = end_pos+1, ymax = end_pos+2, data = graph_episodes[method==methods[i]])
-#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = end_pos, ymax = end_pos+1, data=for_this_graph)    
-#     plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=for_this_graph)
+#     plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = end_pos+.2, ymax = end_pos+1.8, data = graph_episodes[method==methods[i]])
+#     #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = end_pos, ymax = end_pos+1, data=for_this_graph)    
+#     #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=for_this_graph)
 #   }  
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1, ymax = 0, data = graph_episodes)
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1, ymax = -0.2, data = graph_episodes[method=='classic'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.8, ymax = -1, data = graph_episodes[method=='classic' & keep==TRUE])
+  
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3, ymax = -2.2, data = graph_episodes[method=='iterative'])
+#  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3.8, ymax = -3, data = graph_episodes[method=='iterative' & keep==TRUE])
+
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = episode_type), ymin = -5, ymax = -4.2, data = graph_episodes[method=='changepoint'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -5.8, ymax = -5, data = graph_episodes[method=='changepoint'])
   
   
 #  plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, y=-1.5, label=cycle_number), data=graph_cyles[method=='classic'])
@@ -189,9 +199,9 @@ y_axis_formatter <- function(x) {
   else if (x == 3) { res <- "Stage 4" }
   else if (x == 4) { res <- "REM" }
   else if (x == 0) { res <- "UNDEF"}
-  else if (x == -1) { res <- "Classic"}
-  else if (x == -3) { res <- "Iterative"}
-  else if (x == -5) { res <- "Changepoint"}
+  else if (x == -1) { res <- ""}
+  else if (x == -3) { res <- ""}
+  else if (x == -5) { res <- ""}
   else { res <- as.character(x) }
   
   res

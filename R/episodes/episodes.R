@@ -1,6 +1,6 @@
-#source("R/episodes/classic.R")
+source("R/episodes/classic.R")
 source("R/episodes/changepoint.R")
-#source("R/episodes/iterative.R")
+source("R/episodes/iterative.R")
 
 ## HELPERS
 label_wake <- function(dt) {
@@ -116,60 +116,92 @@ remove.target.label <- function(sequences, target_label='UNDEF') {
 
 
 
+## Main Environment Functions
 setup_episodes <- function() {
+  # Input: `sleep_data` global variable
+  # Output: `episodes` global variable
   
   ### NREM and REM Episodes
   ## Calculate episodes using different methods.
+  ######## Raw Stages
+  episodes.raw <- generate_episodes.raw(sleep_data)
   ######## Classic
-  #episodes.classic <- generate_episodes.classic(sleep_data, wake=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
+  episodes.classic <- generate_episodes.classic(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, completion_cutoff=CLASSIC_COMPLETION_CUTOFF)
   ######## Iterative
-  #episodes.iterative <- generate_episodes.iterative(sleep_data, wake=TRUE, undef=FALSE, min_nrem_length=mnl, min_rem_length=mrl, min_wake_length=mwl)
+  episodes.iterative <- generate_episodes.iterative(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, min_wake_length=CLASSIC_MIN_REM)
   ######## Changepoint
-  episodes.changepoint <- generate_episodes.changepoint(sleep_data)
+  episodes.changepoint <- generate_episodes.changepoint(sleep_data, distances=CP_DISTANCES, stage1=CP_STAGE1, clean=CP_CLEAN, ic=CP_IC)
   ## Merge methods into one table
-  episodes <<- episodes.changepoint #rbindlist(list(episodes.changepoint,episodes.classic,episodes.iterative))
+  episodes <<- rbindlist(list(episodes.iterative,episodes.changepoint,episodes.classic), fill=TRUE, use.names=TRUE)
   # Get rid of wake episodes
   episodes <<- episodes[activity_or_bedrest_episode > 0]
   # Merge with information about each episode
   setkey(sleep_data,pk)
   #episodes <<- merge(episodes, subjects, all.x=TRUE, all.y=FALSE, by='subject_code')
   episodes[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
-  #episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]  
+}
+
+add_info_to_episodes <- function() {
+  # Input: `episodes` global variable
+  # Output: `episodes` global variable
   
-  #episodes <<- merge(episodes,sleep_efficiency,all.x=TRUE, all.y=FALSE)
-  #episodes[,agreement:=(sum(sleep_data[start_position:end_position]$epoch_type == label)/length),by=id]
+  # Label episodes by the part of scheduled protocol they're in
+  episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]   
   
-  ### sleep_episodes and bedrest_episodes
-  # Get Sleep Episodes (from sleep onset) and Bedrest episodes
-  #bedrest_episodes <<- sleep_data[activity_or_bedrest_episode>0,list(start_position=min(.I), end_position=max(.I), start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
-  #sleep_episodes <<- copy(bedrest_episodes)
-  #sleep_episodes[,sleep_onset:=get_first_stage(sleep_data$stage[start_position:end_position], start_position, 2, not_found=start_position), by='subject_code,activity_or_bedrest_episode']
-  #sleep_episodes[,`:=`(start_position=sleep_onset, sleep_onset=NULL)]
-  #sleep_episodes <- sleep_episodes[!is.na(start_position)]
+  # Add sleep efficiency statistics
+  episodes <<- merge(episodes,sleep_efficiency,all.x=TRUE, all.y=FALSE)
   
-  # Join subject data with episodes and cycles
-  #setkey(bedrest_episodes, subject_code)
-  #setkey(sleep_episodes, subject_code)
-  #bedrest_episodes <<- bedrest_episodes[fd_times]
-  #sleep_episodes <<- sleep_episodes[fd_times]
-  
-  # Label FD, recovery, baseline
-  #sleep_episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
-  #bedrest_episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
-  
-  # Label by sleep efficiency
-  #setkey(bedrest_episodes, subject_code, activity_or_bedrest_episode)
-  #setkey(sleep_episodes, subject_code, activity_or_bedrest_episode)
-  #sleep_episodes <<- sleep_episodes[sleep_efficiency]
-  #bedrest_episodes <<- bedrest_episodes[sleep_efficiency]
-  
-  # Fix for NAs in start or end positions
-  #sleep_episodes <<- sleep_episodes[!is.na(start_position) & !is.na(end_position)]
-  #bedrest_episodes <<- bedrest_episodes[!is.na(start_position) & !is.na(end_position)]
+  # Add agreement statistics
+  episodes[,agreement:=(sum(sleep_data[start_position:end_position]$epoch_type == label)/length),by=id]
   
   # Label SLEEP/WAKE parts of sleep period (from sleep onset to wake)
-  #episodes[,first_sleep_id:=id[min(match(c("NREM", "REM"), label, nomatch=length(l)))],by='subject_code,activity_or_bedrest_episode,method']
-  #episodes[,last_sleep_id:=id[length(label) - min(match(c("NREM", "REM"), rev(label), nomatch=length(l))) + 1L],by='subject_code,activity_or_bedrest_episode,method']
-  #episodes[,sleep_wake_label:="WAKE"]
-  #episodes[id <= last_sleep_id & id >= first_sleep_id, sleep_wake_label:="SLEEP"]  
+  episodes[,first_sleep_id:=id[min(match(c("NREM", "REM"), label, nomatch=length(l)))],by='subject_code,activity_or_bedrest_episode,method']
+  episodes[,last_sleep_id:=id[length(label) - min(match(c("NREM", "REM"), rev(label), nomatch=length(l))) + 1L],by='subject_code,activity_or_bedrest_episode,method']
+  episodes[,sleep_wake_label:="WAKE"]
+  episodes[id <= last_sleep_id & id >= first_sleep_id, sleep_wake_label:="SLEEP"]  
+  
 }
+
+setup_sleep_bedrest_episodes <- function() {
+  # Input: `sleep_data` global variable, `fd_times` global variable, `sleep_efficiency` global variable
+  # Output: `bedrest_episodes` global variable, `sleep_episodes` global variable
+  
+  # Get Sleep Episodes (from sleep onset) and Bedrest episodes
+  bedrest_episodes <<- sleep_data[activity_or_bedrest_episode>0,list(start_position=min(.I), end_position=max(.I), start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
+
+  sleep_episodes <<- copy(bedrest_episodes)
+  sleep_episodes[,sleep_onset:=get_first_stage(sleep_data$stage[start_position:end_position], start_position, 2, not_found=start_position), by='subject_code,activity_or_bedrest_episode']
+  sleep_episodes[,`:=`(start_position=sleep_onset, sleep_onset=NULL)]
+  sleep_episodes <<- sleep_episodes[!is.na(start_position)]
+ 
+  # Join subject data
+  setkey(bedrest_episodes, subject_code)
+  setkey(sleep_episodes, subject_code)
+  bedrest_episodes <<- bedrest_episodes[fd_times]
+  sleep_episodes <<- sleep_episodes[fd_times]
+  
+  # Label FD, recovery, baseline
+  sleep_episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
+  bedrest_episodes[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
+  
+  # Label by sleep efficiency
+  setkey(bedrest_episodes, subject_code, activity_or_bedrest_episode)
+  setkey(sleep_episodes, subject_code, activity_or_bedrest_episode)
+  sleep_episodes <<- sleep_episodes[sleep_efficiency]
+  bedrest_episodes <<- bedrest_episodes[sleep_efficiency]
+  
+  # Fix for NAs in start or end positions
+  sleep_episodes <<- sleep_episodes[!is.na(start_position) & !is.na(end_position)]
+  bedrest_episodes <<- bedrest_episodes[!is.na(start_position) & !is.na(end_position)]
+  
+}
+
+
+
+
+
+
+
+
+
+

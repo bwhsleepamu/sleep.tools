@@ -13,9 +13,10 @@ setup_episodes()
 setup_raster_data(sleep_data, episodes)
 
 plot_raster("3335GX", number_of_days=5, first_day=27)
-plot_raster("3335GX", number_of_days=5, first_day=10)
-plot_raster("3335GX", number_of_days=6, first_day=1)
+plot_raster("3353GX", number_of_days=5, first_day=1)
+plot_raster("3335GX", number_of_days=5, first_day=2)
 
+plot_raster("23CEHM", number_of_days=5, first_day=1)
 
 #####
 

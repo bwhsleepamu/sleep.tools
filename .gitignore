@@ -12,3 +12,5 @@
 .RData
 
 *.RData
+
+/data/*

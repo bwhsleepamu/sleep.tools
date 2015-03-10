@@ -2,39 +2,36 @@
 ## Classic V1
 ##################
 
-generate_episodes.classic <- function(dt, wake=FALSE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
-  # Take series of epochs and collapse them into sequences of the same type  
-  sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
-  
-  # Re-label undefined sequences as their biggest neighbor
-  ## TODO: NAs show up!
-  if(!undef)
-    sequences <- remove.target.label(sequences, target_label="UNDEF")    
-  
-  # Merge around seeds by setting a label and group number for each sequence.
-  sequences[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,activity_or_bedrest_episode']
-  
-  # Collapse all sequences within a group number into one episode
-  episodes <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
-  episodes[,`:=`(group=NULL, method='classic')]
-  
-  episodes
-}
+# generate_episodes.classic <- function(dt, wake=FALSE, undef=FALSE, min_nrem_length=NULL, min_rem_length=NULL, min_wake_length=NULL) {
+#   # Take series of epochs and collapse them into sequences of the same type  
+#   sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
+#   
+#   # Re-label undefined sequences as their biggest neighbor
+#   ## TODO: NAs show up!
+#   if(!undef)
+#     sequences <- remove.target.label(sequences, target_label="UNDEF")    
+#   
+#   # Merge around seeds by setting a label and group number for each sequence.
+#   sequences[,c('label', 'group'):=merge_around_seeds(label, length, wake=wake, min_nrem_length=min_nrem_length, min_rem_length=min_rem_length, min_wake_length=min_wake_length), by='subject_code,activity_or_bedrest_episode']
+#   
+#   # Collapse all sequences within a group number into one episode
+#   episodes <- sequences[,merge_group(start_position, end_position, label, length), by='subject_code,activity_or_bedrest_episode,group']
+#   episodes[,`:=`(group=NULL, method='classic')]
+#   
+#   episodes
+# }
 
 ##################
 ## Classic V2
 ##################
 
 ### THIS IS A METHOD THAT JUMPS STRAIGHT TO CYCLES
-sequences <- function(dt) {
-  dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
+generate_episodes.raw <- function(dt) {
+  episodes <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
+  episodes[,method:="raw"]
 }
 
-classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completion_cutoff=10) {
-  min_nrem_length=30
-  min_rem_length=10
-  completion_cutoff=10
-  
+generate_episodes.classic <- function(dt, min_nrem_length=30, min_rem_length=10, completion_cutoff=10) {
   # Take series of epochs and collapse them into sequences of the same type  
   sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
   
@@ -67,8 +64,11 @@ classic_episodes <- function(dt, min_nrem_length=30, min_rem_length=10, completi
   sequences[keep==TRUE,group_number:=find_first_instance(.SD), by='subject_code,activity_or_bedrest_episode']
   sequences[keep==TRUE & group_number != 1, keep:=FALSE]
 
-  sequences[keep==TRUE]
+  sequences[,method:="classic"]
   
+  sequences[,`:=`(of_interest=NULL, seq_id=NULL, seq_num=NULL, remaining_rem=NULL, remaining_nrem=NULL, completed=NULL, group_number=NULL)]
+  
+  sequences
   
 }
 
@@ -92,8 +92,6 @@ remaining_length <- function(lengths, labels, target) {
   #length_diffs <- length_diffs[-length(length_diffs)]
   if(length(repeat_n) < length(length_diffs))
     length_diffs <- length_diffs[-length(length_diffs)]
-  
-  print(repeat_n)
   
   g_lengths <<- lengths
   g_labels <<- labels
@@ -135,9 +133,7 @@ find_first_instance <- function(dt) {
   
   diffs <- diff(c(0L, i))
   values <- dt$label[i]
-  print(diffs)
-  print(values)
-  
+
   result <- copy(dt)
   result[,group_id:=rep(seq(1,length(values)), diffs)]
   result[,group_number:=seq(.N),by='group_id']
