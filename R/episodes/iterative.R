@@ -48,6 +48,11 @@ iterative_merge <- function(sequences, min_nrem_length, min_rem_length, min_wake
 
 ## Used here in iterative merge
 relabel_by_length <- function(target_label, target_length, labels, lengths) {
+#   print("------")
+#   print(target_label)
+#   print(target_length )
+#   print(labels)
+#   print(lengths)
   # Re-label
   targets <- which(lengths==target_length & labels==target_label)
 
@@ -71,7 +76,8 @@ relabel_by_length <- function(target_label, target_length, labels, lengths) {
     # Get index of neighbors to merge into
     sources <- targets + merge_direction
     # Re-label to neighbors
-    labels[targets] <- labels[sources]    
+    if(length(labels[sources]) > 0)
+      labels[targets] <- labels[sources]    
   }
   
   # Set groups based on new label values

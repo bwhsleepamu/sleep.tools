@@ -129,6 +129,7 @@ setup_episodes <- function() {
   episodes.classic <- generate_episodes.classic(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, completion_cutoff=CLASSIC_COMPLETION_CUTOFF)
   ######## Iterative
   episodes.iterative <- generate_episodes.iterative(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, min_wake_length=CLASSIC_MIN_REM)
+  #episodes.iterative <- data.table()
   ######## Changepoint
   episodes.changepoint <- generate_episodes.changepoint(sleep_data, distances=CP_DISTANCES, stage1=CP_STAGE1, clean=CP_CLEAN, ic=CP_IC)
   ## Merge methods into one table

@@ -110,4 +110,23 @@ set_changepoint_group <- function(stages, distances, stage1, ic) {
   rep.int(seq(1,length(lengths)), lengths)
 }
 
+collapsed_changepoint <- function(dt) {
+  
+  
+  n <- nrow(dt)
+  y <- (dt$episode_type[-1L] != dt$episode_type[-n])
+  i <- c(which(y | is.na(y)), n)
+  
+  diffs <- diff(c(0L, i))
+  values <- dt$episode_type[i]
+  
+  result <- copy(dt)
+  result[,group:=rep(seq(1,length(values)), diffs)]
+  result <- result[,data.table(start_position=min(start_position), end_position=max(end_position), length=sum(length), start_labtime=min(start_labtime), end_labtime=max(end_labtime), method='changepoint_collapsed'), by='group']
+  result[,label:=values]
+  
+  result
+}
+
+
 

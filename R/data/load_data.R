@@ -105,14 +105,15 @@ load_data <- function(local=TRUE) {
   subjects.local <- read_subject_info(subject_fp.local)
   subjects.all <- read_subject_info(subject_fp.all)
   
-  subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
+#  subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
+  subjects.subset <- subjects.all[study %in% c('T20CSR-Control', 'T20CSR-CSR')]
   
   # Select main subject group
   
   if(local)
     subjects <<- subjects.local
   else
-    subjects <<- subjects.all
+    subjects <<- subjects.subset
     
   
   # Load and set up data for subject group
