@@ -35,9 +35,43 @@ setup_cycles()
 
 
 
+qplot
+
+
+
+
 # ahahhaa
 #start_labtime < start_analysis | end_labtime > end_analysis
 #start_labtime >= start_analysis & end_labtime <= end_analysis
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

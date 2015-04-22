@@ -96,18 +96,23 @@ set_changepoint_group <- function(stages, distances, stage1, ic) {
   stages[stage == 2, dist:=distances$stage2]
   stages[stage == 3 | stage == 4, dist:=distances$stage3]
   
-  #print(stages)
-  changepoints <- cpt.mean(stages$dist, method="PELT", penalty=ic)@cpts
-  #print(changepoints)
-  # Add end of last group
-  if(!nrow(stages)%in%changepoints)
-    changepoints <- c(changepoints, length(stages))
+  print(length(stages$dist))
   
-  # Get lengths of each group
-  lengths <- diff(c(0L, changepoints))
-  
-  # Label groups
-  rep.int(seq(1,length(lengths)), lengths)
+  if(length(stages$dist) > 1) {
+    changepoints <- cpt.mean(stages$dist, method="PELT", penalty=ic)@cpts
+    #print(changepoints)
+    # Add end of last group
+    if(!nrow(stages)%in%changepoints)
+      changepoints <- c(changepoints, length(stages))
+    
+    # Get lengths of each group
+    lengths <- diff(c(0L, changepoints))
+    
+    # Label groups
+    rep.int(seq(1,length(lengths)), lengths)
+  } else {
+    rep.int(seq(1,1), length(stages$dist))
+  }
 }
 
 collapsed_changepoint <- function(dt) {
