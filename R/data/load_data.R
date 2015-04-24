@@ -16,7 +16,7 @@ map_epoch_type <- function(x) {
 ## Methods
 # Load epochs for a given subject list
 load_sleep_data <- function(subjects) {
-  sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file))
+  sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file), fill=TRUE)
   setnames(sleep_data, c('subject_code', 'activity_or_bedrest_episode', 'labtime', 'stage'))
   setkey(sleep_data, subject_code, labtime)
   # Generate row indeces

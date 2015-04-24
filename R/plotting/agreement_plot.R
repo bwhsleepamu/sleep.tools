@@ -19,7 +19,7 @@ plot_agreement <- function(data, compare_by="method", facet_x_by="age_group", fa
   
   plot <- ggplot(data, aes_string(x="agreement", color=compare_by))
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette) + theme_mine()
-  plot <- plot + ggtitle("Agreement within Periods by Method")
+  plot <- plot + ggtitle("Agreement within Episodes by Method")
   plot <- plot + xlab("Agreement")
   plot <- plot + facet_grid(paste(facet_y_by, ' ~ ', facet_x_by), scales='free_y')
   plot <- plot + geom_density(alpha=.3)

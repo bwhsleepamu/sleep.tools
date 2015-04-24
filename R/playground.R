@@ -4,16 +4,26 @@ source("R/main/helper_methods.R")
 
 source("R/data/load_data.R")
 source("R/episodes/episodes.R")
+
 source("R/cycles/cycles.R")
 source("R/plotting/rasters/raster_plot.R")
 
+source("R/analysis/analysis.R")
 
-load_data(FALSE)
+load_data(local=FALSE)
 setup_episodes()
-setup_cycles()
 
+
+setup_cycles()
 setup_raster_data(sleep_data, episodes, cycles)
 
+
+
+
+
+
+
+###
 plot_raster("3335GX", number_of_days=5, first_day=27)
 plot_raster("3353GX", number_of_days=5, first_day=1)
 plot_raster("3335GX", number_of_days=5, first_day=2)

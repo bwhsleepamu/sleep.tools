@@ -136,7 +136,7 @@ setup_episodes <- function() {
   episodes.changepoint.compact[,group:=set_group(episodes.changepoint.compact$episode_type)]
   episodes.changepoint.compact <- episodes.changepoint.compact[,merge_group(start_position, end_position, episode_type, length), by='subject_code,activity_or_bedrest_episode,group']
   episodes.changepoint.compact[,method:='changepoint_compact']
-  episodes.changepoint.compact[,episode_type:='label']
+  episodes.changepoint.compact[,episode_type:=label]
   
   ## Merge methods into one table
   episodes <<- rbindlist(list(episodes.iterative,episodes.changepoint,episodes.changepoint.compact), fill=TRUE, use.names=TRUE)
