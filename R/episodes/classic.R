@@ -68,6 +68,9 @@ generate_episodes.classic <- function(dt, min_nrem_length=30, min_rem_length=10,
   
   sequences[,`:=`(of_interest=NULL, seq_id=NULL, seq_num=NULL, remaining_rem=NULL, remaining_nrem=NULL, completed=NULL, group_number=NULL)]
   
+  sequences <- sequences[keep==1]
+  sequences[,keep:=NULL]
+  
   sequences
   
 }

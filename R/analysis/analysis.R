@@ -5,11 +5,11 @@ source('R/plotting/agreement_plot.R')
 analysis_main <- function() {
   joint_episodes <- merge(episodes, subjects, by='subject_code')
   joint_episodes <- merge(joint_episodes, sleep_efficiency, by=c('subject_code', 'activity_or_bedrest_episode'))
-  joint_episodes[method=='iterative', episode_type:=label]
+  #joint_episodes[method=='iterative', episode_type:=label]
+  
+  joint_episodes <- joint_episodes[method %in% c('changepoint_compact', 'iterative')]
+  
   set_agreement(joint_episodes, sleep_data)
-  
-  
-  
   
   # Pre During Post
   
@@ -29,17 +29,17 @@ analysis_main <- function() {
   joint_episodes[start_labtime >= end_analysis & end_labtime >= end_analysis, protocol_section:='post']
   
   
-  episode_counts <- joint_episodes[,count_in_bedrest_episode(episode_type),by='subject_code,method,activity_or_bedrest_episode']
+  episode_counts <- joint_episodes[,count_in_bedrest_episode(label),by='subject_code,method,activity_or_bedrest_episode']
+  episode_counts <- episode_counts[method %in% c('changepoint_compact', 'iterative')]
   
-  
-  plot_agreement(joint_episodes[method!='changepoint'])
+  plot_agreement(joint_episodes)
   
   joint_episodes <- joint_episodes[method!='changepoint' & episode_type!='UNDEF']
   
-  p <- ggplot(joint_episodes[episode_type!="UNDEF"], aes(factor(episode_type), agreement))
+  p <- ggplot(joint_episodes[label!="UNDEF"], aes(factor(label), agreement))
   p + geom_boxplot(aes(fill = factor(method))) + coord_flip()
   
-  p <- ggplot(joint_episodes, aes(factor(episode_type), length))
+  p <- ggplot(joint_episodes[label!="UNDEF"], aes(factor(label), length))
   p + geom_boxplot(aes(fill = factor(method))) + scale_y_log10()
   
   p <- ggplot(episode_counts, aes(factor(method), nrem_count))
@@ -50,6 +50,10 @@ analysis_main <- function() {
   
   p <- ggplot(episode_counts, aes(factor(method), wake_count))
   p + geom_boxplot(aes(fill = factor(method)))
+
+  p <- ggplot(cycles[method != 'changepoint' & cycle_number < 10], aes(factor(method), length))  
+  p <- p + facet_grid(type ~ cycle_number)
+  p + geom_boxplot(aes(fill = factor(method))) + scale_y_log10()
   
 }
 

@@ -24,11 +24,11 @@ setup_raster_data(sleep_data, episodes, cycles)
 
 
 ###
-plot_raster("3335GX", number_of_days=5, first_day=27)
+plot_raster("3335GX", number_of_days=8, first_day=25)
 plot_raster("3353GX", number_of_days=5, first_day=1)
 plot_raster("3335GX", number_of_days=5, first_day=2)
 
-plot_raster("23CEHM", number_of_days=10, first_day=1)
+plot_raster("23CEHM", number_of_days=10, first_day=3)
 plot_raster("23CEHM", number_of_days=5, first_day=5)
 
 #####

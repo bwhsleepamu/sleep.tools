@@ -6,7 +6,7 @@ NREM_MIN_PERIOD_LENGTH = 30
 
 
 # Changepoint
-CP_DISTANCES=list(wake=5.5, rem=6.5, stage1=6.1, stage2=8.3, stage3=9.6)
+CP_DISTANCES=list(wake=5.5, rem=6.5, stage1=6.1, stage2=7.3, stage3=8.6)
 CP_STAGE1=FALSE
 CP_CLEAN=TRUE
 CP_IC="SIC"
