@@ -1,6 +1,6 @@
 
-plot_agreement <- function(data, compare_by="method", facet_x_by="age_group", facet_y_by="episode_type", include_flags=c(TRUE),
-                           episode_types=c("NREM", "REM", "WAKE"),
+plot_agreement <- function(data, compare_by="method", facet_x_by="age_group", facet_y_by="label", include_flags=c(TRUE),
+                           labels=c("NREM", "REM", "WAKE"),
                            sleep_efficiency_labels=c("100%", "80%", "60%", "40%", "20%"),
                            age_groups = c("Y","O"),
                            habitual_csr_groups = c("H", "R"),
@@ -9,7 +9,7 @@ plot_agreement <- function(data, compare_by="method", facet_x_by="age_group", fa
   
   
   data <- data[include %in% include_flags &
-               episode_type %in% episode_types &
+               label %in% labels &
                se_label %in% sleep_efficiency_labels &
                age_group %in% age_groups &
                habitual_csr %in% habitual_csr_groups &

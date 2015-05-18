@@ -10,7 +10,7 @@ set_agreement <- function(episodes, sleep_data) {
   sd[stage==2, label_b:='2']
   
   ae[,pik:=.I]
-  ae[, agreement:=sum(sd[start_position:end_position]$label_a == episode_type)/length,by='pik']
+  ae[, agreement:=sum(sd[start_position:end_position]$label_a == label)/length,by='pik']
   #ae[method=='iterative', agreement:=sum(sd[start_position:end_position]$label_a == label)/length,by='pik']
 }
 

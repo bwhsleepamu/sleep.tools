@@ -134,12 +134,15 @@ setup_episodes <- function(sleep_data) {
   episodes.changepoint <<- generate_episodes.changepoint(sleep_data, distances=CP_DISTANCES, stage1=CP_STAGE1, clean=CP_CLEAN, ic=CP_IC)
   episodes.changepoint.compact <<- copy(episodes.changepoint)
   episodes.changepoint.compact[,group:=set_group(episodes.changepoint.compact$episode_type)]
-  episodes.changepoint.compact <- episodes.changepoint.compact[,merge_group(start_position, end_position, episode_type, length), by='subject_code,activity_or_bedrest_episode,group']
+  episodes.changepoint.compact <<- episodes.changepoint.compact[,merge_group(start_position, end_position, episode_type, length), by='subject_code,activity_or_bedrest_episode,group']
   episodes.changepoint.compact[,method:='changepoint_compact']
-  episodes.changepoint.compact[,episode_type:=label]
+  
+  episodes.changepoint.compact[,group:=NULL]
+  episodes.changepoint[,episode_type:=NULL]
+  episodes.changepoint.compact[,episode_type:=NULL]
   
   ## Merge methods into one table
-  episodes <- rbindlist(list(episodes.iterative,episodes.changepoint,episodes.changepoint.compact), fill=TRUE, use.names=TRUE)
+  episodes <<- rbindlist(list(episodes.classic,episodes.iterative,episodes.changepoint,episodes.changepoint.compact), fill=TRUE, use.names=TRUE)
   # Get rid of wake episodes
   episodes <- episodes[activity_or_bedrest_episode > 0]
   # Merge with information about each episode

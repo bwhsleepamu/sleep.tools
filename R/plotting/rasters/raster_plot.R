@@ -25,8 +25,8 @@ setup_raster_data <- function(sleep_data, episodes, cycles) { #, cycles, bedrest
   #bedrest_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   
   ## Deal with blocks that span multiple days
-  episodes.v <<- rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number])))
-  cycles.v <<- rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number])))
+  episodes.v <<- data.table(rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number]))))
+  cycles.v <<- data.table(rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number]))))
   #bedrest_episodes.v <- rbindlist(list(bedrest_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(bedrest_episodes.v[start_day_number!=end_day_number])))
   
   ## Re-scale day numbers
@@ -88,7 +88,7 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
   y_breaks <- c(-5,-3,-1,0,.5,1.5,2,2.5,3,4)
 
   plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,12,24), minor_breaks=c(3,6,9,15,18,21)) 
-  plot <- plot + scale_y_continuous(limits=c(-8, 4), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  plot <- plot + scale_y_continuous(limits=c(-6, 4), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
   # Colors
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
@@ -110,19 +110,19 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
 #     #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = end_pos, ymax = end_pos+1, data=for_this_graph)    
 #     #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=for_this_graph)
 #   }  
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1, ymax = -0.2, data = graph_episodes[method=='classic'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.8, ymax = -1, data = graph_episodes[method=='classic' & keep==TRUE])
-  #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -2.5, ymax = -2, data=graph_cycles[method=="classic"])    
+  #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1, ymax = -0.2, data = graph_episodes[method=='classic'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.8, ymax = -1, data = graph_episodes[method=='classic'])# & keep==TRUE])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -2.5, ymax = -2, data=graph_cycles[method=="classic"])    
   #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=-2.25, data=graph_cycles[method=="classic"])
   
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3.5, ymax = -2.7, data = graph_episodes[method=='iterative'])
-  #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -4.2, ymax = -3.7, data=graph_cycles[method=="iterative"])    
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -4.2, ymax = -3.7, data=graph_cycles[method=="iterative"])    
   #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=-3.95, data=graph_cycles[method=="iterative"])
 
 
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = episode_type), ymin = -5.2, ymax = -4.4, data = graph_episodes[method=='changepoint'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -6, ymax = -5.2, data = graph_episodes[method=='changepoint'])
-  #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -6.7, ymax = -6.2, data=graph_cycles[method=="changepoint"])    
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -5.2, ymax = -4.4, data = graph_episodes[method=='changepoint_compact'])
+  #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -6, ymax = -5.2, data = graph_episodes[method=='changepoint_compact'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -5.7, ymax = -5.2, data=graph_cycles[method=="changepoint_compact"])    
   #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=-6.45, data=graph_cycles[method=="changepoint"])
   
   
