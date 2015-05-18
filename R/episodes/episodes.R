@@ -117,7 +117,7 @@ remove.target.label <- function(sequences, target_label='UNDEF') {
 
 
 ## Main Environment Functions
-setup_episodes <- function() {
+setup_episodes <- function(sleep_data) {
   # Input: `sleep_data` global variable
   # Output: `episodes` global variable
   
@@ -139,16 +139,18 @@ setup_episodes <- function() {
   episodes.changepoint.compact[,episode_type:=label]
   
   ## Merge methods into one table
-  episodes <<- rbindlist(list(episodes.iterative,episodes.changepoint,episodes.changepoint.compact), fill=TRUE, use.names=TRUE)
+  episodes <- rbindlist(list(episodes.iterative,episodes.changepoint,episodes.changepoint.compact), fill=TRUE, use.names=TRUE)
   # Get rid of wake episodes
-  episodes <<- episodes[activity_or_bedrest_episode > 0]
+  episodes <- episodes[activity_or_bedrest_episode > 0]
   # Merge with information about each episode
   setkey(sleep_data,pk)
   #episodes <<- merge(episodes, subjects, all.x=TRUE, all.y=FALSE, by='subject_code')
   episodes[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
+  
+  episodes
 }
 
-add_info_to_episodes <- function() {
+add_info_to_episodes <- function(sleep_data) {
   # Input: `episodes` global variable
   # Output: `episodes` global variable
   
@@ -169,7 +171,7 @@ add_info_to_episodes <- function() {
   
 }
 
-setup_sleep_bedrest_episodes <- function() {
+setup_sleep_bedrest_episodes <- function(sleep_data) {
   # Input: `sleep_data` global variable, `fd_times` global variable, `sleep_efficiency` global variable
   # Output: `bedrest_episodes` global variable, `sleep_episodes` global variable
   

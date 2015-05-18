@@ -65,7 +65,7 @@ last_se_position <- function(sd, sc, e) {
 
 ## Environment Setup
 # Get NREM Cycles
-setup_cycles <- function() {
+setup_cycles <- function(sleep_data, episodes) {
   nrem_cycles <- find.cycles(episodes, sleep_data, type="NREM", start_fn=find_nrem_start, until_end=TRUE) 
   rem_cycles <- find.cycles(episodes, sleep_data, type="REM", start_fn=find_nrem_start, until_end=TRUE) 
   cycles <<- rbind(nrem_cycles, rem_cycles)

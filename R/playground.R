@@ -11,7 +11,7 @@ source("R/plotting/rasters/raster_plot.R")
 source("R/analysis/analysis.R")
 
 load_data(local=FALSE)
-setup_episodes()
+setup_episodes(sleep_data)
 
 
 setup_cycles()
