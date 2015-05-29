@@ -117,7 +117,7 @@ remove.target.label <- function(sequences, target_label='UNDEF') {
 
 
 ## Main Environment Functions
-setup_episodes <- function(sleep_data) {
+setup_episodes <- function(sleep_data, full_sleep_data) {
   # Input: `sleep_data` global variable
   # Output: `episodes` global variable
   
@@ -144,11 +144,11 @@ setup_episodes <- function(sleep_data) {
   ## Merge methods into one table
   episodes <<- rbindlist(list(episodes.classic,episodes.iterative,episodes.changepoint,episodes.changepoint.compact), fill=TRUE, use.names=TRUE)
   # Get rid of wake episodes
-  episodes <- episodes[activity_or_bedrest_episode > 0]
+  episodes <<- episodes[activity_or_bedrest_episode > 0]
   # Merge with information about each episode
   setkey(sleep_data,pk)
   #episodes <<- merge(episodes, subjects, all.x=TRUE, all.y=FALSE, by='subject_code')
-  episodes[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
+  episodes[,`:=`(start_labtime=full_sleep_data[start_position]$labtime, end_labtime=full_sleep_data[end_position]$labtime)]
   
   episodes
 }

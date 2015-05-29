@@ -73,13 +73,13 @@ setup_cycles <- function(sleep_data, episodes) {
   cycles <<- cycles[length > 0]
   cycles <<- cycles[!is.na(start_position) & !is.na(end_position)]
   
-  cycles <<- data.table(merge(cycles, fd_times, all.x=TRUE, all.y=FALSE, by='subject_code'))
+  #cycles <<- data.table(merge(cycles, fd_times, all.x=TRUE, all.y=FALSE, by='subject_code'))
   
   ## Label the part of protocol each episode or cycle is in
-  cycles[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
+  #cycles[,schedule_label:=label_by_schedule(start_labtime, end_labtime, start_analysis, end_analysis)]
   
   ## FIX FOR NA start and end??
   
-  cycles <<- data.table(merge(cycles,sleep_efficiency,all.x=TRUE,all.y=FALSE,by=c('subject_code','activity_or_bedrest_episode')))
-  cycles <<- data.table(merge(cycles,subjects,all.x=TRUE, all.y=FALSE,by='subject_code'))
+  #cycles <<- data.table(merge(cycles,sleep_efficiency,all.x=TRUE,all.y=FALSE,by=c('subject_code','activity_or_bedrest_episode')))
+  #cycles <<- data.table(merge(cycles,subjects,all.x=TRUE, all.y=FALSE,by='subject_code'))
 }

@@ -48,7 +48,7 @@
 ####################
 ## Changepoint Bouts
 ####################
-generate_episodes.changepoint <- function(dt, distances=list(wake=5.5, rem=6.5, stage1=6.1, stage2=8.3, stage3=9.6), stage1=FALSE, clean=TRUE, ic="SIC") {
+generate_episodes.changepoint <- function(dt, distances=list(wake=5.5, rem=6.5, stage1=6.1, stage2=8.3, stage3=9.6), stage1=FALSE, clean=TRUE, ic="AIC") {
   
   # Re-label undefined epochs
   dt <- copy(dt)
@@ -96,7 +96,7 @@ set_changepoint_group <- function(stages, distances, stage1, ic) {
   stages[stage == 2, dist:=distances$stage2]
   stages[stage == 3 | stage == 4, dist:=distances$stage3]
   
-  print(length(stages$dist))
+  #print(length(stages$dist))
   
   if(length(stages$dist) > 1) {
     changepoints <- cpt.mean(stages$dist, method="PELT", penalty=ic)@cpts
@@ -133,5 +133,16 @@ collapsed_changepoint <- function(dt) {
   result
 }
 
+
+compact.changepoint <- function(dt) {
+  compact <- copy(dt)
+  compact[,group:=set_group(compact$episode_type)]
+  compact <- compact[,merge_group(start_position, end_position, episode_type, length), by='subject_code,activity_or_bedrest_episode,group']
+  compact[,method:='changepoint_compact']
+  
+  compact[,group:=NULL]
+  compact[,episode_type:=NULL]
+  compact
+}
 
 

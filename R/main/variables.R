@@ -4,10 +4,11 @@ EPOCH_LENGTH <- (EPOCH_SECONDS / 3600)
 REM_MIN_PERIOD_LENGTH = 10
 NREM_MIN_PERIOD_LENGTH = 30
 
-
 # Changepoint
-CP_DISTANCES=list(wake=5.5, rem=6.5, stage1=6.1, stage2=7.3, stage3=8.6)
-CP_STAGE1=FALSE
+CP_DISTANCES=list(wake=-0.9, rem=-1.3, stage1=-0.5, stage2=0, stage3=1) #-0.7	-1.1	-0.8 # -0.9	-1.1	-0.5
+
+
+CP_STAGE1=TRUE
 CP_CLEAN=TRUE
 CP_IC="SIC"
 

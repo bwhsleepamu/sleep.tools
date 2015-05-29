@@ -78,14 +78,13 @@ load_sleep_statistics <- function() {
   sleep_efficiency_cutoffs <- as.data.table(list(label=labs, start=sleep_efficiency_cutoffs[-length(sleep_efficiency_cutoffs)], end=sleep_efficiency_cutoffs[-1L]))
   label_indeces <- sleep_efficiency_cutoffs[,which(sleep_stats$Sleep.Efficiency >= start & sleep_stats$Sleep.Efficiency < end), by=label]
   sleep_stats[label_indeces$V1, se_label:=label_indeces$label]#$se_label <- 
-  sleep_efficiency <- sleep_stats[,list(subject_code, activity_or_bedrest_episode,se_label)]
+  sleep_efficiency <- sleep_stats[,data.table(subject_code, activity_or_bedrest_episode,se_label,raw_se=Sleep.Efficiency/100.0)]
   sleep_efficiency <- sleep_efficiency[!is.na(se_label)]
   
   sleep_efficiency <- sleep_efficiency[!J('1215H', 19)]
   sleep_efficiency <- sleep_efficiency[!J('2823GX', 31)]
   
   setkey(sleep_efficiency, subject_code, activity_or_bedrest_episode)
-  
   sleep_efficiency
 }
 

@@ -11,22 +11,22 @@ source("R/plotting/rasters/raster_plot.R")
 source("R/analysis/analysis.R")
 
 load_data(local=FALSE)
-setup_episodes(sleep_data)
+setup_episodes(sleep_data, sleep_data)
 
 
-setup_cycles()
+setup_cycles(sleep_data, episodes)
 setup_raster_data(sleep_data, episodes, cycles)
 
 
 
-
-
-
-
+#reset
+nms <- ls()
+nms <- nms[!nms%in%c('sleep_data', 'subjects')]
+rm(list=nms)
 ###
 plot_raster("3335GX", number_of_days=8, first_day=25)
 plot_raster("3353GX", number_of_days=5, first_day=1)
-plot_raster("3335GX", number_of_days=5, first_day=2)
+plot_raster("3335GX", number_of_days=15, first_day=10)
 
 plot_raster("23CEHM", number_of_days=10, first_day=3)
 plot_raster("23CEHM", number_of_days=5, first_day=5)
