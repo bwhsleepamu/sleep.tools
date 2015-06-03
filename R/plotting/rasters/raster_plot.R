@@ -3,14 +3,20 @@
 
 ## Set up for plotting
 setup_raster_data <- function(sleep_data, episodes, cycles) { #, cycles, bedrest_episodes) {
-  
   sleep_data.v <<- copy(sleep_data)
+  sleep_data.v[,min_labtime:=min(labtime),by='subject_code']
+  sleep_data.v[,labtime:=labtime-min_labtime]
+  min_labtimes <- unique(sleep_data.v[,data.table(subject_code,min_labtime)])
+  
   convert_stage_for_raster(sleep_data.v)
   
   episodes.v <<- copy(episodes)
+  episodes.v <<- merge(episodes.v, min_labtimes, by='subject_code')
+  episodes.v[,`:=`(start_labtime=start_labtime-min_labtime, end_labtime=end_labtime-min_labtime)]
   
   cycles.v <<- copy(cycles)
-  
+  cycles.v <<- merge(cycles.v, min_labtimes, by='subject_code')
+  cycles.v[,`:=`(start_labtime=start_labtime-min_labtime, end_labtime=end_labtime-min_labtime)]
   #bedrest_episodes.v <<- copy(bedrest_episodes)
   
   ## Get Labtimes
@@ -77,7 +83,7 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
   
   # Labels and theming
   plot <- plot + ggtitle(subject_code)
-  plot <- plot + theme(axis.title.y=element_blank(), legend.title=element_blank())
+  plot <- plot + theme(axis.title.y=element_blank(), legend.title=element_blank(), axis.line = element_blank(),panel.grid.minor=element_blank())
   plot <- plot + xlab("Time (hours)")
   
   # Faceting
@@ -85,10 +91,10 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
   
   # Scaling and Margins
   #plot <- plot + theme(panel.margin = unit(0, "npc"))
-  y_breaks <- c(-5,-3,-1,0,.5,1.5,2,2.5,3,4)
+  y_breaks <- c(-4,-2.5,-1,.5,2,3,3.5,4)
 
   plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,12,24), minor_breaks=c(3,6,9,15,18,21)) 
-  plot <- plot + scale_y_continuous(limits=c(-6, 4), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  plot <- plot + scale_y_continuous(limits=c(-4, 4), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
   # Colors
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
@@ -111,18 +117,18 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
 #     #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=text_y_pos, data=for_this_graph)
 #   }  
   #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1, ymax = -0.2, data = graph_episodes[method=='classic'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.8, ymax = -1, data = graph_episodes[method=='classic'])# & keep==TRUE])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -2.5, ymax = -2, data=graph_cycles[method=="classic"])    
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -.95, ymax = -0.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -1.45, ymax = -1.05, data=graph_cycles[method=="classic"])    
   #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=-2.25, data=graph_cycles[method=="classic"])
   
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3.5, ymax = -2.7, data = graph_episodes[method=='iterative'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -4.2, ymax = -3.7, data=graph_cycles[method=="iterative"])    
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.45, ymax = -1.55, data = graph_episodes[method=='iterative'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -2.95, ymax = -2.55, data=graph_cycles[method=="iterative"])    
   #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=-3.95, data=graph_cycles[method=="iterative"])
 
 
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -5.2, ymax = -4.4, data = graph_episodes[method=='changepoint_compact'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3.95, ymax = -3.05, data = graph_episodes[method=='changepoint_compact'])
   #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -6, ymax = -5.2, data = graph_episodes[method=='changepoint_compact'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -5.7, ymax = -5.2, data=graph_cycles[method=="changepoint_compact"])    
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -4.45, ymax = -4.05, data=graph_cycles[method=="changepoint_compact"])    
   #plot <- plot + geom_text(aes(x=(start_day_labtime+end_day_labtime)/2, label=cycle_number), y=-6.45, data=graph_cycles[method=="changepoint"])
   
   
@@ -139,7 +145,7 @@ plot_raster <- function(subject_code, #, epoch_length=EPOCH_LENGTH, output_dir="
   
   
   #plot <- plot + geom_point(shape='.', size=2)
-  plot <- plot + geom_line() #aes(colour=epoch_type)
+  plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
   
   #file_name = file.path(output_dir, paste(subject_code, "_", l, '.svg', sep=''))
   #print(file_name)
@@ -191,23 +197,23 @@ set_days <- function(labtimes, t_cycle=T_CYCLE) {
 }
 
 convert_stage_for_raster <- function(d) {
-  conv_map <- c(1.5,2,2.5,3,.5,4)
+  conv_map <- c(3,3.5,4,4,.5,2)
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
   d[epoch_type=='UNDEF', stage_for_raster:=0]
 }
 
 y_axis_formatter <- function(x) {
-  if (x == .5) { res <- "WAKE" }
-  else if (x == 1.5) { res <- "Stage 1" }
-  else if (x == 2) { res <- "Stage 2" }
-  else if (x == 2.5) { res <- "Stage 3" }
-  else if (x == 3) { res <- "Stage 4" }
-  else if (x == 4) { res <- "REM" }
-  else if (x == 0) { res <- "UNDEF"}
-  else if (x == -1) { res <- ""}
-  else if (x == -3) { res <- ""}
-  else if (x == -5) { res <- ""}
+  if (x == 0.5) { res <- "WAKE" }
+  else if (x == 2) { res <- "REM" }
+  else if (x == 3) { res <- "" }
+  else if (x == 3.5) { res <- "NREM" }
+  else if (x == 4) { res <- "" }
+  #else if (x == 3.5) { res <- "" }
+  #else if (x == 0) { res <- ""}
+  else if (x == -1) { res <- "Traditional"}
+    else if (x == -2.5) { res <- "Extended"}
+  else if (x == -4) { res <- "Changepoint"}
   else { res <- as.character(x) }
   
   res

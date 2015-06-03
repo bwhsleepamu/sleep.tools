@@ -48,7 +48,7 @@
 ####################
 ## Changepoint Bouts
 ####################
-generate_episodes.changepoint <- function(dt, distances=list(wake=5.5, rem=6.5, stage1=6.1, stage2=8.3, stage3=9.6), stage1=FALSE, clean=TRUE, ic="AIC") {
+generate_episodes.changepoint <- function(dt, distances=list(wake=5.5, rem=6.5, stage1=6.1, stage2=8.3, stage3=9.6), stage1=FALSE, clean=TRUE, ic="SIC") {
   
   # Re-label undefined epochs
   dt <- copy(dt)
