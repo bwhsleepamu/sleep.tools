@@ -9,7 +9,7 @@ source("R/cycles/cycles.R")
 source("R/plotting/rasters/raster_plot.R")
 
 source("R/analysis/analysis.R")
-p <-
+
 load_data(local=FALSE)
 setup_episodes(sleep_data, sleep_data)
 
@@ -19,7 +19,7 @@ setup_raster_data(sleep_data, episodes, cycles)
 
 source("R/plotting/rasters/raster_plot.R")
 setup_raster_data(sleep_data, episodes, cycles)
-p <-plot_raster("3450GX", first_day=1)
+p <-plot_raster("3227GX", first_day=1)
 ggsave(plot=p, file="/home/pwm4/Desktop/rps/3450GX.svg", height=16, width=6, scale=2, limitsize=FALSE)
 
 #reset
@@ -39,6 +39,10 @@ ggsave(plot=p, file=file_name, height=(length(days_to_graph)*1 + 0.5), width=7, 
 
 episodes
 
+
+
+
+##### 
 #####
 
 source("R/cycles/cycles.R")

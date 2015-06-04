@@ -3,21 +3,27 @@ source('R/plotting/agreement_plot.R')
 library(raster)
 
 analysis_main <- function() {
-  all_episodes <- copy(merged_episodes[protocol_section != 'fde'])
-  all_episodes[,typ:='all_bedrest_episodes']
-  good_episodes <- merged_episodes[raw_se > 0.95 & protocol_section != 'fde']
-  good_episodes[,typ:='high_sleep_efficiency']
-  bad_episodes <- merged_episodes[raw_se < 0.80 & protocol_section != 'fde']
-  bad_episodes[,typ:='low_sleep_efficiency']
+  all_episodes <- copy(merged_episodes[protocol_section != 'fde' & method != "changepoint"])
+  all_episodes[method == 'changepoint_compact', method:="Changepoint"]
+  all_episodes[method == 'iterative', method:="Extended"]
+  all_episodes[method == 'classic', method:="Traditional"]
+  all_episodes[,typ:='All Bedrests']
+  good_episodes <- all_episodes[raw_se > 0.95]
+  good_episodes[,typ:='High SE']
+  bad_episodes <- all_episodes[raw_se < 0.80]
+  bad_episodes[,typ:='Low SE']
   analysis_episodes <- rbindlist(list(all_episodes,good_episodes,bad_episodes))
   analysis_episodes <- analysis_episodes[!is.na(protocol_section)]
   
-  all_cycles <- copy(merged_cycles[protocol_section != 'fde'])
-  all_cycles[,typ:='all_bedrest_episodes']
-  good_cycles <- merged_cycles[raw_se > 0.95 & protocol_section != 'fde']
-  good_cycles[,typ:='high_sleep_efficiency']
-  bad_cycles <- merged_cycles[raw_se < 0.80 & protocol_section != 'fde']
-  bad_cycles[,typ:='low_sleep_efficiency']
+  all_cycles <- copy(merged_cycles[protocol_section != 'fde' & method != "changepoint"])
+  all_cycles[method == 'changepoint_compact', method:="Changepoint"]
+  all_cycles[method == 'classic', method:="Traditional"]
+  all_cycles[method == 'iterative', method:="Extended"]
+  all_cycles[,typ:='All Bedrests']
+  good_cycles <- all_cycles[raw_se > 0.95]
+  good_cycles[,typ:='High SE']
+  bad_cycles <- all_cycles[raw_se < 0.80]
+  bad_cycles[,typ:='Low SE']
   analysis_cycles <- rbindlist(list(all_cycles,good_cycles,bad_cycles))
   analysis_cycles <- analysis_cycles[!is.na(protocol_section)]
   
@@ -37,22 +43,72 @@ analysis_main <- function() {
   ## I WANT TO SEE IF THERE ARE SIGNIFICANT DIFFERENCES BETWEEN THESE POPULATIONS
   
   episode_counts <- analysis_episodes[,count_in_bedrest_episode(label),by='subject_code,method,protocol_section,activity_or_bedrest_episode,typ']
-  episode_counts <- episode_counts[method %in% c('changepoint_compact', 'iterative', 'classic')]
+  episode_counts <- episode_counts[method %in% c('Changepoint', 'Extended', 'Traditional')]
   
   cycle_counts <- analysis_cycles[,data.table(num_of_cycles=length(cycle_number)),by='subject_code,activity_or_bedrest_episode,method,protocol_section,typ,t_cycle']
-  cycle_counts <- cycle_counts[method %in% c('changepoint_compact', 'iterative', 'classic')]
+  cycle_counts <- cycle_counts[method %in% c('Changepoint', 'Extended', 'Traditional')]
 
   
-  analysis_episodes <- analysis_episodes[method %in%c('changepoint_compact', 'iterative') & label!='UNDEF']
+  analysis_episodes <- analysis_episodes[method %in%c('Changepoint', 'Extended', 'Traditional') & label!='UNDEF']
+  analysis_episodes[,length:=length/2.0]
   
-  analysis_cycles <- analysis_cycles[method %in%c('changepoint_compact', 'iterative', 'classic') & type == 'NREM'] 
-                                         
+  analysis_cycles <- analysis_cycles[method %in%c('Changepoint', 'Extended', 'Traditional') & type == 'NREM'] 
+  analysis_cycles[,length:=length/2.0]
+  
   plot_agreement(analysis_episodes, facet_x_by='typ')
   
-  ae <- analysis_episodes[label!="UNDEF"]
-  ylims <- ae[,data.table(plot_min=boxplot.stats(agreement)$stats[1], plot_max=boxplot.stats(agreement)$stats[5]),by='method,typ']
-  ylim <- c(min(ylims$plot_min), max(ylims$plot_max))
+  p <- ggplot(analysis_episodes[label!="UNDEF" & subject_code=='3227GX'], aes(factor(typ), agreement))
+  p <- p + facet_grid(label ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  p + geom_boxplot(aes(fill = factor(method)), outlier.size = 1) + coord_flip() + labs(title="Agreement of Episodes by Method", y="Agreement", x='', fill="") + theme(legend.position='bottom') + scale_y_continuous(breaks=pretty_breaks())
   
+  
+  p <- ggplot(analysis_episodes[label!="UNDEF"], aes(factor(typ), length))
+  p <- p + facet_grid(label ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  p + geom_boxplot(aes(fill = factor(method))) + scale_y_log10()+ labs(title="Length of Episodes", y="Length (min)", x='', fill="") + theme(legend.position='bottom') +  coord_flip()
+  
+  p <- ggplot(episode_counts, aes(factor(method), nrem_count))
+  p <- p + facet_grid(. ~ typ) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  p + geom_boxplot(aes(fill = factor(method)))
+  
+  p <- ggplot(episode_counts, aes(factor(method), rem_count))
+  p <- p + facet_grid(. ~ typ) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  p + geom_boxplot(aes(fill = factor(method)))
+  
+  p <- ggplot(episode_counts, aes(factor(method), wake_count))
+  p <- p + facet_grid(. ~ typ) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  p + geom_boxplot(aes(fill = factor(method)))
+  
+  p <- ggplot(cycle_counts, aes(factor(method), num_of_cycles))
+  p <- p + facet_grid(typ ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  p + geom_boxplot(aes(fill = factor(method))) + labs(title="Number of NREM-REM Cycles per Bedrest Episode", y="Number of Cycles", x='', fill="") + theme(legend.position='bottom') + scale_y_continuous(breaks=pretty_breaks()) + coord_flip()
+  
+  medians <- analysis_cycles[,data.table(med=median(length)),by='typ,method,cycle_number,protocol_section']
+  p <- ggplot(analysis_cycles[method != 'changepoint' & cycle_number < 7 & protocol_section == 'fd'], aes(factor(method), length)) 
+  p <- p + facet_grid(typ ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  p + geom_boxplot(aes(fill = factor(method))) + scale_y_log10()+ labs(title="Length of cycles", y="Cycle Length (min)", x='', fill="") + theme(legend.position='bottom') + coord_flip()
+  
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+#   ae <- analysis_episodes[label!="UNDEF"]
+#   ylims <- ae[,data.table(plot_min=boxplot.stats(agreement)$stats[1], plot_max=boxplot.stats(agreement)$stats[5]),by='method,typ']
+#   ylim <- c(min(ylims$plot_min), max(ylims$plot_max))
+#   
   p <- ggplot(ae, aes(factor(method), agreement))
   p <- p + facet_grid(typ ~ .)
   p + geom_boxplot(aes(fill = factor(method))) + coord_flip(ylim = ylim) + scale_y_continuous(breaks=pretty_breaks())
@@ -91,91 +147,56 @@ analysis_main <- function() {
   p + geom_boxplot(aes(fill = factor(method))) + geom_text(data=medians[cycle_number < 7], aes(x=factor(method), y=med, label = med)) + scale_y_log10()
   
 }
-
-
-analysis_main <- function() {
-  all_episodes <- copy(merged_episodes)
-  all_episodes[,typ:='all']
-  good_episodes <- merged_episodes[raw_se > 0.95]
-  good_episodes[,typ:='good']
-  bad_episodes <- merged_episodes[raw_se < 0.80]
-  bad_episodes[,typ:='bad']
-  analysis_episodes <- rbindlist(list(all_episodes,good_episodes,bad_episodes))
-  analysis_episodes <- analysis_episodes[!is.na(protocol_section)]
-  
-  all_cycles <- copy(merged_cycles)
-  all_cycles[,typ:='all']
-  good_cycles <- merged_cycles[raw_se > 0.95]
-  good_cycles[,typ:='good']
-  bad_cycles <- merged_cycles[raw_se < 0.80]
-  bad_cycles[,typ:='bad']
-  analysis_cycles <- rbindlist(list(all_cycles,good_cycles,bad_cycles))
-  analysis_cycles <- analysis_cycles[!is.na(protocol_section)]
-  
-  set_agreement(analysis_episodes, sleep_data)
-  
-  # Pre During Post
-  
-  # Male Female
-  
-  # Young Old
-  
-  # Habitual CSR
-  
-  # T Cycle
-  
-  ## I WANT TO SEE IF THERE ARE SIGNIFICANT DIFFERENCES BETWEEN THESE POPULATIONS
-  
-  episode_counts <- analysis_episodes[,count_in_bedrest_episode(label),by='subject_code,method,activity_or_bedrest_episode,typ']
-  episode_counts <- episode_counts[method %in% c('changepoint_compact', 'iterative', 'classic')]
-  
-  cycle_counts <- analysis_cycles[,data.table(num_of_cycles=length(cycle_number)),by='subject_code,activity_or_bedrest_episode,method,typ']
-  cycle_counts <- cycle_counts[method %in% c('changepoint_compact', 'iterative', 'classic')]
-  
-  
-  analysis_episodes <- analysis_episodes[method %in%c('changepoint_compact', 'iterative') & label!='UNDEF']
-  
-  analysis_cycles <- analysis_cycles[method %in%c('changepoint_compact', 'iterative', 'classic') & type == 'NREM'] 
-  
-  plot_agreement(analysis_episodes, facet_x_by='typ', facet_y_by='protocol_section')
-  
-  
-  p <- ggplot(analysis_episodes[label!="UNDEF"], aes(factor(typ), agreement))
-  p <- p + facet_grid(label ~ protocol_section)
-  p + geom_boxplot(aes(fill = factor(method))) + coord_flip()
-  
-  
-  p <- ggplot(analysis_episodes[label!="UNDEF"], aes(factor(typ), length))
-  p <- p + facet_grid(protocol_section ~ label)
-  p + geom_boxplot(aes(fill = factor(method))) + scale_y_log10()
-  
-  p <- ggplot(episode_counts, aes(factor(method), nrem_count))
-  p <- p + facet_grid(. ~ typ)
-  p + geom_boxplot(aes(fill = factor(method)))
-  
-  p <- ggplot(episode_counts, aes(factor(method), rem_count))
-  p <- p + facet_grid(. ~ typ)
-  p + geom_boxplot(aes(fill = factor(method)))
-  
-  p <- ggplot(episode_counts, aes(factor(method), wake_count))
-  p <- p + facet_grid(. ~ typ)
-  p + geom_boxplot(aes(fill = factor(method)))
-  
-  p <- ggplot(cycle_counts, aes(factor(typ), num_of_cycles))
-  p <- p + facet_grid(. ~ method)
-  p + geom_boxplot(aes(fill = factor(method)))
-  
-  medians <- analysis_cycles[,data.table(med=median(length)),by='typ,method,cycle_number,protocol_section']
-  p <- ggplot(analysis_cycles[method != 'changepoint' & cycle_number < 7 & protocol_section != 'fd'], aes(factor(method), length)) 
-  p <- p + facet_grid(typ ~ cycle_number)
-  p + geom_boxplot(aes(fill = factor(method))) + geom_text(data=medians[cycle_number < 7 & protocol_section != 'fd'], aes(x=factor(method), y=med, label = med)) + scale_y_log10()
-  
-  medians <- analysis_cycles[,data.table(med=median(length)),by='typ,method,cycle_number,protocol_section']
-  p <- ggplot(analysis_cycles[method != 'changepoint' & cycle_number < 7 & protocol_section == 'fd'], aes(factor(method), length)) 
-  p <- p + facet_grid(typ ~ cycle_number)
-  p + geom_boxplot(aes(fill = factor(method))) + geom_text(data=medians[cycle_number < 7 & protocol_section == 'fd'], aes(x=factor(method), y=med, label = med)) + scale_y_log10()
-  
-}
+# 
+# 
+# analysis_main <- function() {
+#   all_episodes <- copy(merged_episodes)
+#   all_episodes[,typ:='all']
+#   good_episodes <- merged_episodes[raw_se > 0.95]
+#   good_episodes[,typ:='good']
+#   bad_episodes <- merged_episodes[raw_se < 0.80]
+#   bad_episodes[,typ:='bad']
+#   analysis_episodes <- rbindlist(list(all_episodes,good_episodes,bad_episodes))
+#   analysis_episodes <- analysis_episodes[!is.na(protocol_section)]
+#   
+#   all_cycles <- copy(merged_cycles)
+#   all_cycles[,typ:='all']
+#   good_cycles <- merged_cycles[raw_se > 0.95]
+#   good_cycles[,typ:='good']
+#   bad_cycles <- merged_cycles[raw_se < 0.80]
+#   bad_cycles[,typ:='bad']
+#   analysis_cycles <- rbindlist(list(all_cycles,good_cycles,bad_cycles))
+#   analysis_cycles <- analysis_cycles[!is.na(protocol_section)]
+#   
+#   set_agreement(analysis_episodes, sleep_data)
+#   
+#   # Pre During Post
+#   
+#   # Male Female
+#   
+#   # Young Old
+#   
+#   # Habitual CSR
+#   
+#   # T Cycle
+#   
+#   ## I WANT TO SEE IF THERE ARE SIGNIFICANT DIFFERENCES BETWEEN THESE POPULATIONS
+#   
+#   episode_counts <- analysis_episodes[,count_in_bedrest_episode(label),by='subject_code,method,activity_or_bedrest_episode,typ']
+#   episode_counts <- episode_counts[method %in% c('changepoint_compact', 'iterative', 'classic')]
+#   
+#   cycle_counts <- analysis_cycles[,data.table(num_of_cycles=length(cycle_number)),by='subject_code,activity_or_bedrest_episode,method,typ']
+#   cycle_counts <- cycle_counts[method %in% c('changepoint_compact', 'iterative', 'classic')]
+#   
+#   
+#   analysis_episodes <- analysis_episodes[method %in%c('changepoint_compact', 'iterative') & label!='UNDEF']
+#   
+#   analysis_cycles <- analysis_cycles[method %in%c('changepoint_compact', 'iterative', 'classic') & type == 'NREM'] 
+#   
+#   plot_agreement(analysis_episodes, facet_x_by='typ', facet_y_by='protocol_section')
+#   
+#   
+# }
 
 
 
