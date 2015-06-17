@@ -57,18 +57,23 @@ analysis_main <- function() {
   
   plot_agreement(analysis_episodes, facet_x_by='typ')
   
-  p <- ggplot(analysis_episodes[label!="UNDEF" & subject_code=='3227GX'], aes(factor(typ), agreement))
+  p <- ggplot(analysis_episodes[label!="UNDEF"], aes(factor(typ), agreement))
   p <- p + facet_grid(label ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
-  p + geom_boxplot(aes(fill = factor(method)), outlier.size = 1) + coord_flip() + labs(title="Agreement of Episodes by Method", y="Agreement", x='', fill="") + theme(legend.position='bottom') + scale_y_continuous(breaks=pretty_breaks())
+  p <- p + geom_boxplot(aes(fill = factor(method)), outlier.size = 1) + coord_flip() + labs(title="Episode Agreement by Method and Sleep Efficiency (SE)", y="Agreement", x='', fill="") #+ theme(legend.position='bottom') + scale_y_continuous(breaks=pretty_breaks()) + guides(fill=FALSE)
+  ggsave(plot=p, file="/home/pwm4/Desktop/rps/agreement.svg", height=2, width=2.6, scale=3, limitsize=FALSE)
+  
+  
   
   
   p <- ggplot(analysis_episodes[label!="UNDEF"], aes(factor(typ), length))
   p <- p + facet_grid(label ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
-  p + geom_boxplot(aes(fill = factor(method))) + scale_y_log10()+ labs(title="Length of Episodes", y="Length (min)", x='', fill="") + theme(legend.position='bottom') +  coord_flip()
+  p <- p + geom_boxplot(aes(fill = factor(method)), outlier.size = 1) + scale_y_log10()+ labs(title="Length of Episodes by Method and Sleep Efficiency (SE)", y="Episode Length (min)", x='', fill="") + theme(legend.position='bottom') +  coord_flip()+ guides(fill=FALSE)
+  ggsave(plot=p, file="/home/pwm4/Desktop/rps/length.svg", height=2, width=2.6, scale=3, limitsize=FALSE)
   
   p <- ggplot(episode_counts, aes(factor(method), nrem_count))
   p <- p + facet_grid(. ~ typ) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
   p + geom_boxplot(aes(fill = factor(method)))
+  
   
   p <- ggplot(episode_counts, aes(factor(method), rem_count))
   p <- p + facet_grid(. ~ typ) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
@@ -80,12 +85,15 @@ analysis_main <- function() {
   
   p <- ggplot(cycle_counts, aes(factor(method), num_of_cycles))
   p <- p + facet_grid(typ ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
-  p + geom_boxplot(aes(fill = factor(method))) + labs(title="Number of NREM-REM Cycles per Bedrest Episode", y="Number of Cycles", x='', fill="") + theme(legend.position='bottom') + scale_y_continuous(breaks=pretty_breaks()) + coord_flip()
+  p <- p + geom_boxplot(aes(fill = factor(method)), outlier.size = 1) + labs(title="Number of NREM Cycles per Bedrest by Method", y="Number of Cycles", x='', fill="") + theme(legend.position='bottom') + scale_y_continuous(breaks=pretty_breaks()) + coord_flip()+ guides(fill=FALSE)
+  ggsave(plot=p, file="/home/pwm4/Desktop/rps/number_of_cycles.svg", height=2, width=2.6, scale=3, limitsize=FALSE)
   
   medians <- analysis_cycles[,data.table(med=median(length)),by='typ,method,cycle_number,protocol_section']
+  
   p <- ggplot(analysis_cycles[method != 'changepoint' & cycle_number < 7 & protocol_section == 'fd'], aes(factor(method), length)) 
   p <- p + facet_grid(typ ~ .) + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
-  p + geom_boxplot(aes(fill = factor(method))) + scale_y_log10()+ labs(title="Length of cycles", y="Cycle Length (min)", x='', fill="") + theme(legend.position='bottom') + coord_flip()
+  p <- p + geom_boxplot(aes(fill = factor(method)), outlier.size = 1) + scale_y_log10()+ labs(title="Length of NREM Cycles by Method", y="Cycle Length (min)", x='', fill="") + theme(legend.position='bottom') + coord_flip() + guides(fill=FALSE)
+  ggsave(plot=p, file="/home/pwm4/Desktop/rps/cycle_length.svg", height=2, width=2.6, scale=3, limitsize=FALSE)
   
 
 

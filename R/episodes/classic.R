@@ -71,7 +71,7 @@ generate_episodes.classic <- function(dt, min_nrem_length=30, min_rem_length=10,
   sequences <- sequences[keep==1]
   sequences[,keep:=NULL]
  
-  sequences[,end_position:=plug_gaps,by='subject_code,activity_or_bedrest_episode']  
+  sequences[,end_position:=plug_gaps(start_position,end_position),by='subject_code,activity_or_bedrest_episode']  
   sequences[,length:=(end_position-start_position)+1]
   sequences
 }

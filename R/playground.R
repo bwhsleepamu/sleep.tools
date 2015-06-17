@@ -19,8 +19,8 @@ setup_raster_data(sleep_data, episodes, cycles)
 
 source("R/plotting/rasters/raster_plot.R")
 setup_raster_data(sleep_data, episodes, cycles)
-p <-plot_raster("3227GX", first_day=1)
-ggsave(plot=p, file="/home/pwm4/Desktop/rps/3450GX.svg", height=16, width=6, scale=2, limitsize=FALSE)
+p <-plot_raster("3450GX", first_day=1)
+ggsave(plot=p, file="/home/pwm4/Desktop/rps/3450GX_2.svg", height=16, width=6, scale=2, limitsize=FALSE)
 
 #reset
 nms <- ls()
