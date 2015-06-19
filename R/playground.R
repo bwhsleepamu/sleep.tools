@@ -18,6 +18,7 @@ setup_cycles(sleep_data, episodes)
 setup_raster_data(sleep_data, episodes, cycles)
 
 source("R/plotting/rasters/raster_plot.R")
+plot_raster("F03102000disrupt", first_day = 1)
 setup_raster_data(sleep_data, episodes, cycles)
 p <-plot_raster("3450GX", first_day=1)
 ggsave(plot=p, file="/home/pwm4/Desktop/rps/3450GX_2.svg", height=16, width=6, scale=2, limitsize=FALSE)

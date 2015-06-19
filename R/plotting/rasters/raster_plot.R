@@ -198,6 +198,7 @@ set_days <- function(labtimes, t_cycle=T_CYCLE) {
 
 convert_stage_for_raster <- function(d) {
   conv_map <- c(3,3.5,4,4,.5,2)
+  #conv_map <- c(3,3.5,4,0,2,0,.5)
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
   d[epoch_type=='UNDEF', stage_for_raster:=0]
