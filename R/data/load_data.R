@@ -17,6 +17,7 @@ map_epoch_type <- function(x) {
 # Load epochs for a given subject list
 load_sleep_data <- function(subjects) {
   sleep_data <- rbindlist(lapply(subjects$file_path, load_sleep_file), fill=TRUE)
+  
   setnames(sleep_data, c('subject_code', 'activity_or_bedrest_episode', 'labtime', 'stage'))
   setkey(sleep_data, subject_code, labtime)
   # Generate row indeces
@@ -98,7 +99,7 @@ load_fd_times <- function() {
   fd_times
 }
 
-load_data <- function(local=TRUE) {
+load_data <- function(local=TRUE, subject_list=NULL) {
   ## Environment Setup
   # Load Subject Groups
   subjects.local <- read_subject_info(subject_fp.local)
@@ -113,6 +114,9 @@ load_data <- function(local=TRUE) {
     subjects <<- subjects.local
   else
     subjects <<- subjects.subset
+  
+  if(!is.null(subject_list))
+    subjects <<- subjects[subject_code %in% subject_list]
     
   
   # Load and set up data for subject group

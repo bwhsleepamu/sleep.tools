@@ -10,17 +10,36 @@ source("R/plotting/rasters/raster_plot.R")
 
 source("R/analysis/analysis.R")
 
-load_data(local=FALSE)
+load_data(local=FALSE, subject_list=tsl)
 setup_episodes(sleep_data, sleep_data)
+
 
 
 setup_cycles(sleep_data, episodes)
 setup_raster_data(sleep_data, episodes, cycles)
 
-source("R/plotting/rasters/raster_plot.R")
-setup_raster_data(sleep_data, episodes, cycles)
-p <-plot_raster("3450GX", first_day=1)
-ggsave(plot=p, file="/home/pwm4/Desktop/rps/3450GX_2.svg", height=16, width=6, scale=2, limitsize=FALSE)
+p <- plot_raster('24B7GXT3', first_day=1)
+p
+ggsave(plot=r[[1]], file="/home/pwm4/Desktop/test.svg", height=20, width=6, scale=2, limitsize=FALSE)
+?ggsave
+
+
+r <- lapply(jonathan_subject_codes, function(x) {
+  p <-plot_raster(x, first_day=1)
+  #ggsave(plot=p, file=paste("/home/pwm4/Desktop/jonathan_rasters/", x, '.svg', sep=''), height=30, width=10, scale=2, limitsize=FALSE)
+  p
+})
+
+for(p in r) {
+  ggsave(plot=p, file=paste("/home/pwm4/Desktop/", p$data$subject_code[[1]], ".svg", sep=''), height=20, width=6, scale=2, limitsize=FALSE)
+  
+}
+
+for_jon <- copy(episodes[method=='iterative' & label=='NREM'])
+for_jon[,`:=`(label=NULL, start_position=NULL, end_position=NULL, method=NULL)]
+for_jon[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
+
+
 
 #reset
 nms <- ls()
