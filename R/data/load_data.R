@@ -102,18 +102,19 @@ load_fd_times <- function() {
 load_data <- function(local=TRUE, subject_list=NULL) {
   ## Environment Setup
   # Load Subject Groups
-  subjects.local <- read_subject_info(subject_fp.local)
-  subjects.all <- read_subject_info(subject_fp.all)
   
 #  subjects.subset <- subjects.all[study %in% c('NIAPPG', 'T20CSR-Control', 'T20CSR-CSR')]
-  subjects.subset <- subjects.all#[study %in% c('T20CSR-Control', 'T20CSR-CSR')]
+  #subjects.subset <- subjects.all#[study %in% c('T20CSR-Control', 'T20CSR-CSR')]
   
   # Select main subject group
   
-  if(local)
+  if(local) {
+    subjects.local <- read_subject_info(subject_fp.local)
     subjects <<- subjects.local
-  else
-    subjects <<- subjects.subset
+  } else {
+    subjects.all <- read_subject_info(subject_fp.all)
+    subjects <<- subjects.all
+  }
   
   if(!is.null(subject_list))
     subjects <<- subjects[subject_code %in% subject_list]

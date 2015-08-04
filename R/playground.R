@@ -10,7 +10,7 @@ source("R/plotting/rasters/raster_plot.R")
 
 source("R/analysis/analysis.R")
 
-load_data(local=FALSE, subject_list=tsl)
+load_data(local=FALSE, subject_list=jonathan_subject_codes)
 setup_episodes(sleep_data, sleep_data)
 
 
@@ -39,6 +39,8 @@ for_jon <- copy(episodes[method=='iterative' & label=='NREM'])
 for_jon[,`:=`(label=NULL, start_position=NULL, end_position=NULL, method=NULL)]
 for_jon[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
 
+
+test_data <- fread('data/')
 
 
 #reset
