@@ -126,7 +126,7 @@ setup_episodes <- function(sleep_data, full_sleep_data) {
   ######## Raw Stages
   episodes.raw <<- generate_episodes.raw(sleep_data)
   ######## Classic
-  episodes.classic <<- generate_episodes.classic(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, completion_cutoff=CLASSIC_COMPLETION_CUTOFF)
+  episodes.classic <<- generate_episodes.classic(sleep_data)
   ######## Iterative
   episodes.iterative <<- generate_episodes.iterative(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, min_wake_length=CLASSIC_MIN_REM)
   #episodes.iterative <- data.table()

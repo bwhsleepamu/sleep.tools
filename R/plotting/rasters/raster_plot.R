@@ -9,9 +9,7 @@ setup_raster_data <- function(sleep_data, episodes, cycles) { #, cycles, bedrest
   min_labtimes <- unique(sleep_data.v[,data.table(subject_code,min_labtime)])
   
   convert_stage_for_raster(sleep_data.v)
-  
-  j_data.v <<- copy(j_data)
-  
+
   episodes.v <<- copy(episodes)
   episodes.v <<- merge(episodes.v, min_labtimes, by='subject_code')
   episodes.v[,`:=`(start_labtime=start_labtime-min_labtime, end_labtime=end_labtime-min_labtime)]
@@ -27,8 +25,7 @@ setup_raster_data <- function(sleep_data, episodes, cycles) { #, cycles, bedrest
   
   ## Set up Days and Day labtimes
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
-  j_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
-  
+
   episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
   #bedrest_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
