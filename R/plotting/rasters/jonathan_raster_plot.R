@@ -28,16 +28,26 @@ setup_raster_data <- function(sleep_data, episodes, cycles, jonathan_data) {
   jonathan_data.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
   jonathan_data.v <<- jonathan_data.v[!is.na(value)]
   
-  max_v <- max(jonathan_data.v[data_type!="AUC"]$value)
-  min_v <- min(jonathan_data.v[data_type!="AUC"]$value)
-  jonathan_data.v[data_type!="AUC",value:=(value - min_v)*(10/(max_v-min_v))]
-
-  max_v <- max(jonathan_data.v[data_type=="AUC"]$value)
-  min_v <- min(jonathan_data.v[data_type=="AUC"]$value)
-  jonathan_data.v[data_type=="AUC",value:=(value - min_v)*(10/(max_v-min_v))]
   
+  
+  jonathan_data.v[,value:=normalize_j(value),by='subject_code,activity_or_bedrest_episode,data_type']
+  
+#   max_v <- max(jonathan_data.v[data_type!="AUC"]$value)
+#   min_v <- min(jonathan_data.v[data_type!="AUC"]$value)
+#   jonathan_data.v[data_type!="AUC",value:=(value - min_v)*(10/(max_v-min_v))]
+# 
+#   max_v <- max(jonathan_data.v[data_type=="AUC"]$value)
+#   min_v <- min(jonathan_data.v[data_type=="AUC"]$value)
+#   jonathan_data.v[data_type=="AUC",value:=(value - min_v)*(10/(max_v-min_v))]
+#   
     
   NULL
+}
+
+normalize_j <- function(values) {
+  max_v <- max(values)
+  min_v <- min(values)
+  (values - min_v)*(10/(max_v-min_v))
 }
 
 ## Raster plots!
@@ -89,7 +99,9 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -.95, ymax = -0.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='iterative'])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
-  plot <- plot + geom_line(data=graph_jdata, aes(group=data_type, color=data_type, y=value))
+  plot <- plot + geom_line(data=graph_jdata[data_type=="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
+  plot <- plot + geom_line(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
+  plot <- plot + geom_point(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
   
   plot
 }

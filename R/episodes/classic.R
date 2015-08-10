@@ -33,12 +33,12 @@ generate_episodes.raw <- function(dt) {
 
 generate_episodes.classic <- function(dt, min_nrem_length=15, min_rem_length=5, burst_length = 15, completion_cutoff=5, e_length = .5) {
   ## SETUPOP
-  dt <- copy(sleep_data[subject_code=='18B2XX'])
-  min_nrem_length=15
-  min_rem_length=5
-  burst_length = 15
-  completion_cutoff=5
-  e_length = .5
+#   dt <- copy(sleep_data[subject_code=='18B2XX'])
+#   min_nrem_length=15
+#   min_rem_length=5
+#   burst_length = 15
+#   completion_cutoff=5
+#   e_length = .5
    
   
   ## Take series of epochs and collapse them into sequences of the same type  
