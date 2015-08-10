@@ -31,83 +31,134 @@ generate_episodes.raw <- function(dt) {
   episodes[,method:="raw"]
 }
 
-generate_episodes.classic <- function(dt, min_nrem_length=30, min_rem_length=10, completion_cutoff=10) {
-  # Take series of epochs and collapse them into sequences of the same type  
+generate_episodes.classic <- function(dt, min_nrem_length=15, min_rem_length=5, burst_length = 15, completion_cutoff=5, e_length = .5) {
+  ## SETUPOP
+#   dt <- copy(sleep_data[subject_code=='18B2XX'])
+#   min_nrem_length=15
+#   min_rem_length=5
+#   burst_length = 15
+#   completion_cutoff=5
+#   e_length = .5
+   
+  
+  ## Take series of epochs and collapse them into sequences of the same type  
   sequences <- dt[, chunk(epoch_type, pk), by='subject_code,activity_or_bedrest_episode']
+  sequences <- remove.target.label(sequences, target_label="UNDEF")  
+  sequences <- sequences[activity_or_bedrest_episode > 0]
+  sequences[,pik:=seq(1,.N),by='subject_code,activity_or_bedrest_episode']
   
-  # Focus only on sequences of interest
-  sequences[, of_interest:=FALSE]
-  sequences[label %in% c("NREM", "REM"), of_interest:=TRUE]
+  ## Find NREM Bursts
+  sequences[, nrem_burst:=FALSE]
+  sequences[label == 'NREM' & (length * e_length) >= burst_length, nrem_burst:=TRUE]
+  sequences[nrem_burst==TRUE, burst_id:=seq(1,.N), by='subject_code,activity_or_bedrest_episode']
     
-  # How do we interpret this: 
+  ## Find first REM Episodes
   
-  # Episodes of REM sleep shorter than 5 min were added to the previous complete REMP. A REMP interrupted by less 
-  # than 15 min of continuous NREM sleep was treated as a single episode with any intereurrent NREM sleep added to the previous complete 
-  # NREMP. These episodes were extremely rare. If the interruption of REM by NREM sleep was 15 min or longer, each part of the REM episode was 
-  # treated as a separate REMP, if longer than 5 min
+  # Number REM Sequences 
+  sequences[label == "REM", rem_id:=seq(1,.N),by='subject_code,activity_or_bedrest_episode']
   
-  ## Number sequences in each bedrest episode
-  sequences[of_interest==TRUE,`:=`(seq_id=seq(1,.N),seq_num=.N),by='subject_code,activity_or_bedrest_episode,label']
-  
-  ## Tag last sequence that can signify completion
-  sequences[,remaining_nrem:=remaining_length(length, label, "NREM"), by='subject_code,activity_or_bedrest_episode']
-  sequences[,remaining_rem:=remaining_length(length, label, "REM"), by='subject_code,activity_or_bedrest_episode']
-  
-  sequences[,completed:=FALSE]
-  sequences[label=="NREM" & remaining_rem > completion_cutoff,completed:=TRUE]
-  sequences[label=="REM" & remaining_nrem > completion_cutoff,completed:=TRUE]
-  
-  sequences[,keep:=FALSE]
-  sequences[label=="NREM" & length >= min_nrem_length & completed == TRUE, keep:=TRUE]
-  sequences[label == "REM" & (length >= min_rem_length | seq_num == 1) & completed == TRUE, keep:=TRUE]
-  
-  sequences[keep==TRUE,group_number:=find_first_instance(.SD), by='subject_code,activity_or_bedrest_episode']
-  sequences[keep==TRUE & group_number != 1, keep:=FALSE]
+  # Label first REM
+  sequences[, first_rem:=FALSE]
+  sequences[label == "REM" & rem_id == 1, first_rem:=TRUE]
 
-  sequences[,method:="classic"]
+  ## Find inter-Burst cumulative REM
+  # Label inter-Burst interval
+  sequences[,inter_burst_id:=set_inter_burst_intervals(.BY,.SD),by='subject_code,activity_or_bedrest_episode']
+  sequences[,total_ibi:=max(inter_burst_id),by='subject_code,activity_or_bedrest_episode']
   
-  sequences[,`:=`(of_interest=NULL, seq_id=NULL, seq_num=NULL, remaining_rem=NULL, remaining_nrem=NULL, completed=NULL, group_number=NULL)]
+  # Get info on the intervals
+  all_inter_burst_intervals <- sequences[,data.table(inter_burst_id=unique(inter_burst_id)),by='subject_code,activity_or_bedrest_episode']
   
-  sequences <- sequences[keep==1]
-  sequences[,keep:=NULL]
- 
-  sequences[,end_position:=plug_gaps(start_position,end_position),by='subject_code,activity_or_bedrest_episode']  
-  sequences[,length:=(end_position-start_position)+1]
-  sequences
-}
+  # Cumulative rem amounts
+  cum_rem <- sequences[label=="REM", data.table(cumulative_rem=sum(length),first_rem_position=min(start_position),last_rem_position=max(end_position)),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
+  cum_rem[cumulative_rem>=(min_rem_length/e_length),above_threshold:=TRUE]
+  
+  # First REM of sleep episode
+  has_first_rem <- sequences[label=="REM", data.table(has_first_rem=any(first_rem)),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
+  
+  # Merging and cleanup
+  all_inter_burst_intervals <- merge(all_inter_burst_intervals,cum_rem,by=c('subject_code','activity_or_bedrest_episode','inter_burst_id'),all.x=TRUE)
+  all_inter_burst_intervals <- merge(all_inter_burst_intervals,has_first_rem,by=c('subject_code','activity_or_bedrest_episode','inter_burst_id'),all.x=TRUE)
+  all_inter_burst_intervals[is.na(cumulative_rem),cumulative_rem:=0]
+  all_inter_burst_intervals[is.na(above_threshold),above_threshold:=FALSE]
+  all_inter_burst_intervals[is.na(has_first_rem),has_first_rem:=FALSE]
+  
+  sequences <- merge(sequences,all_inter_burst_intervals,by=c("subject_code","activity_or_bedrest_episode","inter_burst_id"),all.x=TRUE)
+  
+  # Total: 2143
+  ## Outside the tails (first/last ibi excluded):
+  
+  collapsed <- list()
+  # 1. Collapse those without enough REM into NREM burst
+  # 105
+  to_collapse <- sequences[!above_threshold & !has_first_rem & inter_burst_id!=0 & inter_burst_id!=total_ibi]
+  collapsed$below_threshold <- to_collapse[,data.table(start_position=min(start_position),end_position=max(end_position),label="NREM",length=sum(length),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
 
-remaining_length <- function(lengths, labels, target) {
-  nrow <- length(labels)
-  i <- which(labels == target)
-  target_lengths <- lengths[i]
-  length_diffs <- c(sum(target_lengths), sum(target_lengths) - cumsum(target_lengths))
+  # 2. Collapse all sequences from first rem pos to last rem pos where threshold reached into rem episodes
+  # 1298
+  to_collapse <- sequences[(above_threshold | has_first_rem) & inter_burst_id!=0 & inter_burst_id!=total_ibi & start_position >= first_rem_position & end_position <= last_rem_position]
+  collapsed$rem <-to_collapse[,data.table(start_position=min(start_position),end_position=max(end_position),label="REM",length=sum(length),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
+  
+  # 3. Collapse all sequences in inter-burst but outside of REM episodes 
+  # a. Before REM episode (200)
+  to_collapse <- sequences[inter_burst_id!=0 & inter_burst_id != total_ibi & (above_threshold | has_first_rem) & (end_position < first_rem_position)]
+  collapsed$pre_rem <- to_collapse[,data.table(start_position=min(start_position),end_position=max(end_position),label="NREM",length=sum(length),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
+  
+  # b. After REM episode (260)
+  to_collapse <- sequences[inter_burst_id!=0 & inter_burst_id != total_ibi & (above_threshold | has_first_rem) & (start_position > last_rem_position)]
+  collapsed$post_rem <- to_collapse[,data.table(start_position=min(start_position),end_position=max(end_position),label="NREM",length=sum(length),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
+  
+  ## The head:
+  # has 1st REM:
+  to_collapse <- sequences[inter_burst_id==0 & has_first_rem & start_position >= first_rem_position & end_position <= last_rem_position]
+  collapsed$head_rem <- to_collapse[, data.table(start_position=min(start_position),end_position=max(end_position),label="REM",length=sum(length),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
   
   
-  # Add beginning
-  i <- c(0, i)
+  # post-REM
+  to_collapse <- sequences[inter_burst_id==0 & has_first_rem & (start_position > last_rem_position)]
+  collapsed$head_post_rem <- to_collapse[,data.table(start_position=min(start_position),end_position=max(end_position),label="NREM",length=sum(length),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
   
-  # Add end if not included
-  if(!nrow%in%i)
-    i <- c(i, nrow)
-  repeat_n <- diff(i)
+  # Has no 1st REM:
+  to_collapse <- sequences[inter_burst_id==0 & !has_first_rem]
+  first_nrem_lookup <- to_collapse[label=="NREM",data.table(first_nrem_position=min(start_position)),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
+  to_collapse <- merge(to_collapse,first_nrem_lookup,by=c('subject_code','activity_or_bedrest_episode','inter_burst_id'),all.x=TRUE)
   
-  # Get rid of trailing 0
-  #if(length_diffs[length(length_diffs)] == 0)
-  #length_diffs <- length_diffs[-length(length_diffs)]
-  if(length(repeat_n) < length(length_diffs))
-    length_diffs <- length_diffs[-length(length_diffs)]
+  collapsed$head_nrem <- to_collapse[!is.na(first_nrem_position),data.table(start_position=min(first_nrem_position),end_position=max(end_position),label="NREM",length=(max(end_position)-min(first_nrem_position)+1),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
   
-  g_lengths <<- lengths
-  g_labels <<- labels
-  g_target <<- target
   
-  rep(length_diffs, repeat_n)
+  ## The tail:
+  # 247
+  # Below Threshold w/ no REM
+  to_collapse <- sequences[inter_burst_id==total_ibi & cumulative_rem == 0]
+  collapsed$tail_no_rem <- to_collapse[label == 'NREM',data.table(start_position=min(start_position),end_position=max(end_position),label="NREM",length=(max(end_position)-min(start_position)+1),complete=FALSE),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
   
-}
-
-
-generate_cycles.classic.strict <- function(dt) {
+  # Below Threshold w/ REM
+  to_collapse <- sequences[inter_burst_id==total_ibi & cumulative_rem > 0 & !above_threshold]
+  collapsed$tail_some_rem <- to_collapse[label == 'NREM',data.table(start_position=min(start_position),end_position=min(first_rem_position-1),label="NREM",length=(min(first_rem_position)-min(start_position)),complete=FALSE),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
   
+  # Above Threshold
+  to_collapse <- sequences[inter_burst_id==total_ibi & above_threshold & (end_position < first_rem_position)]
+  collapsed$tail_pre_rem <- to_collapse[label == 'NREM',data.table(start_position=min(start_position),end_position=max(first_rem_position-1),label="NREM",length=(max(end_position)-min(start_position)+1),complete=TRUE),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
+  
+  to_collapse <- sequences[inter_burst_id==total_ibi & above_threshold & start_position >= first_rem_position & end_position <= last_rem_position]
+  collapsed$tail_rem <-to_collapse[,data.table(start_position=min(start_position),end_position=max(end_position),label="REM",length=sum(length),complete=NA),by='subject_code,activity_or_bedrest_episode,inter_burst_id'] 
+  
+  to_collapse <- sequences[inter_burst_id==total_ibi & above_threshold & (start_position > last_rem_position) & label == "NREM"]
+  collapsed$tail_post_rem <- to_collapse[label == 'NREM',data.table(start_position=min(last_rem_position+1),end_position=max(end_position),label="NREM",length=(max(end_position)-min(start_position)+1),complete=FALSE,cumulative_nrem=sum(length)),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
+  
+  
+    
+  episodes <- rbindlist(collapsed, use.names=TRUE, fill=TRUE)
+  setkey(episodes,subject_code,activity_or_bedrest_episode,start_position)
+  
+  # Clean up NA complete variable
+  rem_complete_lookup <- episodes[is.na(complete) | !is.na(cumulative_nrem),data.table(complete=(.N != 1) | (max(cumulative_nrem,na.rm=TRUE) > (completion_cutoff/e_length))),by='subject_code,activity_or_bedrest_episode,inter_burst_id']
+  episodes[is.na(complete),complete:=rem_complete_lookup$complete]
+  
+  # Merge same label neighbors
+  episodes <- episodes[,merge_same_neighbors(.SD),by='subject_code,activity_or_bedrest_episode']
+  episodes[,method:="classic"]
+  episodes
 }
 
 merge_same_neighbors <- function(dt) {
@@ -122,80 +173,31 @@ merge_same_neighbors <- function(dt) {
   
   result <- copy(dt)
   result[,group:=rep(seq(1,length(values)), diffs)]
-  result <- result[,list(start_position=min(start_position), end_position=max(end_position), length=sum(length)), by='group']
+  result <- result[,list(start_position=min(start_position), end_position=max(end_position), length=sum(length),complete=any(complete)), by='group']
   result[,label:=values]
+  result[,group:=NULL]
   
   result
 }
 
-find_first_instance <- function(dt) {
+set_inter_burst_intervals <- function(by, sd) {
+  burst_positions <- sd[(nrem_burst)]$pik
+  burst_ids <- sd[(nrem_burst)]$burst_id
+  last_pik <- max(sd$pik)
   
-  
-  n <- nrow(dt)
-  y <- (dt$label[-1L] != dt$label[-n])
-  i <- c(which(y | is.na(y)), n)
-  
-  diffs <- diff(c(0L, i))
-  values <- dt$label[i]
-
-  result <- copy(dt)
-  result[,group_id:=rep(seq(1,length(values)), diffs)]
-  result[,group_number:=seq(.N),by='group_id']
-  result$group_number
-}
-
-
-
-merge_around_seeds <- function(labels, lengths, wake=FALSE, min_wake_length=10, min_rem_length=10, min_nrem_length=30) {
-  # Find the seed sequences of each type
-  seed_nrem <- intersect(which(labels=='NREM'), which(lengths >= min_nrem_length))
-  seed_rem <- intersect(which(labels=='REM'), which(lengths >= min_rem_length))
-  if(wake) {
-    seed_wake <- intersect(which(labels=='WAKE'), which(lengths >= min_wake_length))    
-  }
-  else
-    seed_wake <- c()
-  
-  # Sort the seed sequences
-  seeds <- sort(c(seed_nrem, seed_rem, seed_wake))
-  
-  if(length(seeds) > 0) {
-    # Label everything until first NREM Sequence as WAKE
-    if(length(seed_nrem) > 0) {
-      first_nrem <- min(seed_nrem)    
-      if(first_nrem > 1) {
-        labels[1] = 'WAKE'
-        seeds <- c(1L, seeds[which(seeds >= first_nrem)])
-      }
-    }
-    # If no first NREM Sequence, everything until first sequence as wake.    
-    else {
-      if(min(seeds) > 1) {
-        labels[1] = 'WAKE'
-        seeds <- c(1L, seeds)
-      }        
+  if(length(burst_positions)==0) {
+    burst_ids <- c(0L)
+    burst_positions <- c(1L, as.integer(last_pik+1))
+  } else {
+    # Correction for pre-first burst
+    if(burst_positions[[1]] > 1) {
+      burst_positions <- c(1L,burst_positions)
+      burst_ids <- c(0L, burst_ids)
     }
     
-    
-    group_lengths <- diff(c(seeds, (length(labels)+1)))
-    new_labels <- rep.int(labels[seeds], group_lengths)
-    
-    groups <- set_group(new_labels)
+    # Correction for post-last burst
+    burst_positions <- c(burst_positions,as.integer(last_pik+1))
   }
-  # 
-  else {
-    #new_labels <- rep.int(labels[seeds], group_lengths)
-    groups <- rep.int(1L, length(labels))#rep.int(seq(1, length(group_lengths)), group_lengths)
-    new_labels <- labels
-    # list(labels=labels, groups=groups)
-    #    list(labels=labels, groups=rep.int(1, length(labels)))  
-    
-  }  
-  list(labels=new_labels, groups=groups)
-}
-
-plug_gaps <- function(start_positions, end_positions) {
-  new_end_positions <- start_positions[-1L] - 1
   
-  c(new_end_positions, end_positions[length(end_positions)])
+  rep.int(burst_ids,diff(burst_positions))
 }
