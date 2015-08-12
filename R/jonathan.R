@@ -23,6 +23,7 @@ jonathan_data$d[,subject_code:='20C1DX']
 
 jonathan_data <- rbindlist(jonathan_data)
 
+jonathan_subject_codes <- unique(jonathan_data$subject_code)
 
 load_data(local=FALSE, subject_list=jonathan_subject_codes)
 
@@ -30,10 +31,11 @@ load_data(local=FALSE, subject_list=jonathan_subject_codes)
 setup_episodes(sleep_data, sleep_data)
 setup_cycles(sleep_data, episodes)
 setup_raster_data(sleep_data, episodes, cycles, jonathan_data)
-
-  p <- plot_raster('18B2XX',first_day=3,number_of_days = 4)
+p <- plot_raster('20A4DX')
 p
+episodes[,mean(length),by='method,label']
 
+episodes[method=="iterative"]
 
 ggsave(plot=r[[1]], file="/home/pwm4/Desktop/test.svg", height=20, width=6, scale=2, limitsize=FALSE)
 
