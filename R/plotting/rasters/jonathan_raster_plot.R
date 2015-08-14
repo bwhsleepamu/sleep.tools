@@ -6,6 +6,7 @@ setup_raster_data <- function(sleep_data, episodes, cycles, jonathan_data) {
   sleep_data.v <<- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
+  sleep_data.v <<- double_plot(sleep_data.v,TRUE)
   
   # Episodes
   episodes.v <<- copy(episodes)
@@ -14,6 +15,8 @@ setup_raster_data <- function(sleep_data, episodes, cycles, jonathan_data) {
   episodes.v <<- data.table(rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number]))))
   episodes.v[,day_number:=start_day_number]
   episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  episodes.v <<- double_plot(episodes.v,TRUE)
+  
   
   # Cycles
   cycles.v <<- copy(cycles)
@@ -22,26 +25,51 @@ setup_raster_data <- function(sleep_data, episodes, cycles, jonathan_data) {
   cycles.v <<- data.table(rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number]))))
   cycles.v[,day_number:=start_day_number]
   cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  cycles.v <<- double_plot(cycles.v,TRUE)
   
   # Jonathan Data
   jonathan_data.v <<- copy(jonathan_data)
   jonathan_data.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
   jonathan_data.v <<- jonathan_data.v[!is.na(value)]
-  
-  
-  
   jonathan_data.v[,value:=normalize_j(value),by='subject_code,activity_or_bedrest_episode,data_type']
+  jonathan_data.v <<- rbindlist(list(jonathan_data.v, jonathan_data.v[,fix_gaps_j(.SD),by='subject_code,activity_or_bedrest_episode,data_type']))
   
-#   max_v <- max(jonathan_data.v[data_type!="AUC"]$value)
-#   min_v <- min(jonathan_data.v[data_type!="AUC"]$value)
-#   jonathan_data.v[data_type!="AUC",value:=(value - min_v)*(10/(max_v-min_v))]
-# 
-#   max_v <- max(jonathan_data.v[data_type=="AUC"]$value)
-#   min_v <- min(jonathan_data.v[data_type=="AUC"]$value)
-#   jonathan_data.v[data_type=="AUC",value:=(value - min_v)*(10/(max_v-min_v))]
-#   
-    
+  jonathan_data.v <<- double_plot(jonathan_data.v,TRUE)
+  
   NULL
+}
+
+fix_gaps_j <- function(d, epoch_length = EPOCH_LENGTH, t_cycle = T_CYCLE) {
+  n <- length(d$day_number)
+  
+  # One new point should have the following time: t_cycle - epoch_length
+  # The other new point should have 0.0 start time. 
+  
+  # the value for both should be value_1 + (value_2 - value_1)/(time_2 - time_1) * value_1
+  
+  # so, we find the day diffs, take before/after indeces, and add the 2 new lines
+  
+  
+  spanning_days <- which(d$day_number[-1L] != d$day_number[-n])
+  
+  new_rows <- lapply(spanning_days, function(position){
+    time_1 <- d[position]$labtime
+    time_2 <- d[position+1]$labtime
+    time_diff_1 <- (t_cycle - epoch_length) - d[position]$day_labtime
+    time_diff_2 <- time_diff_1 + epoch_length
+    
+    val_1 <- d[position]$value
+    val_2 <- d[position+1]$value
+    
+    slope <- (val_2 - val_1)/(time_2 - time_1)
+    
+    new_val_1 <- val_1 + slope*time_diff_1
+    new_val_2 <- val_1 + slope*time_diff_2
+    
+    data.table(labtime=c(time_1+time_diff_1, time_1+time_diff_2), value=c(new_val_1, new_val_2), day_number=c(d[position]$day_number, d[position+1]$day_number), day_labtime=c(t_cycle-epoch_length, 0.0))
+  })
+  
+  rbindlist(new_rows)
 }
 
 normalize_j <- function(values) {
@@ -84,13 +112,15 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + xlab("Time (hours)")
   
   # Faceting
-  plot <- plot + facet_grid(day_number ~ .)
+  plot <- plot + facet_grid(day_number ~ double_plot_pos)
   
   # Scaling and Margins
   y_breaks <- c(-7,-6.5,-6,-4.5,-3, -2.5, -1.5,-.5, 5, 10)
 
   plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,12,24), minor_breaks=c(3,6,9,15,18,21)) 
   plot <- plot + scale_y_continuous(limits=c(-7, 10), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  
+  plot <- plot + theme(panel.margin.x = unit(0.00, "npc"))
   
   # Colors
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
@@ -101,7 +131,7 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
   plot <- plot + geom_line(data=graph_jdata[data_type=="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
   plot <- plot + geom_line(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
-  plot <- plot + geom_point(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
+  #plot <- plot + geom_point(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
   
   plot
 }
@@ -161,4 +191,27 @@ y_axis_formatter <- function(x) {
   else { res <- as.character(x) }
   
   res
+}
+
+
+# Double-Plotting
+double_plot <- function(dataset, plot_double=TRUE) {
+  ### DANGER ###
+  # This function changes the date of the right double-plot, causing the actual dates to not match up with the times. 
+  # The correct date for a given set of times is (day + double_plot_pos)
+  ###
+  if(plot_double) { 
+    right_side <- copy(dataset)
+    left_side <- copy(dataset)
+    
+    left_side[,double_plot_pos:=0]
+    right_side[,double_plot_pos:=1]
+    right_side[,day_number:=day_number-1]
+    
+    #     if(!is.null(right_side$day_s))
+    #       r_df$day_s <- format(r_df$day, format="%Y-%m-%d")
+    return(rbind(left_side, right_side))
+  } else {
+    dataset[, double_plot_pos:=0]    
+  }
 }

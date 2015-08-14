@@ -124,7 +124,7 @@ setup_episodes <- function(sleep_data, full_sleep_data) {
   ### NREM and REM Episodes
   ## Calculate episodes using different methods.
   ######## Raw Stages
-  #episodes.raw <<- generate_episodes.raw(sleep_data)
+  episodes.raw <<- generate_episodes.raw(sleep_data)
   ######## Classic
   episodes.classic <<- generate_episodes.classic(sleep_data)
   ######## Iterative
@@ -147,7 +147,7 @@ setup_episodes <- function(sleep_data, full_sleep_data) {
   # Get rid of wake episodes
   episodes <<- episodes[activity_or_bedrest_episode > 0]
   # Merge with information about each episode
-  setkey(sleep_data,pk)
+  setkey(full_sleep_data,pk)
   #episodes <<- merge(episodes, subjects, all.x=TRUE, all.y=FALSE, by='subject_code')
   episodes[,`:=`(start_labtime=full_sleep_data[start_position]$labtime, end_labtime=full_sleep_data[end_position]$labtime)]
   
