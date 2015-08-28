@@ -1,4 +1,34 @@
-function(x) { 
+function(){
+  data_location <- "/X/Studies/Analyses/McHill_Glucose SWA/For JDs Program"
+  subject_codes <- list.dirs(data_location, full.names=FALSE,recursive=FALSE)
+  andrew_subject_list <- data.table(subject_code=subject_codes)
+  andrew_subject_list[,file_path:=paste(data_location,'/',subject_code,'/',subject_code,'Slp.01.csv',sep='')]
+  load_data(subjects = andrew_subject_list)
+  sleep_data[,labtime:=NULL]
+  sleep_data[,labtime:=(24*(activity_or_bedrest_episode-1))+(0:(.N-1))*30/3600,by='subject_code,activity_or_bedrest_episode']
+  
+  setup_episodes(sleep_data, sleep_data)
+  setup_cycles(sleep_data, episodes)
+  
+  setup_raster_data(sleep_data,episodes,cycles)
+  
+  plot_raster("W06031999", first_day = 1)
+  
+  nrem_episode_ouput <- copy(episodes[method=='iterative' & label=='NREM'])
+  nrem_episode_ouput[,`:=`(label=NULL, start_position=NULL, end_position=NULL, method=NULL, complete=NULL)]
+  nrem_episode_ouput[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
+  
+  sleep_episode_times <- sleep_data[,data.table(sleep_episode_start_time=head(labtime,1), sleep_episode_end_time=tail(labtime,1)),by='subject_code,activity_or_bedrest_episode']
+  
+  output <- merge(nrem_episode_ouput,sleep_episode_times,all.x=TRUE,by=c('subject_code','activity_or_bedrest_episode'))
+  write.table(output,file="~/Desktop/andrew/NREM_episodes_extended_20150828.csv",row.names = FALSE,sep=',')
+  
+}
+
+
+
+function() { 
+
   file_names <- list.files("data/ANDREW_M/")
   sheet_list <- lapply(file_names, function(file_name){
     subject_code <- strsplit(file_name, ".", fixed=TRUE)[[1]][1]

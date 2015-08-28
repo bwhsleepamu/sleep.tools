@@ -99,7 +99,7 @@ load_fd_times <- function() {
   fd_times
 }
 
-load_data <- function(local=TRUE, subject_list=NULL) {
+load_data <- function(subject_fp=subject_fp.all, subject_list=NULL, subjects=NULL) {
   ## Environment Setup
   # Load Subject Groups
   
@@ -107,14 +107,8 @@ load_data <- function(local=TRUE, subject_list=NULL) {
   #subjects.subset <- subjects.all#[study %in% c('T20CSR-Control', 'T20CSR-CSR')]
   
   # Select main subject group
-  
-  if(local) {
-    subjects.local <- read_subject_info(subject_fp.local)
-    subjects <<- subjects.local
-  } else {
-    subjects.all <- read_subject_info(subject_fp.all)
-    subjects <<- subjects.all
-  }
+  if(is.null(subjects))
+    subjects <<- read_subject_info(subject_fp)
   
   if(!is.null(subject_list))
     subjects <<- subjects[subject_code %in% subject_list]
@@ -123,7 +117,8 @@ load_data <- function(local=TRUE, subject_list=NULL) {
   # Load and set up data for subject group
   sleep_data <<- load_sleep_data(subjects)
   
-  fd_times <<- load_fd_times()
+  if("start_analysis" %in% colnames(subjects))
+    fd_times <<- load_fd_times()
   sleep_efficiency <<- load_sleep_statistics()
  
 }

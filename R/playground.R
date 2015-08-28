@@ -8,7 +8,7 @@ setup_cycles(sleep_data, episodes)
 setup_raster_data(sleep_data, episodes, cycles)
 
 source("R/plotting/rasters/raster_plot.R")
-plot_raster("F03102000disrupt", first_day = 1)
+plot_raster("F03102000", first_day = 1)
 
 
 
