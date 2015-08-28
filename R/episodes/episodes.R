@@ -144,6 +144,7 @@ setup_episodes <- function(sleep_data, full_sleep_data) {
   ## Merge methods into one table
   #episodes <<- rbindlist(list(episodes.classic,episodes.iterative,episodes.changepoint,episodes.changepoint.compact), fill=TRUE, use.names=TRUE)
   episodes <<- rbindlist(list(episodes.classic,episodes.iterative), fill=TRUE, use.names=TRUE)
+
   # Get rid of wake episodes
   episodes <<- episodes[activity_or_bedrest_episode > 0]
   # Merge with information about each episode
