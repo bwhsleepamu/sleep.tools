@@ -1,5 +1,6 @@
 source("R/sources.R")
 source("R/plotting/rasters/jonathan_raster_plot.R")
+library(gtable)
 #source("R/analysis/analysis.R")
 
 jonathan_subject_codes <- fread("data/jonathan_subject_list.csv")$Subject
@@ -60,7 +61,7 @@ write.table(output,file="~/Desktop/jonathan/NREM_episodes_extended_20150813.csv"
 
 
 ###############
-p <- plot_raster(jonathan_subject_codes[[1]], first_day = 1, number_of_days = 5)
+p <- plot_raster(jonathan_subject_codes[[3]], first_day = 5, number_of_days = 5)
 p
 
 episodes[,mean(length),by='method,label']
