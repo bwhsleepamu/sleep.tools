@@ -42,8 +42,8 @@ setup_raster_data <- function(sleep_data, episodes, cycles, jonathan_data) {
   jonathan_data.v <<- jonathan_data.v[!is.na(value)]
   jonathan_data.v[data_type=='DELTA_POWER',delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
   jonathan_data.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
-  jonathan_data.v[,value:=normalize_j(value),by='subject_code,data_type']
-  #jonathan_data.v[data_type!="DELTA_POWER",value:=normalize_j(value),by='subject_code,']
+  jonathan_data.v[data_type=="DELTA_POWER",value:=normalize_j(value,0.975),by='subject_code']
+  jonathan_data.v[data_type!="DELTA_POWER",value:=normalize_j(value),by='subject_code,data_type']
   jonathan_data.v <<- rbindlist(list(jonathan_data.v, jonathan_data.v[data_type!='DELTA_POWER',fix_gaps_j(.SD),by='subject_code,activity_or_bedrest_episode,data_type']), use.names=TRUE, fill=TRUE)
   
   
@@ -96,8 +96,10 @@ fix_gaps_j <- function(d, epoch_length = EPOCH_LENGTH, t_cycle = T_CYCLE) {
   rbindlist(new_rows)
 }
 
-normalize_j <- function(values) {
-  max_v <- max(values)
+normalize_j <- function(values, cutoff=1) {
+  
+  
+  max_v <- quantile(values,cutoff)
   min_v <- min(values)
   (values - min_v)*(10/(max_v-min_v))
 }

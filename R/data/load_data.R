@@ -108,11 +108,16 @@ load_data <- function(subject_fp=subject_fp.all, subject_list=NULL, subjects=NUL
   
   # Select main subject group
   if(is.null(subjects))
-    subjects <<- read_subject_info(subject_fp)
+    subjects <- read_subject_info(subject_fp)
   
-  if(!is.null(subject_list))
-    subjects <<- subjects[subject_code %in% subject_list]
+  if(!is.null(subject_list)) {
+    print(subject_list)
+    print(subjects)
+    subjects <- subjects[subject_code %in% subject_list]
     
+  }
+    
+  subjects <<- subjects
   
   # Load and set up data for subject group
   sleep_data <<- load_sleep_data(subjects)
