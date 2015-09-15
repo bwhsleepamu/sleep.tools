@@ -1,4 +1,4 @@
-## HELPERS
+#`# HELPERS
 
 # Maps numerical values to types of epochs
 ## USED IN LOAD_DATA
@@ -122,8 +122,8 @@ load_data <- function(subject_fp=subject_fp.all, subject_list=NULL, subjects=NUL
   # Load and set up data for subject group
   sleep_data <<- load_sleep_data(subjects)
   
-  if("start_analysis" %in% colnames(subjects))
-    fd_times <<- load_fd_times()
-  sleep_efficiency <<- load_sleep_statistics()
+  #if("start_analysis" %in% colnames(subjects))
+    #fd_times <<- load_fd_times()
+  #sleep_efficiency <<- load_sleep_statistics()
  
 }

@@ -2,13 +2,18 @@ source("R/sources.R")
 source("R/plotting/rasters/raster_plot.R")
 source("R/analysis/analysis.R")
 
-load_data(local=FALSE)
+
+subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2015a.xls"))
+setnames(subjects, c("Subject", "Age.Group", "Study"), c("subject_code", "age_group", "study"))
+subjects[,file_path:=paste("/I/AMU Cleaned Data Sets/", subject_code, "/Sleep/", subject_code, "Slp.01.csv", sep="")]
+
+load_data(subjects = subjects)
+
 setup_episodes(sleep_data, sleep_data)
 setup_cycles(sleep_data, episodes)
 setup_raster_data(sleep_data, episodes, cycles)
 
-source("R/plotting/rasters/raster_plot.R")
-plot_raster("F03102000", first_day = 1)
+plot_raster("20A4DX", number_of_days = 6)
 
 
 
