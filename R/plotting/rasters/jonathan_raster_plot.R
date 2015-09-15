@@ -1,7 +1,7 @@
 ## Entering here is: sleep_data, subjects, periods, and nrem_cycles
 
 ## Set up for plotting
-setup_raster_data <- function(sleep_data, episodes, cycles, jonathan_data) {
+setup_raster_data <- function(sleep_data, episodes, cycles, nrem_auc_fitted_data) {
   # Sleep Data Setup
   sleep_data.v <<- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
@@ -38,16 +38,16 @@ setup_raster_data <- function(sleep_data, episodes, cycles, jonathan_data) {
   cycles.v <<- double_plot(cycles.v,TRUE)
   
   # Jonathan Data
-  jonathan_data.v <<- copy(jonathan_data)
-  jonathan_data.v <<- jonathan_data.v[!is.na(value)]
-  jonathan_data.v[data_type=='DELTA_POWER',delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
-  jonathan_data.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
-  jonathan_data.v[,value:=normalize_j(value),by='subject_code,data_type']
-  #jonathan_data.v[data_type!="DELTA_POWER",value:=normalize_j(value),by='subject_code,']
-  jonathan_data.v <<- rbindlist(list(jonathan_data.v, jonathan_data.v[data_type!='DELTA_POWER',fix_gaps_j(.SD),by='subject_code,activity_or_bedrest_episode,data_type']), use.names=TRUE, fill=TRUE)
+  nrem_auc_fitted_data.v <<- copy(nrem_auc_fitted_data)
+  nrem_auc_fitted_data.v <<- nrem_auc_fitted_data.v[!is.na(value)]
+  nrem_auc_fitted_data.v[data_type=='DELTA_POWER',delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
+  nrem_auc_fitted_data.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
+  nrem_auc_fitted_data.v[,value:=normalize_j(value),by='subject_code,data_type']
+  #nrem_auc_fitted_data.v[data_type!="DELTA_POWER",value:=normalize_j(value),by='subject_code,']
+  nrem_auc_fitted_data.v <<- rbindlist(list(nrem_auc_fitted_data.v, nrem_auc_fitted_data.v[data_type!='DELTA_POWER',fix_gaps_j(.SD),by='subject_code,activity_or_bedrest_episode,data_type']), use.names=TRUE, fill=TRUE)
   
   
-  jonathan_data.v <<- double_plot(jonathan_data.v,TRUE)
+  nrem_auc_fitted_data.v <<- double_plot(nrem_auc_fitted_data.v,TRUE)
   
   NULL
 }
@@ -122,7 +122,7 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   # Get data subset
   graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
-  graph_jdata <<- copy(jonathan_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_jdata <<- copy(nrem_auc_fitted_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   
   # Draw

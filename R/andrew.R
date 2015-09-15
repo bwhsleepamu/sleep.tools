@@ -1,3 +1,7 @@
+source("R/sources.R")
+source("R/plotting/rasters/jonathan_raster_plot.R")
+
+
 function(){
   data_location <- "/X/Studies/Analyses/McHill_Glucose SWA/For JDs Program"
   subject_codes <- list.dirs(data_location, full.names=FALSE,recursive=FALSE)
@@ -10,7 +14,29 @@ function(){
   setup_episodes(sleep_data, sleep_data)
   setup_cycles(sleep_data, episodes)
   
-  setup_raster_data(sleep_data,episodes,cycles)
+  
+  nrem_auc_fitted_data <- lapply(subject_codes, function(sc){
+    
+    fp <- paste(data_location, sc, paste(tolower(sc), 'NREM_AUC_Fitted.xls', sep='_'), sep='/')
+    print(paste("Trying", fp))
+    
+    if(file.exists(fp)) {
+      print(paste("Loading", sc))
+      s_data <- as.data.table(read.xls(fp))
+      setnames(s_data, c("subject_code","activity_or_bedrest_episode", "data_type", "labtime", "value"))
+      s_data[,subject_code:=sc]
+      s_data
+    }
+    else {
+      print(paste("Could not load", sc))
+      NULL
+    }
+  })
+  
+  nrem_auc_fitted_data <- rbindlist(nrem_auc_fitted_data)
+  
+  
+  setup_raster_data(sleep_data,episodes,cycles,nrem_auc_fitted_data)
   
   plot_raster("W06031999", first_day = 1)
   

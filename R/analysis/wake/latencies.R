@@ -15,7 +15,7 @@ setnames(e, c('start_position','end_position'), c('sp', 'ep'))
 # episodes.iterative[,episode_id:=paste(label,episode_id,sep='')]
 
 
-cs <- cycles[method=='iterative' & type == "NREM"]
+cs <- cycles[method=='classic' & type == "NREM"]
 
 
 
@@ -23,8 +23,6 @@ e[,episode_type:=episodes.iterative[sp >= start_position & ep <= end_position]$l
 e[,cycle_number:=cs[sp >= start_position & ep <= end_position]$cycle_number, by='pik']
 e[,prev_label:=c(NA,label[-.N]),by='subject_code,activity_or_bedrest_episode']
 e[,prev_length:=c(NA,length[-.N]),by='subject_code,activity_or_bedrest_episode']
-
-te <- e[subject_code=='1105X' & activity_or_bedrest_episode==1]
 
 rem_sequences <- e[label=="REM"]
 nrem_sequences <- e[label=="NREM"]

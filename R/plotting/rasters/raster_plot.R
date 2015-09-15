@@ -61,7 +61,6 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   # Get data subset
   graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
-  graph_jdata <<- copy(jonathan_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   
   # Draw
@@ -79,10 +78,10 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + facet_grid(day_number ~ double_plot_pos)
   
   # Scaling and Margins
-  y_breaks <- c(-7,-6.5,-6,-4.5,-3, -2.5, -1.5,-.5, 5, 10)
+  y_breaks <- c(-8.5,-8, -7.5, -6, -4.5, -3.5, -2.5, -1.5,-.5, 0)
   
   plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20)) 
-  plot <- plot + scale_y_continuous(limits=c(-8, 10), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  plot <- plot + scale_y_continuous(limits=c(-9, 0), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
   plot <- plot + theme(panel.margin.x = unit(0.00, "npc"))
   
@@ -90,16 +89,15 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
   
   ## Episodes and Cycles
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -.95, ymax = -0.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='iterative'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -.95, ymax = -0.05, data = graph_episodes[label!="UNDEF" & method=='raw'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.95, ymax = -2.05, data = graph_episodes[method=='iterative'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3.95, ymax = -3.05, data = graph_episodes[method=='changepoint_compact'])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
-  plot <- plot + geom_line(data=graph_jdata[data_type=="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode,delta_power_group), color=data_type, y=value))
-  plot <- plot + geom_line(data=graph_jdata[data_type!="DELTA_POWER" & data_type != "FITTED"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
-  #plot <- plot + geom_point(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
-  
+
   # Sleep Episode Numbers
   #plot <- plot + geom_rect(aes(NULL, NULL, xmin=start_day_labtime, xmax=end_day_labtime+epoch_length), ymin=-8, ymax=-7, fill=NA, color="black", data=graph_sleep_episodes)
-  plot <- plot + geom_text(aes(x = (start_day_labtime+end_day_labtime)/2, label=activity_or_bedrest_episode), y=-7.7, size=2.5, data=graph_sleep_episodes)
+  plot <- plot + geom_text(aes(x = (start_day_labtime+end_day_labtime)/2, label=activity_or_bedrest_episode), y=-8.7, size=2.5, data=graph_sleep_episodes)
   
   
   plot
@@ -145,23 +143,22 @@ set_days <- function(labtimes, t_cycle=T_CYCLE) {
 }
 
 convert_stage_for_raster <- function(d) {
-  conv_map <- c(-6,-6.5,-7,-7,-3,-4.5)
+  conv_map <- c(-7.5,-8,-8.5,-8.5,-4.5,-6)
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
-  d[epoch_type=='UNDEF', stage_for_raster:=-2.5]
+  d[epoch_type=='UNDEF', stage_for_raster:=-4.0]
 }
 
 y_axis_formatter <- function(x) {
-  if (x == -3) { res <- "WAKE" }
-  else if (x == -4.5) { res <- "REM" }
-  else if (x == -6) { res <- "" }
-  else if (x == -6.5) { res <- "NREM" }
-  else if (x == -7) { res <- "" }
-  #else if (x == 3.5) { res <- "" }
-  else if (x == -2.5) { res <- ""}
-  else if (x == -.5) { res <- "Traditional"}
-  else if (x == -1.5) { res <- "Extended"}
-  #  else if (x == -4) { res <- "Changepoint"}
+  if (x == -4.5) { res <- "WAKE" }
+  else if (x == -6) { res <- "REM" }
+  else if (x == -7.5) { res <- "" }
+  else if (x == -8) { res <- "NREM" }
+  else if (x == -8.5) { res <- "" }
+  else if (x == -.5) { res <- "Raw"}
+  else if (x == -1.5) { res <- "Traditional"}
+  else if (x == -2.5) { res <- "Extended"}
+  else if (x == -3.5) { res <- "Changepoint" }
   else { res <- as.character(x) }
   
   res
