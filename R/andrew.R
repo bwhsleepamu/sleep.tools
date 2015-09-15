@@ -14,15 +14,22 @@ function(){
   setup_episodes(sleep_data, sleep_data)
   setup_cycles(sleep_data, episodes)
   
+  nrem_episode_ouput <- copy(episodes[method=='iterative' & label=='NREM'])
+  nrem_episode_ouput[,`:=`(label=NULL, start_position=NULL, end_position=NULL, method=NULL, complete=NULL)]
+  nrem_episode_ouput[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
+  
+  sleep_episode_times <- sleep_data[,data.table(sleep_episode_start_time=head(labtime,1), sleep_episode_end_time=tail(labtime,1)),by='subject_code,activity_or_bedrest_episode']
+  
+  output <- merge(nrem_episode_ouput,sleep_episode_times,all.x=TRUE,by=c('subject_code','activity_or_bedrest_episode'))
+  write.table(output,file="~/Desktop/andrew/NREM_episodes_extended_20150828.csv",row.names = FALSE,sep=',')
+  
   
   nrem_auc_fitted_data <- lapply(subject_codes, function(sc){
-    
     fp <- paste(data_location, sc, paste(tolower(sc), 'NREM_AUC_Fitted.xls', sep='_'), sep='/')
-    print(paste("Trying", fp))
-    
+
     if(file.exists(fp)) {
       print(paste("Loading", sc))
-      s_data <- as.data.table(read.xls(fp))
+      s_data <- as.data.table(read.xls(fp, header = FALSE))
       setnames(s_data, c("subject_code","activity_or_bedrest_episode", "data_type", "labtime", "value"))
       s_data[,subject_code:=sc]
       s_data
@@ -36,18 +43,24 @@ function(){
   nrem_auc_fitted_data <- rbindlist(nrem_auc_fitted_data)
   
   
-  setup_raster_data(sleep_data,episodes,cycles,nrem_auc_fitted_data)
+  setup_raster_data(sleep_data,episodes,cycles,nrem_auc_fitted_data,doubleplot = FALSE)
   
-  plot_raster("W06031999", first_day = 1)
+  plot_raster("S05161999", first_day = 1, doubleplot = FALSE, hour_range = c(0,8.1), label_sleep_episode = FALSE)
   
-  nrem_episode_ouput <- copy(episodes[method=='iterative' & label=='NREM'])
-  nrem_episode_ouput[,`:=`(label=NULL, start_position=NULL, end_position=NULL, method=NULL, complete=NULL)]
-  nrem_episode_ouput[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
+  r <- lapply(subject_codes, function(x) {
+    p <-plot_raster(x, first_day=1, doubleplot = FALSE, hour_range = c(0,8.1), label_sleep_episode = FALSE)
+    p
+  })
   
-  sleep_episode_times <- sleep_data[,data.table(sleep_episode_start_time=head(labtime,1), sleep_episode_end_time=tail(labtime,1)),by='subject_code,activity_or_bedrest_episode']
   
-  output <- merge(nrem_episode_ouput,sleep_episode_times,all.x=TRUE,by=c('subject_code','activity_or_bedrest_episode'))
-  write.table(output,file="~/Desktop/andrew/NREM_episodes_extended_20150828.csv",row.names = FALSE,sep=',')
+  
+  for(p in r) {
+    ggsave(plot=p, file=paste("/home/pwm4/Desktop/andrew_rasters/", p$data$subject_code[[1]], ".svg", sep=''), height=4, width=6, scale=2, limitsize=FALSE)
+  }
+  
+  
+  
+  
   
 }
 
