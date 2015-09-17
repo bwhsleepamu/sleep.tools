@@ -1,3 +1,60 @@
+# Helper Methods
+find_patterns <- function(labels, lengths, pattern, plen, no_wake_pattern, nw_plen, wake_pos, set_zeros=TRUE) {
+  wake_lengths <- integer(0)
+  pattern_lengths <- integer(0)
+  
+  simple_labels <- paste(substring(labels, 1, 1), collapse='')
+  start_positions <- as.integer(gregexpr(pattern, simple_labels)[[1]])
+  if(start_positions[1] != -1) {
+    all_positions <- sapply(start_positions, function(x, l) {seq.int(x, x+l) }, plen-1, simplify=TRUE)
+    
+    pattern_lengths <- apply(all_positions,2,function(x, lengths,wake_pos){sum(lengths[x[-wake_pos]])},lengths,wake_pos)
+    wake_lengths <- apply(all_positions,2,function(x, lengths, wake_pos){ lengths[x[wake_pos]] },lengths,wake_pos)
+  }
+  
+  start_positions <- as.integer(gregexpr(no_wake_pattern, simple_labels)[[1]])
+  if(start_positions[1]!=-1 & set_zeros==TRUE) {
+    all_positions <- sapply(start_positions, function(x, l) {seq.int(x, x+l) }, nw_plen-1, simplify=TRUE)
+    
+    if(nw_plen == 1)
+      pattern_lengths <- c(pattern_lengths, sapply(all_positions,function(x, lengths){sum(lengths[x])},lengths))
+    else
+      pattern_lengths <- c(pattern_lengths, apply(all_positions,2,function(x, lengths){sum(lengths[x])},lengths))
+    wake_lengths <- c(wake_lengths, rep.int(0, length(start_positions)))    
+  }
+  
+  data.table(wake_length=as.integer(wake_lengths),pattern_length=as.integer(pattern_lengths))
+}
+
+
+plot_wake_graph <- function(patterns, episodes) {
+  
+  wds <- rbindlist(lapply(patterns,function(x) episodes[method=='changepoint_compact',find_wake_in_sleep_patterns(label,length,wake_epochs,x,nchar(x))] ))
+  qplot(wake_length,pattern_length, data=wds, color=pattern)
+}
+
+
+find_wake_in_sleep_patterns <- function(labels, lengths, wake_epochs, pattern, pattern_length) {
+  simple_labels <- paste(substring(labels, 1, 1), collapse='')
+  start_positions <- as.integer(gregexpr(pattern, simple_labels)[[1]])
+  
+  if(start_positions[1] != -1) {
+    all_positions <- sapply(start_positions, function(x, l) {seq.int(x, x+l) }, pattern_length-1, simplify=TRUE)
+    
+    if(pattern_length == 1) {
+      wake_lengths <- sapply(all_positions,function(x, wake){ sum(wake[x]) },wake_epochs)
+      pattern_lengths <- sapply(all_positions,function(x, lengths){sum(lengths[x])},lengths) - wake_lengths
+    }
+    else {
+      wake_lengths <- apply(all_positions,2,function(x, wake){ sum(wake[x]) },wake_epochs)
+      pattern_lengths <- apply(all_positions,2,function(x, lengths){sum(lengths[x])},lengths) - wake_lengths
+    }
+  }
+  data.table(wake_length=as.integer(wake_lengths),pattern_length=as.integer(pattern_lengths), pattern=pattern)
+}
+
+
+
 ## Second pass
 # 1. find places within each activ.bedrest.episode where sequence of labels is of a given pattern
 # 2. get length of pattern, and length of wake. For variation of patern w/o wake, wake == 0
@@ -46,165 +103,8 @@ gsub("W","","NRWNWNWNWRN")
 
 paste(substring(o$label, 1, 1), collapse='')
 
-find_patterns <- function(labels, lengths, pattern, plen, no_wake_pattern, nw_plen, wake_pos, set_zeros=TRUE) {
-  wake_lengths <- integer(0)
-  pattern_lengths <- integer(0)
-  
-  simple_labels <- paste(substring(labels, 1, 1), collapse='')
-  start_positions <- as.integer(gregexpr(pattern, simple_labels)[[1]])
-  if(start_positions[1] != -1) {
-    all_positions <- sapply(start_positions, function(x, l) {seq.int(x, x+l) }, plen-1, simplify=TRUE)
-    
-    pattern_lengths <- apply(all_positions,2,function(x, lengths,wake_pos){sum(lengths[x[-wake_pos]])},lengths,wake_pos)
-    wake_lengths <- apply(all_positions,2,function(x, lengths, wake_pos){ lengths[x[wake_pos]] },lengths,wake_pos)
-  }
-  
-  start_positions <- as.integer(gregexpr(no_wake_pattern, simple_labels)[[1]])
-  if(start_positions[1]!=-1 & set_zeros==TRUE) {
-    all_positions <- sapply(start_positions, function(x, l) {seq.int(x, x+l) }, nw_plen-1, simplify=TRUE)
 
-    if(nw_plen == 1)
-      pattern_lengths <- c(pattern_lengths, sapply(all_positions,function(x, lengths){sum(lengths[x])},lengths))
-    else
-      pattern_lengths <- c(pattern_lengths, apply(all_positions,2,function(x, lengths){sum(lengths[x])},lengths))
-    wake_lengths <- c(wake_lengths, rep.int(0, length(start_positions)))    
-  }
-  
-  data.table(wake_length=as.integer(wake_lengths),pattern_length=as.integer(pattern_lengths))
-}
 # New angle
 # 
 episodes[,wake_epochs:=sum(sleep_data[start_position:end_position]$epoch_type=="WAKE"),by='start_position,end_position']
 cycles[,wake_epochs:=sum(sleep_data[start_position:end_position]$epoch_type=="WAKE"),by='start_position,end_position']
-
-plot_wake_graph <- function(patterns, episodes) {
-
-  wds <- rbindlist(lapply(patterns,function(x) episodes[method=='changepoint_compact',find_wake_in_sleep_patterns(label,length,wake_epochs,x,nchar(x))] ))
-  qplot(wake_length,pattern_length, data=wds, color=pattern)
-}
-
-find_wake_in_sleep_patterns <- function(labels, lengths, wake_epochs, pattern, pattern_length) {
-  simple_labels <- paste(substring(labels, 1, 1), collapse='')
-  start_positions <- as.integer(gregexpr(pattern, simple_labels)[[1]])
-  
-  if(start_positions[1] != -1) {
-    all_positions <- sapply(start_positions, function(x, l) {seq.int(x, x+l) }, pattern_length-1, simplify=TRUE)
-    
-    if(pattern_length == 1) {
-      wake_lengths <- sapply(all_positions,function(x, wake){ sum(wake[x]) },wake_epochs)
-      pattern_lengths <- sapply(all_positions,function(x, lengths){sum(lengths[x])},lengths) - wake_lengths
-    }
-    else {
-      wake_lengths <- apply(all_positions,2,function(x, wake){ sum(wake[x]) },wake_epochs)
-      pattern_lengths <- apply(all_positions,2,function(x, lengths){sum(lengths[x])},lengths) - wake_lengths
-    }
-  }
-  data.table(wake_length=as.integer(wake_lengths),pattern_length=as.integer(pattern_lengths), pattern=pattern)
-}
-
-
-# FIrst pass
-  
-e <- analysis_episodes[typ=='all' & protocol_section!='fd' & method=='changepoint_compact']
-
-wake_i <- which(e$label=="WAKE")
-ws <- wake_sheet(wake_i, e, nrow(e))
-
-bc <- ws[!is.na(before_length)]
-ac <- ws[!is.na(after_length)]
-tc <- ws[!is.na(total_length)]
-
-cor(bc$length,bc$before_length)
-p <- ggplot(bc, aes(bc$length, bc$before_length))
-p + geom_point(alpha=1/10)
-
-cor(tc$length,tc$total_length)
-p <- ggplot(tc, aes(tc$length, tc$total_length))
-p + geom_point(alpha=1/10)
-
-cor(ac$length,ac$after_length)
-p <- ggplot(ac, aes(ac$length, ac$after_length))
-p + geom_point(alpha=1/10)
-
-bc[,`:=`(t='bc',l=before_length)]
-tc[,`:=`(t='tc',l=total_length)]
-ac[,`:=`(t='ac',l=after_length)]
-allc <- rbindlist(list(bc,ac,tc))
-
-medians <- allc[,data.table(med=median(l)),by='t']
-p <- ggplot(allc, aes(factor(t), l)) 
-p + geom_boxplot(aes(fill = factor(t))) + geom_text(data=medians, aes(x=factor(t), y=med, label = med)) + scale_y_log10()
-
-
-table(ws$before_label)
-table(ws$after_label)
-
-# Compare lengths to NREM with no WAKE
-# Get dist of lengths based on wake
-
-we <- copy(episodes[method == "changepoint"])
-f <- copy(episodes[method == "iterative"])
-
-qplot(f[label=="WAKE"]$length, binwidth=.5)
-
-e[label=="WAKE"]
-
-hist(e[label=="WAKE" & length > 10 & length < 200]$length)
-
-
-
-short_wake_i <- which(e$label == "WAKE" & e$length <= 10)
-medium_wake_i <- which(e$label == "WAKE" & e$length > 10 & e$length <= 30)
-long_wake_i <- which(e$label == "WAKE" & e$length > 30 & e$length <= 60)
-very_long_wake_i <- which(e$label == "WAKE" & e$length > 60)
-
-wake_sheet <- function(i, e, n) {
-  sheet <- data.table(wake=i)
-  sheet[,before:=wake - 1]
-  sheet[,after:=wake+1]
-  
-  sheet[before < 1, before:=NA]
-  sheet[after > n, after:=NA]
-  
-  sheet[e[after]$activity_or_bedrest_episode != e[wake]$activity_or_bedrest_episode, after:=NA]  
-  sheet[e[before]$activity_or_bedrest_episode != e[wake]$activity_or_bedrest_episode, before:=NA]
-  
-  sheet[e[after]$subject_code != e[wake]$subject_code, after:=NA]  
-  sheet[e[before]$subject_code != e[wake]$subject_code, before:=NA]
-  
-  sheet[,before_label:=e[before]$label]
-  sheet[,after_label:=e[after]$label]
-  
-  sheet[,length:=e[wake]$length]
-  sheet[,before_length:=e[before]$length]
-  sheet[,after_length:=e[after]$length]
-
-  sheet[!is.na(after_label) & !is.na(before_label), total_length:=before_length + after_length]
-  sheet
-}
-
-short <- wake_sheet(short_wake_i, e, nrow(e))
-medium <- wake_sheet(medium_wake_i, e, nrow(e))
-long <- wake_sheet(long_wake_i, e, nrow(e))
-very_long <- wake_sheet(very_long_wake_i, e, nrow(e))
-
-short[,wake_length:="1_short"]
-medium[,wake_length:="2_medium"]
-long[,wake_length:="3_long"]
-very_long[,wake_length:="4_very_long"]
-
-all <- rbind(short,medium,long,very_long)
-
-View(very_long)
-
-summary(short$total_length)
-summary(medium$total_length)
-summary(long$total_length)
-summary(very_long$total_length)
-
-restricted <- all[!is.na(total_length)]
-describeBy(restricted$total_length, group=list(restricted$wake_length, restricted$after_label), mat=TRUE)
-
-table(restricted$before_label, restricted$wake_length)
-table(restricted$after_label, restricted$wake_length)
-
