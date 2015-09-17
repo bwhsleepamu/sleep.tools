@@ -1,6 +1,6 @@
 source("R/sources.R")
-source("R/plotting/rasters/raster_plot.R")
-source("R/analysis/analysis.R")
+#source("R/plotting/rasters/raster_plot.R")
+#source("R/analysis/analysis.R")
 
 
 subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2015a.xls"))
@@ -9,7 +9,7 @@ subjects[,file_path:=paste("/I/AMU Cleaned Data Sets/", subject_code, "/Sleep/",
 
 load_data(subjects = subjects)
 
-setup_episodes(sleep_data, sleep_data)
+setup_episodes(sleep_data, sleep_data, types=c("raw", "trad"))
 setup_cycles(sleep_data, episodes)
 setup_raster_data(sleep_data, episodes, cycles)
 

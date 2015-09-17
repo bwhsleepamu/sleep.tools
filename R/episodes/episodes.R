@@ -117,31 +117,51 @@ remove.target.label <- function(sequences, target_label='UNDEF') {
 
 
 ## Main Environment Functions
-setup_episodes <- function(sleep_data, full_sleep_data) {
+setup_episodes <- function(sleep_data, full_sleep_data, types=c("raw", "trad", "enh", "chp")) {
   # Input: `sleep_data` global variable
   # Output: `episodes` global variable
+  episode_list <- list()
   
   ### NREM and REM Episodes
   ## Calculate episodes using different methods.
   ######## Raw Stages
-  episodes.raw <<- generate_episodes.raw(sleep_data)
+  if("raw" %in% types) {
+    episodes.raw <<- generate_episodes.raw(sleep_data)
+    episode_list[["raw"]] <- episodes.raw
+  }
   ######## Classic
-  episodes.classic <<- generate_episodes.classic(sleep_data)
+  if("trad" %in% types) {
+    episodes.classic <<- generate_episodes.classic(sleep_data)
+    episode_list$traditional <- episodes.classic
+  }
   ######## Iterative
-  episodes.iterative <<- generate_episodes.iterative(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, min_wake_length=CLASSIC_MIN_REM)
+  if("enh" %in% types) {
+    episodes.iterative <<- generate_episodes.iterative(sleep_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, min_wake_length=CLASSIC_MIN_REM)
+    episode_list$enhanced <- episodes.iterative
+  }
   ######## Changepoint
-  episodes.changepoint <<- generate_episodes.changepoint(sleep_data, distances=CP_DISTANCES, stage1=CP_STAGE1, clean=CP_CLEAN, ic=CP_IC)
-  episodes.changepoint.compact <<- copy(episodes.changepoint)
-  episodes.changepoint.compact[,group:=set_group(episodes.changepoint.compact$episode_type)]
-  episodes.changepoint.compact <<- episodes.changepoint.compact[,merge_group(start_position, end_position, episode_type, length), by='subject_code,activity_or_bedrest_episode,group']
-  episodes.changepoint.compact[,method:='changepoint_compact']
-  
-  episodes.changepoint.compact[,group:=NULL]
-  episodes.changepoint[,episode_type:=NULL]
-  episodes.changepoint.compact[,episode_type:=NULL]
+  if("chp" %in% types) {
+    episodes.raw <<- generate_episodes.raw(sleep_data)
 
+  
+    episodes.changepoint <<- generate_episodes.changepoint(sleep_data, distances=CP_DISTANCES, stage1=CP_STAGE1, clean=CP_CLEAN, ic=CP_IC)
+    episodes.changepoint.compact <<- copy(episodes.changepoint)
+    episodes.changepoint.compact[,group:=set_group(episodes.changepoint.compact$episode_type)]
+    episodes.changepoint.compact <<- episodes.changepoint.compact[,merge_group(start_position, end_position, episode_type, length), by='subject_code,activity_or_bedrest_episode,group']
+    episodes.changepoint.compact[,method:='changepoint_compact']
+    
+    episodes.changepoint.compact[,group:=NULL]
+    episodes.changepoint[,episode_type:=NULL]
+    episodes.changepoint.compact[,episode_type:=NULL]
+    
+    episode_list$changepoint <- episodes.changepoint
+    episode_list$changepoint_compact <- episodes.changepoint.compact
+    
+    
+  }
+  
     ## Merge methods into one table
-  episodes <<- rbindlist(list(episodes.classic,episodes.iterative,episodes.changepoint,episodes.changepoint.compact,episodes.raw), fill=TRUE, use.names=TRUE)
+  episodes <<- rbindlist(episode_list, fill=TRUE, use.names=TRUE)
   #episodes <<- rbindlist(list(episodes.classic,episodes.iterative), fill=TRUE, use.names=TRUE)
 
   # Get rid of wake episodes
