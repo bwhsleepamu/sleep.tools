@@ -15,5 +15,5 @@ setup_raster_data(sleep_data, episodes, cycles)
 
 plot_raster("20A4DX", number_of_days = 6)
 
-
-
+subjects
+View(subjects)

@@ -18,16 +18,9 @@ e <- e[activity_or_bedrest_episode > 0]
 e[,pik:=.I]
 setnames(e, c('start_position','end_position'), c('sp', 'ep'))
 
-# episodes.iterative[,episode_id:=NULL]
-# episodes.iterative[,episode_id:=1:.N,by='subject_code,activity_or_bedrest_episode,label']
-# episodes.iterative[,episode_id:=paste(label,episode_id,sep='')]
-
-
 cs <- cycles[method=='classic' & type == "NREM"]
 
-
-
-e[,episode_type:=episodes.iterative[sp >= start_position & ep <= end_position]$label, by='pik']
+e[,episode_type:=episodes.classic[sp >= start_position & ep <= end_position]$label, by='pik']
 e[,cycle_number:=cs[sp >= start_position & ep <= end_position]$cycle_number, by='pik']
 e[,prev_label:=c(NA,label[-.N]),by='subject_code,activity_or_bedrest_episode']
 e[,prev_length:=c(NA,length[-.N]),by='subject_code,activity_or_bedrest_episode']
@@ -126,15 +119,15 @@ ini <- e[label=="NREM",inter_intervals(sp,ep),by='subject_code,activity_or_bedre
 iwi <- e[label=="WAKE",inter_intervals(sp,ep),by='subject_code,activity_or_bedrest_episode']
 
 iri[,pik:=.I]
-iri[,episode_type:=episodes.iterative[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
+iri[,episode_type:=episodes.classic[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
 iri[,cycle_number:=cs[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$cycle_number, by='pik']
 
 ini[,pik:=.I]
-ini[,episode_type:=episodes.iterative[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
+ini[,episode_type:=episodes.classic[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
 ini[,cycle_number:=cs[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$cycle_number, by='pik']
 
 iwi[,pik:=.I]
-iwi[,episode_type:=episodes.iterative[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
+iwi[,episode_type:=episodes.classic[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
 iwi[,cycle_number:=cs[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$cycle_number, by='pik']
 
 

@@ -106,5 +106,6 @@ paste(substring(o$label, 1, 1), collapse='')
 
 # New angle
 # 
-episodes[,wake_epochs:=sum(sleep_data[start_position:end_position]$epoch_type=="WAKE"),by='start_position,end_position']
-cycles[,wake_epochs:=sum(sleep_data[start_position:end_position]$epoch_type=="WAKE"),by='start_position,end_position']
+
+episodes[method!="raw",wake_epochs:=sum(sleep_data[start_position:end_position]$epoch_type=="WAKE"),by='start_position,end_position']
+cycles[method!="raw",wake_epochs:=sum(sleep_data[start_position:end_position]$epoch_type=="WAKE"),by='start_position,end_position']
