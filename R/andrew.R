@@ -1,9 +1,10 @@
 source("R/sources.R")
 source("R/plotting/rasters/jonathan_raster_plot.R")
 
+data_location <- "/X/Studies/Analyses/McHill-Shaw SWA/Subjects"
+data_location <- "/X/Studies/Analyses/McHill_Glucose SWA/For JDs Program"
 
-function(){
-  data_location <- "/X/Studies/Analyses/McHill_Glucose SWA/For JDs Program"
+function(data_location){
   subject_codes <- list.dirs(data_location, full.names=FALSE,recursive=FALSE)
   andrew_subject_list <- data.table(subject_code=subject_codes)
   andrew_subject_list[,file_path:=paste(data_location,'/',subject_code,'/',subject_code,'Slp.01.csv',sep='')]
@@ -21,7 +22,7 @@ function(){
   sleep_episode_times <- sleep_data[,data.table(sleep_episode_start_time=head(labtime,1), sleep_episode_end_time=tail(labtime,1)),by='subject_code,activity_or_bedrest_episode']
   
   output <- merge(nrem_episode_ouput,sleep_episode_times,all.x=TRUE,by=c('subject_code','activity_or_bedrest_episode'))
-  write.table(output,file="~/Desktop/andrew/NREM_episodes_extended_20150828.csv",row.names = FALSE,sep=',')
+  write.table(output,file="~/Desktop/andrew/NREM_episodes_extended_20150918.csv",row.names = FALSE,sep=',')
   
   
   nrem_auc_fitted_data <- lapply(subject_codes, function(sc){
