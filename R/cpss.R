@@ -4,8 +4,8 @@ function() {
   EPOCH_LENGTH <- 0.05
   EPOCH_SECONDS <- 180
   
-  main_data <<- as.data.table(read.csv("~/Documents/cpss/main_raster_data.csv"))
-  cbt_data <<- as.data.table(read.csv("~/Documents/cpss/cbt_min.csv"))
+  main_data <<- as.data.table(read.csv("~/Desktop/main_raster_data.csv"))
+  cbt_data <<- as.data.table(read.csv("~/Desktop/cbt_min.csv"))
   
   activity_or_bedrest_episodes <<- main_data[,chunk(state,.I)]
   activity_or_bedrest_episodes[,`:=`(start_labtime=main_data[start_position]$labtime, end_labtime=main_data[end_position]$labtime)]
@@ -30,10 +30,10 @@ setup_raster_data <- function(main_data, cbt_data, doubleplot = TRUE) {
   # Log-transform and Scale irradiance
   main_data.v[,irradiance:=as.double(irradiance)]
   main_data.v[irradiance!=0, irradiance:=log2(irradiance)]
-  main_data.v[,irradiance:=normalize_cpss(irradiance, val_range = c(0,5))]
+  main_data.v[,irradiance:=normalize_cpss(irradiance, val_range = c(0,10))]
   
   # Normalize Performance
-  main_data.v[,performance:=normalize_cpss(performance, val_range=c(5,10))]
+  #main_data.v[,performance:=normalize_cpss(performance, val_range=c(5,10))]
   
   
   # Sleep Episodes
@@ -123,11 +123,12 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   
   
   plot <- plot + geom_rect(aes(xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, ymin = 0, ymax = 10), alpha=.3, fill='black', data = graph_sleep_episodes[label==0])
-  plot <- plot + geom_line(aes(x=day_labtime, y=performance), colour='blue') 
+  
+  #plot <- plot + geom_line(aes(x=day_labtime, y=performance), colour='blue') 
   plot <- plot + geom_line(aes(x=day_labtime, y=irradiance), colour='orange')
   #plot <- plot + geom_point(aes(x=day_labtime, y = 5), data=graph_cbt, colour='red')
   
-  plot <- plot + geom_vline(aes(xintercept = day_labtime), data=graph_cbt, colour='red')
+  plot <- plot + geom_vline(aes(xintercept = day_labtime), data=graph_cbt, colour='red', size=1)
   
   plot
   
