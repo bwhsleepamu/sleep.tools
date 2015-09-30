@@ -132,6 +132,7 @@ grid.arrange(wake_p, s2_p, s3_p, ncol=3)
 
 rem_p <- ggplot(data=rem_latencies[label=="WAKE" & episode_type %in% c("REM", "NREM","WAKE")], aes(x=rem_latency))
 rem_p + geom_density(aes(color=length_class)) + facet_grid(episode_type ~ ., scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle("REM latency after WAKE by episode type")
+
 rem_p <- ggplot(data=rem_latencies[label=="WAKE" & episode_type %in% c("REM", "NREM","WAKE") & !(length_class %in% c("[0,1]", "(1,2]"))], aes(x=rem_latency))
 rem_p + geom_density(aes(color=length_class)) + facet_grid(episode_type ~ ., scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle("REM latency after WAKE by episode type (WAKE length > 2 epochs)")
 

@@ -13,21 +13,20 @@ inter_intervals <- function(starts,ends) {
 # - time of night (REM_EPISODE/NREM_EPISODE)
 
 
-e <- episodes.raw
-e <- e[activity_or_bedrest_episode > 0]
-e[,pik:=.I]
-setnames(e, c('start_position','end_position'), c('sp', 'ep'))
+sequences <- episodes.raw
+sequences <- sequences[activity_or_bedrest_episode > 0]
+sequences[,pik:=.I]
 
 cs <- cycles[method=='classic' & type == "NREM"]
 
-e[,episode_type:=episodes.classic[sp >= start_position & ep <= end_position]$label, by='pik']
-e[,cycle_number:=cs[sp >= start_position & ep <= end_position]$cycle_number, by='pik']
-e[,prev_label:=c(NA,label[-.N]),by='subject_code,activity_or_bedrest_episode']
-e[,prev_length:=c(NA,length[-.N]),by='subject_code,activity_or_bedrest_episode']
+sequences[,episode_type:=episodes.classic[start_position >= start_position & end_position <= end_position]$label, by='pik']
+sequences[,cycle_number:=cs[start_position >= start_position & end_position <= end_position]$cycle_number, by='pik']
+sequences[,prev_label:=c(NA,label[-.N]),by='subject_code,activity_or_bedrest_episode']
+sequences[,prev_length:=c(NA,length[-.N]),by='subject_code,activity_or_bedrest_episode']
 
-rem_sequences <- e[label=="REM"]
-nrem_sequences <- e[label=="NREM"]
-wake_sequences <- e[label=="WAKE"]
+rem_sequences <- sequences[label=="REM"]
+nrem_sequences <- sequences[label=="NREM"]
+wake_sequences <- sequences[label=="WAKE"]
 
 sd <- copy(sleep_data)
 setnames(sd, c('subject_code', 'activity_or_bedrest_episode'), c('sc','abe'))
@@ -110,6 +109,9 @@ nrem_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + sc
 wake_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
 s2_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
 s3_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
+
+
+
 
 
 

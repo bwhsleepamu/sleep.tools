@@ -6,6 +6,8 @@ source("R/sources.R")
 subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2015a.xls"))
 setnames(subjects, c("Subject", "Age.Group", "Study"), c("subject_code", "age_group", "study"))
 subjects[,file_path:=paste("/I/AMU Cleaned Data Sets/", subject_code, "/Sleep/", subject_code, "Slp.01.csv", sep="")]
+subjects[,X:=NULL]
+allowed_subject_codes <- as.character(subjects[grep('Y', get('Permission.'))]$subject_code)
 
 load_data(subjects = subjects)
 
