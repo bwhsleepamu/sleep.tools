@@ -1,6 +1,0 @@
-source("R/main/libraries.R")
-source("R/main/variables.R")
-source("R/main/helper_methods.R")
-source("R/data/load_data.R")
-source("R/episodes/episodes.R")
-source("R/cycles/cycles.R")
