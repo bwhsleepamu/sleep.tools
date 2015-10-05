@@ -1,14 +1,5 @@
-
 # Latencies
-sequences <- copy(e)
-setnames(e, c('sp', 'ep'), c('start_position','end_position'),)
-
-
-rem_latencies
-nrem_latencies
-wake_latencies
-
-common_columns <- c("subject_code", "activity_or_bedrest_episode", "label", "sp", "ep", "length")
+common_columns <- c("subject_code", "activity_or_bedrest_episode", "label", "start_position", "end_position", "length")
 
 
 setkeyv(rem_latencies, common_columns)
@@ -24,7 +15,6 @@ sequences_with_latency[,`:=`(length_class.y1=NULL, length_class.y2=NULL, length_
 sequences_with_latency[,method:=NULL]
 sequences_with_latency[,pik:=NULL]
 
-setnames(sequences_with_latency, c('sp', 'ep'), c('start_position', 'end_position'))
 sequences_with_latency[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
 
 
@@ -38,7 +28,6 @@ inter_state_intervals <- rbindlist(list(iri,iwi,ini), use.names=TRUE, fill=TRUE)
 setnames(inter_state_intervals, c('sp', 'ep', 'i_length'), c('start_position', 'end_position', 'interval_length') )
 inter_state_intervals[,pik:=NULL]
 inter_state_intervals[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
-
 
 # Ouput to CSV
 write.csv(sequences_with_latency, file='/home/pwm4/Desktop/beth_output/latencies.csv', row.names=FALSE, na=".")

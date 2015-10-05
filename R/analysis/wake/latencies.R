@@ -2,7 +2,7 @@
 
 inter_intervals <- function(starts,ends) {
   n <- length(starts)
-  data.table(sp=ends[-n], ep=starts[-1L], i_length=starts[-1L] - ends[-n])
+  data.table(start_position=ends[-n], end_position=starts[-1L], i_length=starts[-1L] - ends[-n])
 }
 
 
@@ -12,73 +12,61 @@ inter_intervals <- function(starts,ends) {
 # - length
 # - time of night (REM_EPISODE/NREM_EPISODE)
 
-
-sequences <- episodes.raw
-sequences <- sequences[activity_or_bedrest_episode > 0]
+# Get all sequences
+sequences <- episodes[activity_or_bedrest_episode > 0 & method == 'raw']
 sequences[,pik:=.I]
+setkey(sequences, pik)
 
+# Determine what cycle each sequence is in
 cs <- cycles[method=='classic' & type == "NREM"]
-
-sequences[,episode_type:=episodes.classic[start_position >= start_position & end_position <= end_position]$label, by='pik']
 sequences[,cycle_number:=cs[start_position >= start_position & end_position <= end_position]$cycle_number, by='pik']
+
+# Determine what type of (traditional) episode each sequence is in
+sequences[,episode_type:=episodes.classic[start_position >= start_position & end_position <= end_position]$label, by='pik']
+
+# Determine information about the previous sequence
 sequences[,prev_label:=c(NA,label[-.N]),by='subject_code,activity_or_bedrest_episode']
 sequences[,prev_length:=c(NA,length[-.N]),by='subject_code,activity_or_bedrest_episode']
 
+# Seperate into 3 types of sequences
 rem_sequences <- sequences[label=="REM"]
 nrem_sequences <- sequences[label=="NREM"]
 wake_sequences <- sequences[label=="WAKE"]
 
+
+# Use sleep data to find stage 2,3 latencies
 sd <- copy(sleep_data)
 setnames(sd, c('subject_code', 'activity_or_bedrest_episode'), c('sc','abe'))
 sd[,position:=.I]
 stage_2s <- sd[stage==2]
 stage_3s <- sd[stage==3 | stage==4]
 
-# setnames(rem_sequences,c("sp","ep","subject_code","activity_or_bedrest_episode"),c("start_pos","end_pos","sc","abe"))
-# setnames(nrem_sequences,c("sp","ep","subject_code","activity_or_bedrest_episode"),c("start_pos","end_pos","sc","abe"))
-# setnames(wake_sequences,c("sp","ep","subject_code","activity_or_bedrest_episode"),c("start_pos","end_pos","sc","abe"))
-
-# e[,next_rem_start:=rem_sequences[sc==subject_code & activity_or_bedrest_episode==abe & start_pos > ep]$start_pos[1],by='pik']
-# e[,next_nrem_start:=nrem_sequences[sc==subject_code & activity_or_bedrest_episode==abe & start_pos > ep]$start_pos[1],by='pik']
-# e[,next_wake_start:=wake_sequences[sc==subject_code & activity_or_bedrest_episode==abe & start_pos > ep]$start_pos[1],by='pik']
-
-
-
-# e[,rem_latency:=next_rem_start-ep]
-# e[,nrem_latency:=next_nrem_start-ep]
-# e[,wake_latency:=next_wake_start-ep]
-
-
-#####
-#####
-e[,next_stage_3:=NULL]
 tl <<- list()
-stage_3s[,{tl[[paste(sc,abe,sep="_")]]<<-c(position);0},by='sc,abe']
-e[,next_stage_3:=tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]][(which.max(tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]] > ep))],by='subject_code,activity_or_bedrest_episode,ep']
+stage_3s[,{tl[[paste(sc,abe,sep="_")]] <<- c(position);0},by='sc,abe']
+sequences[,next_stage_3:=tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]][(which.max(tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]] > end_position))],by='subject_code,activity_or_bedrest_episode,end_position']
 
-e[,next_stage_2:=NULL]
 tl <<- list()
 stage_2s[,tl[[paste(sc,abe,sep="_")]]<<-c(position),by='sc,abe']
-e[,next_stage_2:=tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]][(which.max(tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]] > ep))],by='subject_code,activity_or_bedrest_episode,ep']
+sequences[,next_stage_2:=tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]][(which.max(tl[[paste(subject_code,activity_or_bedrest_episode,sep='_')]] > end_position))],by='subject_code,activity_or_bedrest_episode,end_position']
 
-e[,stage_2_latency:=next_stage_2-ep]
-e[,stage_3_latency:=next_stage_3-ep]
-e[stage_2_latency < 0, stage_2_latency:=NA]
-e[stage_3_latency < 0, stage_3_latency:=NA]
-#####
+sequences[,stage_2_latency:=next_stage_2-end_position]
+sequences[,stage_3_latency:=next_stage_3-end_position]
+sequences[stage_2_latency < 0, stage_2_latency:=NA]
+sequences[stage_3_latency < 0, stage_3_latency:=NA]
 
 
-rem_lat_merged <- merge(e,rem_sequences,by=c('subject_code','activity_or_bedrest_episode'),all.x=TRUE,suffixes=c("",".rem"),allow.cartesian=TRUE)
-rem_latencies <- rem_lat_merged[sp.rem>ep,data.table(next_rem_position=min(sp.rem),rem_latency=min(sp.rem-ep),next_rem_length=length.rem[1]),by='subject_code,activity_or_bedrest_episode,label,sp,ep,length,episode_type,cycle_number,prev_label,prev_length']
+# Find REM, NREM, and WAKE latencies
+rem_lat_merged <- merge(sequences,rem_sequences,by=c('subject_code','activity_or_bedrest_episode'),all.x=TRUE,suffixes=c("",".rem"),allow.cartesian=TRUE)
+rem_latencies <- rem_lat_merged[start_position.rem>end_position,data.table(next_rem_position=min(start_position.rem),rem_latency=min(start_position.rem-end_position),next_rem_length=length.rem[1]),by='subject_code,activity_or_bedrest_episode,label,start_position,end_position,length,episode_type,cycle_number,prev_label,prev_length']
 rm(rem_lat_merged)
 
-nrem_lat_merged <- merge(e,nrem_sequences,by=c('subject_code','activity_or_bedrest_episode'),all.x=TRUE,suffixes=c("",".nrem"),allow.cartesian=TRUE)
-nrem_latencies <- nrem_lat_merged[sp.nrem>ep,data.table(next_nrem_position=min(sp.nrem),nrem_latency=min(sp.nrem-ep),next_nrem_length=length.nrem[1]),by='subject_code,activity_or_bedrest_episode,label,sp,ep,length,episode_type,cycle_number,prev_label,prev_length']
+nrem_lat_merged <- merge(sequences,nrem_sequences,by=c('subject_code','activity_or_bedrest_episode'),all.x=TRUE,suffixes=c("",".nrem"),allow.cartesian=TRUE)
+nrem_latencies <- nrem_lat_merged[start_position.nrem>end_position,data.table(next_nrem_position=min(start_position.nrem),nrem_latency=min(start_position.nrem-end_position),next_nrem_length=length.nrem[1]),by='subject_code,activity_or_bedrest_episode,label,start_position,end_position,length,episode_type,cycle_number,prev_label,prev_length']
 rm(nrem_lat_merged)
 
 
-wake_lat_merged <- merge(e,wake_sequences,by=c('subject_code','activity_or_bedrest_episode'),all.x=TRUE,suffixes=c("",".wake"),allow.cartesian=TRUE)
-wake_latencies <- wake_lat_merged[sp.wake>ep,data.table(next_wake_position=min(sp.wake),wake_latency=min(sp.wake-ep),next_wake_length=length.wake[1]),by='subject_code,activity_or_bedrest_episode,label,sp,ep,length,episode_type,cycle_number,prev_label,prev_length']
+wake_lat_merged <- merge(sequences,wake_sequences,by=c('subject_code','activity_or_bedrest_episode'),all.x=TRUE,suffixes=c("",".wake"),allow.cartesian=TRUE)
+wake_latencies <- wake_lat_merged[start_position.wake>end_position,data.table(next_wake_position=min(start_position.wake),wake_latency=min(start_position.wake-end_position),next_wake_length=length.wake[1]),by='subject_code,activity_or_bedrest_episode,label,start_position,end_position,length,episode_type,cycle_number,prev_label,prev_length']
 rm(wake_lat_merged)
 
 
@@ -93,7 +81,7 @@ length_breaks <- c(0, 1, 2, 5,10,30,100,1000)
 rem_latencies[,length_class:=cut(length, length_breaks,include.lowest = TRUE)]
 nrem_latencies[,length_class:=cut(length, length_breaks,include.lowest = TRUE)]
 wake_latencies[,length_class:=cut(length, length_breaks,include.lowest = TRUE)]
-e[,length_class:=cut(length, length_breaks, include.lowest=TRUE)]
+sequences[,length_class:=cut(length, length_breaks, include.lowest=TRUE)]
 
 rem_p <- ggplot(data=rem_latencies[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=rem_latency))
 #nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & night_pos %in% c("NREM1", "NREM2", "NREM3", "NREM4", "NREM5") & next_nrem_length > 30], aes(x=nrem_latency))
@@ -116,21 +104,21 @@ s3_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scal
 
 
 
-iri <- e[label=="REM",inter_intervals(sp,ep),by='subject_code,activity_or_bedrest_episode']
-ini <- e[label=="NREM",inter_intervals(sp,ep),by='subject_code,activity_or_bedrest_episode']
-iwi <- e[label=="WAKE",inter_intervals(sp,ep),by='subject_code,activity_or_bedrest_episode']
+iri <- sequences[label=="REM",inter_intervals(start_position,end_position),by='subject_code,activity_or_bedrest_episode']
+ini <- sequences[label=="NREM",inter_intervals(start_position,end_position),by='subject_code,activity_or_bedrest_episode']
+iwi <- sequences[label=="WAKE",inter_intervals(start_position,end_position),by='subject_code,activity_or_bedrest_episode']
 
 iri[,pik:=.I]
-iri[,episode_type:=episodes.classic[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
-iri[,cycle_number:=cs[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$cycle_number, by='pik']
+iri[,episode_type:=episodes.classic[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$label, by='pik']
+iri[,cycle_number:=cs[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$cycle_number, by='pik']
 
 ini[,pik:=.I]
-ini[,episode_type:=episodes.classic[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
-ini[,cycle_number:=cs[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$cycle_number, by='pik']
+ini[,episode_type:=episodes.classic[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$label, by='pik']
+ini[,cycle_number:=cs[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$cycle_number, by='pik']
 
 iwi[,pik:=.I]
-iwi[,episode_type:=episodes.classic[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$label, by='pik']
-iwi[,cycle_number:=cs[(sp + i_length/2) >= start_position & (sp + i_length/2) <= end_position]$cycle_number, by='pik']
+iwi[,episode_type:=episodes.classic[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$label, by='pik']
+iwi[,cycle_number:=cs[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$cycle_number, by='pik']
 
 
 
