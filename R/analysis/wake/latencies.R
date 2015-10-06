@@ -5,6 +5,7 @@ inter_intervals <- function(starts,ends) {
   data.table(start_position=ends[-n], end_position=starts[-1L], i_length=starts[-1L] - ends[-n])
 }
 
+length_coefficient <- EPOCH_SECONDS/60.0 
 
 # Latencies for REM, NREM (1,2,3/4), WAKE
 # Latency by: 
@@ -18,11 +19,15 @@ sequences[,pik:=.I]
 setkey(sequences, pik)
 
 # Determine what cycle each sequence is in
-cs <- cycles[method=='classic' & type == "NREM"]
-sequences[,cycle_number:=cs[start_position >= start_position & end_position <= end_position]$cycle_number, by='pik']
+cs <- copy(cycles[method=='classic' & type == "NREM"])
+setnames(cs, c('start_position', 'end_position'), c('sp', 'ep'))
+sequences[,cycle_number:=cs[start_position >= sp & end_position <= ep]$cycle_number, by='pik']
 
 # Determine what type of (traditional) episode each sequence is in
-sequences[,episode_type:=episodes.classic[start_position >= start_position & end_position <= end_position]$label, by='pik']
+ep <- copy(episodes.classic)
+setnames(ep, c('start_position', 'end_position'), c('sp', 'ep'))
+sequences[,episode_type:=ep[start_position >= sp & end_position <= ep]$label, by='pik']
+
 
 # Determine information about the previous sequence
 sequences[,prev_label:=c(NA,label[-.N]),by='subject_code,activity_or_bedrest_episode']
@@ -73,31 +78,32 @@ rm(wake_lat_merged)
 
 
 
-qplot(data=rem_latencies[prev_label=='REM' & prev_length > 10 & label=='WAKE' & length > 10],rem_latency,geom='density',log='x')
+#qplot(data=rem_latencies[prev_label=='REM' & prev_length > 10 & label=='WAKE' & length > 10],rem_latency,geom='density',log='x')
 
 
-length_breaks <- c(0, 1, 2, 5,10,30,100,1000)
+length_breaks_in_epochs <- c(0, 1, 2, 5,10,30,100,1000)
+length_breaks <- length_breaks_in_epochs * length_coefficient
 
-rem_latencies[,length_class:=cut(length, length_breaks,include.lowest = TRUE)]
-nrem_latencies[,length_class:=cut(length, length_breaks,include.lowest = TRUE)]
-wake_latencies[,length_class:=cut(length, length_breaks,include.lowest = TRUE)]
-sequences[,length_class:=cut(length, length_breaks, include.lowest=TRUE)]
+rem_latencies[,length_class:=cut(length * length_coefficient, length_breaks,include.lowest = TRUE)]
+nrem_latencies[,length_class:=cut(length * length_coefficient, length_breaks,include.lowest = TRUE)]
+wake_latencies[,length_class:=cut(length * length_coefficient, length_breaks,include.lowest = TRUE)]
+sequences[,length_class:=cut(length * length_coefficient, length_breaks, include.lowest=TRUE)]
 
-rem_p <- ggplot(data=rem_latencies[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=rem_latency))
-#nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & night_pos %in% c("NREM1", "NREM2", "NREM3", "NREM4", "NREM5") & next_nrem_length > 30], aes(x=nrem_latency))
-nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=nrem_latency))
-wake_p <- ggplot(data=wake_latencies[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=wake_latency))
-s2_p <- ggplot(data=e[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=stage_2_latency))
-s3_p <- ggplot(data=e[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=stage_3_latency))
-
-
-
-rem_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
-nrem_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
-wake_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
-s2_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
-s3_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
-
+# rem_p <- ggplot(data=rem_latencies[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=rem_latency))
+# #nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & night_pos %in% c("NREM1", "NREM2", "NREM3", "NREM4", "NREM5") & next_nrem_length > 30], aes(x=nrem_latency))
+# nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=nrem_latency))
+# wake_p <- ggplot(data=wake_latencies[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=wake_latency))
+# s2_p <- ggplot(data=e[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=stage_2_latency))
+# s3_p <- ggplot(data=e[label=="WAKE" & prev_label %in% c("REM", "NREM")], aes(x=stage_3_latency))
+# 
+# 
+# 
+# rem_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
+# nrem_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
+# wake_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
+# s2_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
+# s3_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ .) + scale_x_log10()
+# 
 
 
 
