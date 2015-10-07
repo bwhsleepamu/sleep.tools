@@ -1,5 +1,7 @@
 source("R/sources.R")
-#source("R/plotting/rasters/raster_plot.R")
+source("R/plotting/rasters/raster_plot.R")
+
+    sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
 #source("R/analysis/analysis.R")
 
 # Subject Info
@@ -19,6 +21,8 @@ setkey(subjects, subject_code)
 allowed_subject_codes <- as.character(subjects[grep('Y', get('Permission.'))]$subject_code)
 
 load_data(subjects = subjects)
+
+sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
 
 setup_episodes(sleep_data, sleep_data, types=c("raw", "trad"))
 setup_cycles(sleep_data, episodes)

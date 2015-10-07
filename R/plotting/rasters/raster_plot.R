@@ -10,7 +10,7 @@ setup_raster_data <- function(sleep_data, episodes, cycles) { #, cycles, bedrest
     sleep_data.v <<- double_plot(sleep_data.v,TRUE)
     
     # Sleep Episodes
-    sleep_episodes.v <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
+    sleep_episodes.v <<- copy(sleep_episodes)
     sleep_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
     sleep_episodes.v <<- data.table(rbindlist(list(sleep_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(sleep_episodes.v[start_day_number!=end_day_number]))))
     sleep_episodes.v[,length:=end_day_labtime-start_day_labtime]
@@ -51,10 +51,10 @@ setup_raster_data <- function(sleep_data, episodes, cycles) { #, cycles, bedrest
 # Plotting
 plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH) {  
   ## SETUPP
-  subject_code = '3450GX'
-  number_of_days = NA
-  first_day = 1
-  epoch_length = EPOCH_LENGTH
+#   subject_code = '3450GX'
+#   number_of_days = NA
+#   first_day = 1
+#   epoch_length = EPOCH_LENGTH
   
   # Limit by subject
   subject_list <- c(subject_code)
