@@ -1,7 +1,7 @@
 source("R/sources.R")
 source("R/plotting/rasters/raster_plot.R")
 
-    sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
+sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
 #source("R/analysis/analysis.R")
 
 # Subject Info
@@ -14,9 +14,7 @@ subjects[,X:=NULL]
 number_cols <- c('Hab.Wake', 'FD.T.cycle', 'FD.SP.length', 'FD.WP.Length', 'Start.analysis', 'End.Analysis', 'Mel.Tau', 'Mel.Comp.Amp', 'MelAmp.Circad', 'Mel.Comp.Max', 'Mel.Fund.Max', 'CBT.Tau', 'CBT.Comp.Ampl', 'CBTAmp.Circad', 'CBT.Comp.Min', 'CBT.Fund.Min')
 for (c in number_cols) set(subjects,j=c,value=as.double(as.character(subjects[[c]])))
 
-
 setkey(subjects, subject_code)
-
 
 allowed_subject_codes <- as.character(subjects[grep('Y', get('Permission.'))]$subject_code)
 
