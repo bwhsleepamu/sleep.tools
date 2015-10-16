@@ -1,9 +1,6 @@
 source("R/sources.R")
 source("R/plotting/rasters/raster_plot.R")
 
-sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
-#source("R/analysis/analysis.R")
-
 # Subject Info
 subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2015a.xls"))
 setnames(subjects, c("Subject", "Age.Group", "Study"), c("subject_code", "age_group", "study"))
