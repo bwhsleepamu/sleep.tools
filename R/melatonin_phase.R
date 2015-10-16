@@ -1,5 +1,4 @@
 melatonin_phase <- subjects[,list(subject_code, labtime=Mel.Comp.Max, tau=Mel.Tau, start_analysis=Start.analysis, end_analysis=End.Analysis)]
-
 melatonin_phase <- melatonin_phase[,list(labtime=predict_phase(labtime, tau, end_analysis)),by='subject_code']
 
 # For each sleep episode of a subject, find closest melatonin maximum
@@ -9,6 +8,11 @@ sleep_episodes
 setkey(melatonin_phase, subject_code)
 
 sleep_episodes[,closest_phase_estimate:=find_closest_phase_estimate(midpoint, melatonin_phase[subject_code]$labtime), by='subject_code,midpoint']
+sleep_episodes[,phase_diff_midpoint:=midpoint-closest_phase_estimate]
+sleep_episodes[,phase_diff_start:=start_labtime-closest_phase_estimate]
+sleep_episodes[,phase_diff_end:=end_labtime-closest_phase_estimate]
+
+
 
 
 find_closest_phase_estimate <- function(midpoint, melatonin_labtimes) {
