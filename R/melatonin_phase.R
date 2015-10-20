@@ -12,8 +12,12 @@ sleep_episodes[,phase_diff_midpoint:=midpoint-closest_phase_estimate]
 sleep_episodes[,phase_diff_start:=start_labtime-closest_phase_estimate]
 sleep_episodes[,phase_diff_end:=end_labtime-closest_phase_estimate]
 
+sleep_episodes[abs(phase_diff_midpoint) <= 24, phase_label:="neither"]
+sleep_episodes[abs(phase_diff_midpoint) > 24 | is.na(phase_diff_midpoint), phase_label:=NA]
+sleep_episodes[abs(phase_diff_midpoint) <= 14 & abs(phase_diff_midpoint) >= 10, phase_label:="out_of_phase"]
+sleep_episodes[abs(phase_diff_midpoint) <= 2, phase_label:="in_phase"]
 
-
+View(sleep_episodes[!is.na(phase_label)])
 
 find_closest_phase_estimate <- function(midpoint, melatonin_labtimes) {
   melatonin_labtimes[which.min(abs(melatonin_labtimes-midpoint))]
@@ -28,3 +32,7 @@ predict_phase <- function(start_phase, tau, max_labtime) {
   }
     
 }
+
+# Assume mel max is middle of night
+# This means in phase: <2 hours
+# Out of phase from 10 to 14 hours
