@@ -55,9 +55,17 @@ function(data_location){
   nrem_episode_output[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
   setkey(nrem_episode_output,subject_code,activity_or_bedrest_episode,nrem_episode_number)
   
-  sleep_data[,nrem_episode:=nrem_episode_output[subject_code==.SD$subject_code & activity_or_bedrest_episode==.SD$activity_or_bedrest_episode & pk>=start_position & pk <= end_position]$nrem_episode_number,by='pk']
+  sleep_data[,nrem_episode_number:=nrem_episode_output[subject_code==.SD$subject_code & activity_or_bedrest_episode==.SD$activity_or_bedrest_episode & pk>=start_position & pk <= end_position]$nrem_episode_number,by='pk']
   
-  sleep_data[!is.na(nrem_episode),total_delta_power:=sum(delta_power),by='subject_code,activity_or_bedrest_episode,file_path,']
+  total_delta_powers <- sleep_data[!is.na(nrem_episode_number),list(total_delta_power=sum(delta_power)),by='subject_code,activity_or_bedrest_episode,nrem_episode_number']
+  total_delta_powers <- merge(total_delta_powers,nrem_episode_output,by=c('subject_code','activity_or_bedrest_episode','nrem_episode_number'),all.x=TRUE,all.y=FALSE)
+  
+  total_delta_powers[,labtime:=start_labtime+((end_labtime-start_labtime)/2)]
+  
+  
+  
+  
+  
   
   subject_codes <- list.dirs(data_location, full.names=FALSE,recursive=FALSE)
   andrew_subject_list <- data.table(subject_code=subject_codes)
