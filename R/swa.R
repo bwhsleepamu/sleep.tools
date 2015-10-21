@@ -5,14 +5,66 @@ source("R/plotting/rasters/jonathan_raster_plot.R")
 #data_location <- "/X/Studies/Analyses/McHill_Glucose SWA/For JDs Program"
 
 
+data_location <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20"
+
+map_numHypno_to_stage <- function(numHypno) {
+  if(numHypno %in% c(1,2,3)){
+    numHypno
+  } else if (numHypno == 5) {
+    6
+  } else if (numHypno == 0) {
+    5
+  } else {
+    9
+  }
+}
 
 function(data_location){
+  target_file_paths <- list.files(path=data_location, pattern='.detail.spectral.xls', recursive=TRUE, full.names=TRUE)
+  target_file_paths
+  
+  subject_codes <- str_match(basename(target_file_paths), "^([[:alnum:]]*)[[:punct:][:space:]]")[,2]
+  
+  subjects <- data.table(subject_code=subject_codes, file_path=target_file_paths)
+  setkey(subjects, subject_code)
+  
+  data_list <- list()
+  subjects[,{
+    dt <- as.data.table(read.xlsx(file_path,startRow=2));
+    dt[,`:=`(subject_code=subject_code, file_path=file_path)];
+    data_list[[paste(subject_code,file_path)]] <<- dt;
+    0
+  },by='subject_code,file_path']
+  
+  full_sleep_data <- rbindlist(data_list)
+  full_sleep_data <- full_sleep_data[,c(112:113,1:54,106:111), with=FALSE]
+  
+  full_sleep_data[,labtime:=(0:(.N-1)*30/3600),by='subject_code,file_path']
+  full_sleep_data[,activity_or_bedrest_episode:=as.numeric(as.factor(file_path)),by='subject_code']
+  full_sleep_data[,pk:=.I]
+  full_sleep_data[,stage:=map_numHypno_to_stage(numHypno),by='pk']
+  full_sleep_data[,epoch_type:=as.factor(as.character(lapply(stage, map_epoch_type))),]
+  full_sleep_data[,delta_power:=sum(.SD), .SDcols=(7:14), by='pk']
+  setcolorder(full_sleep_data,c(1:2, 64, 63, 66:67, 68, 65, 3:62))
+  
+  sleep_data <- full_sleep_data[,1:8,with=FALSE]
+  setup_episodes(sleep_data, sleep_data)
+  setup_cycles(sleep_data, episodes)
+
+  nrem_episode_output <- copy(episodes[method=='iterative' & label=='NREM'])
+  nrem_episode_output[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
+  setkey(nrem_episode_output,subject_code,activity_or_bedrest_episode,nrem_episode_number)
+  
+  sleep_data[,nrem_episode:=nrem_episode_output[subject_code==.SD$subject_code & activity_or_bedrest_episode==.SD$activity_or_bedrest_episode & pk>=start_position & pk <= end_position]$nrem_episode_number,by='pk']
+  
+  sleep_data[!is.na(nrem_episode),total_delta_power:=sum(delta_power),by='subject_code,activity_or_bedrest_episode,file_path,']
+  
   subject_codes <- list.dirs(data_location, full.names=FALSE,recursive=FALSE)
   andrew_subject_list <- data.table(subject_code=subject_codes)
-  andrew_subject_list[,file_path:=paste(data_location,'/',subject_code,'/',subject_code,'Slp.01.csv',sep='')]
-  load_data(subjects = andrew_subject_list)
-  sleep_data[,labtime:=NULL]
-  sleep_data[,labtime:=(24*(activity_or_bedrest_episode-1))+(0:(.N-1))*30/3600,by='subject_code,activity_or_bedrest_episode']
+  andrew_subject_list[,file_path:=pastfull_a_location,'/',sufull_bject_code,'/',subject_code,'Slp.01.csv',sep='')]
+  load_data(subjects = andrew_subject_full_list)
+  sleep_data[,labtime:=NULL]full_
+  sleep_data[,labtime:=(24*(activity_or_bedrest_episode-1))+(0:(.N-1))*30/3600,by='subject_code,activity_or_bedrest_episodfull_e']
   
   setup_episodes(sleep_data, sleep_data)
   setup_cycles(sleep_data, episodes)
