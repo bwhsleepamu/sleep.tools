@@ -12,6 +12,18 @@ map_epoch_type <- function(x) {
   res
 }
 
+map_high_res_epoch_type <- function(x) {
+  ## Possibly speed up if x is a factor??
+  if (x == 1) { res <- "N1" }
+  else if (x == 2) { res <- "N2" }
+  else if (x == 3 | x == 4) { res <- "SWS" }
+  else if (x == 5) { res <- "WAKE" }
+  else if (x == 6) { res <- "REM" }
+  else { res <- "UNDEF" }
+  
+  res
+}
+
 
 ## Methods
 # Load epochs for a given subject list
@@ -24,6 +36,7 @@ load_sleep_data <- function(subjects) {
   sleep_data[, pk:=.I]
   # Map stages to epoch types
   sleep_data[,epoch_type:=as.factor(as.character(lapply(stage, map_epoch_type))),]
+  sleep_data[,high_res_epoch_type:=as.factor(as.character(lapply(stage, map_high_res_epoch_type))),]
   sleep_data
 }
 
