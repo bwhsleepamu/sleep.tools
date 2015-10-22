@@ -1,11 +1,11 @@
 source("R/sources.R")
-source("R/plotting/rasters/jonathan_raster_plot.R")
+source("R/plotting/rasters/swa_raster_plot.R")
 
 #data_location <- "/X/Studies/Analyses/McHill-Shaw SWA/Subjects"
 #data_location <- "/X/Studies/Analyses/McHill_Glucose SWA/For JDs Program"
 
 
-data_location <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20"
+data_location <- "/home/pwm4/Desktop/SWA/McHill-Shaw SWA/For PM_15-10-20"
 
 map_numHypno_to_stage <- function(numHypno) {
   if(numHypno %in% c(1,2,3)){
@@ -39,8 +39,8 @@ function(data_location){
   full_sleep_data <- rbindlist(data_list)
   full_sleep_data <- full_sleep_data[,c(112:113,1:54,106:111), with=FALSE]
   
-  full_sleep_data[,labtime:=(0:(.N-1)*30/3600),by='subject_code,file_path']
   full_sleep_data[,activity_or_bedrest_episode:=as.numeric(as.factor(file_path)),by='subject_code']
+  full_sleep_data[,labtime:=(24*(activity_or_bedrest_episode-1))+(0:(.N-1))*30/3600,by='subject_code,file_path']
   full_sleep_data[,pk:=.I]
   full_sleep_data[,stage:=map_numHypno_to_stage(numHypno),by='pk']
   full_sleep_data[,epoch_type:=as.factor(as.character(lapply(stage, map_epoch_type))),]
@@ -49,13 +49,13 @@ function(data_location){
   
   sleep_data <- full_sleep_data[,1:8,with=FALSE]
   setup_episodes(sleep_data, sleep_data)
-  setup_cycles(sleep_data, episodes)
-
+  
   nrem_episode_output <- copy(episodes[method=='iterative' & label=='NREM'])
   nrem_episode_output[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
   setkey(nrem_episode_output,subject_code,activity_or_bedrest_episode,nrem_episode_number)
   
   sleep_data[,nrem_episode_number:=nrem_episode_output[subject_code==.SD$subject_code & activity_or_bedrest_episode==.SD$activity_or_bedrest_episode & pk>=start_position & pk <= end_position]$nrem_episode_number,by='pk']
+  full_sleep_data[,nrem_episode_number:=nrem_episode_output[subject_code==.SD$subject_code & activity_or_bedrest_episode==.SD$activity_or_bedrest_episode & pk>=start_position & pk <= end_position]$nrem_episode_number,by='pk']
   
   total_delta_powers <- sleep_data[!is.na(nrem_episode_number),list(total_delta_power=sum(delta_power)),by='subject_code,activity_or_bedrest_episode,nrem_episode_number']
   total_delta_powers <- merge(total_delta_powers,nrem_episode_output,by=c('subject_code','activity_or_bedrest_episode','nrem_episode_number'),all.x=TRUE,all.y=FALSE)
@@ -63,67 +63,56 @@ function(data_location){
   total_delta_powers[,labtime:=start_labtime+((end_labtime-start_labtime)/2)]
   
   
+  setup_raster_data(sleep_data, episodes, total_delta_powers)
+  p<-  plot_swa_raster("K11022003")
+    
   
   
   
   
-  subject_codes <- list.dirs(data_location, full.names=FALSE,recursive=FALSE)
-  andrew_subject_list <- data.table(subject_code=subject_codes)
-  andrew_subject_list[,file_path:=pastfull_a_location,'/',sufull_bject_code,'/',subject_code,'Slp.01.csv',sep='')]
-  load_data(subjects = andrew_subject_full_list)
-  sleep_data[,labtime:=NULL]full_
-  sleep_data[,labtime:=(24*(activity_or_bedrest_episode-1))+(0:(.N-1))*30/3600,by='subject_code,activity_or_bedrest_episodfull_e']
+  plot_swa_raster("S05161999", first_day = 1, doubleplot = FALSE, hour_range = c(0,8.1), label_sleep_episode = FALSE)
   
-  setup_episodes(sleep_data, sleep_data)
-  setup_cycles(sleep_data, episodes)
+  plot_list <- list()
   
-  nrem_episode_ouput <- copy(episodes[method=='iterative' & label=='NREM'])
-  nrem_episode_ouput[,`:=`(label=NULL, start_position=NULL, end_position=NULL, method=NULL, complete=NULL)]
-  nrem_episode_ouput[,nrem_episode_number:=1:.N,by='subject_code,activity_or_bedrest_episode']
+  setkey(subjects, subject_code)
   
-  sleep_episode_times <- sleep_data[,data.table(sleep_episode_start_time=head(labtime,1), sleep_episode_end_time=tail(labtime,1)),by='subject_code,activity_or_bedrest_episode']
-  
-  output <- merge(nrem_episode_ouput,sleep_episode_times,all.x=TRUE,by=c('subject_code','activity_or_bedrest_episode'))
-  write.table(output,file="~/Desktop/andrew/NREM_episodes_extended_20150918.csv",row.names = FALSE,sep=',')
-  
-  
-  nrem_auc_fitted_data <- lapply(subject_codes, function(sc){
-    fp <- paste(data_location, sc, paste(tolower(sc), 'NREM_AUC_Fitted.xls', sep='_'), sep='/')
-
-    if(file.exists(fp)) {
-      print(paste("Loading", sc))
-      s_data <- as.data.table(read.xls(fp, header = FALSE))
-      setnames(s_data, c("subject_code","activity_or_bedrest_episode", "data_type", "labtime", "value"))
-      s_data[,subject_code:=sc]
-      s_data
+  for(sc in subjects$subject_code) {
+    for(abe in unique(sleep_data[subject_code==sc]$activity_or_bedrest_episode)) {
+      max_hour <- max(sleep_data[subject_code == sc & activity_or_bedrest_episode == abe]$labtime) - (24.0 * (abe-1))
+      print(max_hour)
+      
+      plot_list[[paste(sc,abe,sep='_')]] <- plot_swa_raster(sc, activity_or_bedrest_episodes = c(abe), hour_range = c(0,max_hour))
     }
-    else {
-      print(paste("Could not load", sc))
-      NULL
-    }
-  })
-  
-  nrem_auc_fitted_data <- rbindlist(nrem_auc_fitted_data)
-  
-  
-  setup_raster_data(sleep_data,episodes,cycles,nrem_auc_fitted_data,doubleplot = FALSE)
-  
-  plot_raster("S05161999", first_day = 1, doubleplot = FALSE, hour_range = c(0,8.1), label_sleep_episode = FALSE)
-  
-  r <- lapply(subject_codes, function(x) {
-    p <-plot_raster(x, first_day=1, doubleplot = FALSE, hour_range = c(0,8.1), label_sleep_episode = FALSE)
-    p
-  })
-  
-  
-  
-  for(p in r) {
-    ggsave(plot=p, file=paste("/home/pwm4/Desktop/andrew_rasters/", p$data$subject_code[[1]], ".svg", sep=''), height=4, width=6, scale=2, limitsize=FALSE)
   }
   
+  for(p in plot_list) {
+    ggsave(plot=p, file=paste("/home/pwm4/Desktop/swa_rasters/", p$data$subject_code[[1]], "_", p$data$activity_or_bedrest_episode[[1]], ".svg", sep=''), height=3, width=8, scale=2, limitsize=FALSE)
+  }
+  
+
+  marrangeGrob(plot_list, ncol=1, nrow=length(plot_list))
   
   
+  nrem_episodes.out <- copy(nrem_episode_output)
+  nrem_episodes.out[,`:=`(start_position=NULL, end_position=NULL, method=NULL, complete=NULL,label=NULL)]
+  nrem_episodes.out[,midpoint:=start_labtime+(end_labtime-start_labtime)/2]
+  write.csv(nrem_episodes.out, file='/home/pwm4/Desktop/nrem_episodes_20151021.csv', row.names=FALSE, na="")
   
+  
+  full_sleep_data.out <- copy(full_sleep_data)
+  full_sleep_data.out[,pk:=NULL]
+  full_sleep_data.out[,file_path:=str_replace(file_path, "/home/pwm4/Desktop/SWA", "")]
+  write.csv(sleep_data.out, file='/home/pwm4/Desktop/merged_full_sleep_data_20151021.csv', row.names=FALSE, na="")
+  
+    
+  sleep_data.out <- copy(sleep_data)
+  sleep_data.out[,pk:=NULL]  
+  sleep_data.out[,file_path:=str_replace(file_path, "/home/pwm4/Desktop/SWA", "")]
+  write.csv(sleep_data.out, file='/home/pwm4/Desktop/merged_sleep_data_20151021.csv', row.names=FALSE, na="")
+  
+  total_delta_powers.out <- copy(total_delta_powers)
+  total_delta_powers.out[,`:=`(start_position=NULL, end_position=NULL, complete=NULL, method=NULL, label=NULL)]
+  write.csv(total_delta_powers.out, file='/home/pwm4/Desktop/total_delta_power_20151021.csv', row.names=FALSE, na="")
   
 }
 
