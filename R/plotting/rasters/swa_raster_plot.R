@@ -121,7 +121,7 @@ plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activi
   plot <- ggplot(graph_data, aes(x=day_labtime, y=stage_for_raster, group=day_number), environment = .e)
   
   # Labels and theming
-  plot <- plot + ggtitle(paste(subject_code, activity_or_bedrest_episodes[1],sep="_"))
+  plot <- plot + ggtitle(subject_code)
   plot <- plot + theme(axis.title.y=element_blank(), legend.title=element_blank(), axis.line = element_blank(),panel.grid.minor=element_blank(),strip.text.x=element_blank())
   plot <- plot + xlab("Time (hours)")
   

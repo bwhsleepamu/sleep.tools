@@ -4,8 +4,15 @@ source("R/plotting/rasters/swa_raster_plot.R")
 #data_location <- "/X/Studies/Analyses/McHill-Shaw SWA/Subjects"
 #data_location <- "/X/Studies/Analyses/McHill_Glucose SWA/For JDs Program"
 
+data_location <- list()
+data_location$disrupt <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Disrupt/"
+data_location$precoc_pub <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Precoc Pub/"
 
-data_location <- "/home/pwm4/Desktop/SWA/McHill-Shaw SWA/For PM_15-10-20"
+
+# Beth and Andrew Notes
+skipped_first_rem <- c("103_1","131_1","1516_1","310_1","33_1","33_2","912_1","B05271999_2","B11092004_1","D04072006_1","D07252001_2","D10012007_1","F03102000_2","H09282005_2","J0642000_2","K01062006_1","L11182005v1_1","M02011998_2","M10202005_1","N10062000_2","O06142000_2","P07232001_2","R11032005_1","S05161999_2","S06101999_2","W06031999_2")
+do_not_use <- c("H09282005_1", "K11102003_1", "S10272004_1", "L11182005_1")
+
 
 map_numHypno_to_stage <- function(numHypno) {
   if(numHypno %in% c(1,2,3)){
@@ -20,34 +27,38 @@ map_numHypno_to_stage <- function(numHypno) {
 }
 
 function(data_location){
-  target_file_paths <- list.files(path=data_location, pattern='.detail.spectral.xls', recursive=TRUE, full.names=TRUE)
-  target_file_paths
-  
-  subject_codes <- str_match(basename(target_file_paths), "^([[:alnum:]]*)[[:punct:][:space:]]")[,2]
-  
-  subjects <- data.table(subject_code=subject_codes, file_path=target_file_paths)
+  subjects <- data.table(study="precocious_puberty", file_path=list.files(path=data_location$precoc_pub, pattern='.detail.spectral.xls', recursive=FALSE, full.names=TRUE))
+  subjects <- rbind(subjects, data.table(study="disrupt", file_path=list.files(path=data_location$disrupt, pattern='.detail.spectral.xls', recursive=FALSE, full.names=TRUE)))
+  subjects[,subject_code:=str_match(basename(file_path), "^([[:alnum:]]*)[[:punct:][:space:]]")[,2]]
+
   setkey(subjects, subject_code)
   
   data_list <- list()
   subjects[,{
     dt <- as.data.table(read.xlsx(file_path,startRow=2));
-    dt[,`:=`(subject_code=subject_code, file_path=file_path)];
+    dt[,`:=`(subject_code=subject_code, study=study, file_path=file_path)];
     data_list[[paste(subject_code,file_path)]] <<- dt;
     0
-  },by='subject_code,file_path']
+  },by='subject_code,study,file_path']
   
   full_sleep_data <- rbindlist(data_list)
-  full_sleep_data <- full_sleep_data[,c(112:113,1:54,106:111), with=FALSE]
+  full_sleep_data <- full_sleep_data[,c(112:114,1:54,106:111), with=FALSE]
   
   full_sleep_data[,activity_or_bedrest_episode:=as.numeric(as.factor(file_path)),by='subject_code']
+  full_sleep_data[, subject_code:=paste(subject_code, activity_or_bedrest_episode, sep="_")]
+  full_sleep_data[, activity_or_bedrest_episode:=1]
+  
   full_sleep_data[,labtime:=(24*(activity_or_bedrest_episode-1))+(0:(.N-1))*30/3600,by='subject_code,file_path']
   full_sleep_data[,pk:=.I]
   full_sleep_data[,stage:=map_numHypno_to_stage(numHypno),by='pk']
   full_sleep_data[,epoch_type:=as.factor(as.character(lapply(stage, map_epoch_type))),]
-  full_sleep_data[,delta_power:=sum(.SD), .SDcols=(7:14), by='pk']
-  setcolorder(full_sleep_data,c(1:2, 64, 63, 66:67, 68, 65, 3:62))
   
-  sleep_data <- full_sleep_data[,1:8,with=FALSE]
+  cols_to_sum <- c("0.50.Hz", "1.00.Hz", "1.50.Hz", "2.00.Hz","2.50.Hz", "3.00.Hz", "3.50.Hz","4.00.Hz")
+  full_sleep_data[, delta_power:=sum(.SD), .SDcols=cols_to_sum, by='pk']
+  
+  setcolorder(full_sleep_data,c(1:3, 65, 64, 67:68, 69, 66, 4:63))
+  
+  sleep_data <- full_sleep_data[,1:9,with=FALSE]
   setup_episodes(sleep_data, sleep_data)
   
   nrem_episode_output <- copy(episodes[method=='iterative' & label=='NREM'])
@@ -57,39 +68,33 @@ function(data_location){
   sleep_data[,nrem_episode_number:=nrem_episode_output[subject_code==.SD$subject_code & activity_or_bedrest_episode==.SD$activity_or_bedrest_episode & pk>=start_position & pk <= end_position]$nrem_episode_number,by='pk']
   full_sleep_data[,nrem_episode_number:=nrem_episode_output[subject_code==.SD$subject_code & activity_or_bedrest_episode==.SD$activity_or_bedrest_episode & pk>=start_position & pk <= end_position]$nrem_episode_number,by='pk']
   
-  total_delta_powers <- sleep_data[!is.na(nrem_episode_number),list(total_delta_power=sum(delta_power)),by='subject_code,activity_or_bedrest_episode,nrem_episode_number']
+  sleep_data[subject_code %in% skipped_first_rem & nrem_episode_number == 1]
+  
+  total_delta_powers <- sleep_data[!is.na(nrem_episode_number),list(total_delta_power=sum(.SD[epoch_type!="WAKE"]$delta_power)),by='subject_code,activity_or_bedrest_episode,nrem_episode_number']
   total_delta_powers <- merge(total_delta_powers,nrem_episode_output,by=c('subject_code','activity_or_bedrest_episode','nrem_episode_number'),all.x=TRUE,all.y=FALSE)
   
   total_delta_powers[,labtime:=start_labtime+((end_labtime-start_labtime)/2)]
   
   
   setup_raster_data(sleep_data, episodes, total_delta_powers)
-  p<-  plot_swa_raster("K11022003")
-    
-  
-  
-  
-  
-  plot_swa_raster("S05161999", first_day = 1, doubleplot = FALSE, hour_range = c(0,8.1), label_sleep_episode = FALSE)
   
   plot_list <- list()
   
   setkey(subjects, subject_code)
   
-  for(sc in subjects$subject_code) {
+  for(sc in skipped_first_rem) {
     for(abe in unique(sleep_data[subject_code==sc]$activity_or_bedrest_episode)) {
       max_hour <- max(sleep_data[subject_code == sc & activity_or_bedrest_episode == abe]$labtime) - (24.0 * (abe-1))
-      print(max_hour)
+      #print(max_hour)
       
       plot_list[[paste(sc,abe,sep='_')]] <- plot_swa_raster(sc, activity_or_bedrest_episodes = c(abe), hour_range = c(0,max_hour))
     }
   }
   
   for(p in plot_list) {
-    ggsave(plot=p, file=paste("/home/pwm4/Desktop/swa_rasters/", p$data$subject_code[[1]], "_", p$data$activity_or_bedrest_episode[[1]], ".svg", sep=''), height=3, width=8, scale=2, limitsize=FALSE)
+    ggsave(plot=p, file=paste("/home/pwm4/Desktop/swa_rasters/", p$data$subject_code[[1]], ".svg", sep=''), height=3, width=8, scale=2, limitsize=FALSE)
   }
   
-
   marrangeGrob(plot_list, ncol=1, nrow=length(plot_list))
   
   
@@ -116,46 +121,79 @@ function(data_location){
   
 }
 
+## Insertion of Skipped First REM
+function() {
+  View(sleep_data[subject_code == "33_2" & nrem_episode_number == 1])
+  
+  # 33_1: 2nd WAKE around 2.00 
+  # 6336: 2.0083333
+  sleep_data[pk==6336, `:=`(stage=16, epoch_type="SREM")]
+  
+  # 33_2: min Delta in NREM2 section
+  # 7487: 1.4
+  min_delta <- min(sleep_data[subject_code == "33_2" & nrem_episode_number == 1 & labtime > 1.1 & labtime < 1.7]$delta_power)
+  sleep_data[subject_code == "33_2" & nrem_episode_number == 1 & delta_power == min_delta]
+  sleep_data[pk==7487, `:=`(stage=16, epoch_type="SREM")]
 
+  # 103_1: 1st WAKE around 2.0
+  # 276: 2.291667
+  sleep_data[subject_code == "103_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
+  sleep_data[pk==276, `:=`(stage=16, epoch_type="SREM")]
+  
+  # 131_1: 1st WAKE around 2.0
+  # 1388: 2.0583333
+  sleep_data[subject_code == "131_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
+  sleep_data[pk==1388, `:=`(stage=16, epoch_type="SREM")]
+  
+  # 310_1: 1st Wake around 1.5
+  # 5167: 1.583333
+  sleep_data[subject_code == "310_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
+  sleep_data[pk==5167, `:=`(stage=16, epoch_type="SREM")]
+  
+  # ** UNCLEAR PLACEMENT 
+  # 912_1: 1st Wake around 2.5
+  # 8782: 2.433333333
+  sleep_data[subject_code == "912_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
+  sleep_data[pk==8782, `:=`(stage=16, epoch_type="SREM")]
+  
+  # ** UNCLEAR PLACEMENT 
+  # 1516_1: 1st Wake around 2
+  # 2454: 2.108333
+  sleep_data[subject_code == "1516_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
+  sleep_data[pk==2454, `:=`(stage=16, epoch_type="SREM")]
+  
+  # B05271999_2: min Delta in NREM2 section around 3.0
+  # 12183: 3.2
+  min_delta <- min(sleep_data[subject_code == "B05271999_2" & nrem_episode_number == 1 & labtime > 3 & labtime < 4]$delta_power)
+  sleep_data[subject_code == "B05271999_2" & nrem_episode_number == 1 & delta_power == min_delta]
+  sleep_data[pk==12183, `:=`(stage=16, epoch_type="SREM")]
+  
+  # B11092004_1: min Delta in NREM2 section around 2.0
+  # 13859: 2.183333
+  min_delta <- min(sleep_data[subject_code == "B11092004_1" & nrem_episode_number == 1 & labtime > 2 & labtime < 2.7]$delta_power)
+  sleep_data[subject_code == "B11092004_1" & nrem_episode_number == 1 & delta_power == min_delta]
+  sleep_data[pk==13859, `:=`(stage=16, epoch_type="SREM")]
+  
+  # D04072006_1: min Delta in NREM2 section around 1.8
+  # 17277: 1.7
+  min_delta <- min(sleep_data[subject_code == "D04072006_1" & nrem_episode_number == 1 & labtime > 1.5 & labtime < 1.9]$delta_power)
+  sleep_data[subject_code == "D04072006_1" & nrem_episode_number == 1 & delta_power == min_delta]
+  sleep_data[pk==17277, `:=`(stage=16, epoch_type="SREM")]
+  
+  # ** NO PLACEMENT 
+  # D07252001_2: DISRUPTION? no clear division...
 
-function() { 
-
-  file_names <- list.files("data/ANDREW_M/")
-  sheet_list <- lapply(file_names, function(file_name){
-    subject_code <- strsplit(file_name, ".", fixed=TRUE)[[1]][1]
-    file_sheet <- as.data.table(read.xls(paste("data/ANDREW_M/", file_name, sep='')))
-    file_sheet[,subject_code:=subject_code]
-    file_sheet[,activity_or_bedrest_episode:=1]
-  })
-  
-  andrew_data <- rbindlist(sheet_list)
-  setnames(andrew_data, c("Time.min.", "Sleep", "delta..1.3.5."), c("labtime", "stage", "delta_power"))
-  andrew_data[,pk:=.I]
-  andrew_data[,epoch_type:=map_andrew_epoch_type(stage),by='pk']
-  andrew_data[,stage:=map_andrew_stages(stage),by='pk']
-  andrew_data[,labtime:=labtime/60.0]
-  andrew_data[stage==2 | stage == 3,scale_factor:=4/boxplot.stats(delta_power)$stats[5],by='subject_code']
-  andrew_data[stage==2 | stage == 3,scaled_delta_power:=delta_power * scale_factor]
-  andrew_data[scaled_delta_power>4, scaled_delta_power:=4]
-  
-  sleep_data <- copy(andrew_data)
-  setup_episodes(sleep_data, sleep_data)
-  setup_cycles(sleep_data, episodes)
-  setup_raster_data(sleep_data, episodes, cycles)
-
-  plot_andrew_raster(subject_list=NULL, first_day = 1)
-  
-  andrew_episodes <-generate_episodes.iterative(andrew_data, min_nrem_length=CLASSIC_MIN_NREM, min_rem_length=CLASSIC_MIN_REM, min_wake_length=CLASSIC_MIN_REM)
-  andrew_episodes[,count:=1:.N,by='subject_code,activity_or_bedrest_episode,label']
-  andrew_episodes[,episode_id:=paste(label, count, sep="_")]
-  
-  episode_ids <- rep.int(andrew_episodes$episode_id, andrew_episodes$length)
-  andrew_data[,episode_id:=episode_ids]
+  # ** UNCLEAR PLACEMENT 
+  # D10012007_1: min Delta in NREM2 section around 3
+  # 22626: 2.825
+  min_delta <- min(sleep_data[subject_code == "D10012007_1" & nrem_episode_number == 1 & labtime > 2.8 & labtime < 3.5]$delta_power)
+  sleep_data[subject_code == "D10012007_1" & nrem_episode_number == 1 & delta_power == min_delta]
+  sleep_data[pk==22626, `:=`(stage=16, epoch_type="SREM")]  
   
   
   
-  View(andrew_episodes)
 }
+
 ####
 ####
 map_andrew_stages <- function(x) {
