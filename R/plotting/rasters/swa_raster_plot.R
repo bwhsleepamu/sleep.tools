@@ -132,16 +132,19 @@ plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activi
     plot <- plot + facet_grid(day_number ~ .)
   
   # Scaling and Margins
-  y_breaks <- c(-7,-6.5,-6,-4.5,-3,-1.5, 0, 5, 10)
+  y_breaks <- c(-7,-6.5,-6,-5,-4.5,-3,-1.5, 0, 5, 10)
 
-  plot <- plot + scale_x_continuous(limits=c(hour_range[1] - epoch_length, hour_range[2] + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20)) 
-  plot <- plot + scale_y_continuous(limits=c(-7, 10), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  plot <- plot + scale_x_continuous(limits=c(hour_range[1] - epoch_length, hour_range[2] + epoch_length), expand=c(0,0), breaks=c(0,2,4,6,8,10,12,14,16,18,20)) 
+  plot <- plot + scale_y_continuous(limits=c(-7, 10.01), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
   plot <- plot + theme(panel.margin.x = unit(0.00, "npc"))
   
   # Colors
-  plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  episode_color_palette <- cbbPalette[c(1:3, 6:7)]
+  names(episode_color_palette) <- c("NREM", "REM", "WAKE", "UNDEF", "SREM")
+  plot <- plot + scale_fill_manual(values=episode_color_palette) + scale_colour_manual(values=cbbPalette)
 
+  
   ## Episodes and Cycles
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='iterative'])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
@@ -177,7 +180,6 @@ split_day_spanning_blocks <- function(dt, t_cycle=T_CYCLE, epoch_length=EPOCH_LE
   second_division <- copy(dt)
   
   new_end_day_labtime <- t_cycle-epoch_length
-  
   first_division[,`:=`(end_day_number=start_day_number, end_day_labtime=new_end_day_labtime)]
   second_division[,`:=`(start_day_number=end_day_number, start_day_labtime=0)]
   
@@ -206,6 +208,7 @@ convert_stage_for_raster <- function(d) {
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
   d[epoch_type=='UNDEF', stage_for_raster:=-2.5]
+  d[epoch_type=="SREM", stage_for_raster:=-5]
 }
 
 y_axis_formatter <- function(x) {
@@ -214,7 +217,7 @@ y_axis_formatter <- function(x) {
   else if (x == -6) { res <- "" }
   else if (x == -6.5) { res <- "NREM" }
   else if (x == -7) { res <- "" }
-  #else if (x == 3.5) { res <- "" }
+  else if (x == -5) { res <- "SREM" }
 #   else if (x == -2.5) { res <- ""}
 #   else if (x == -.5) { res <- "Traditional"}
     else if (x == -1.5) { res <- "NREM-REM Episodes"}

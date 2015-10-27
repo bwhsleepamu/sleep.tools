@@ -4,9 +4,11 @@
 ## USED IN LOAD_DATA
 map_epoch_type <- function(x) {
   ## Possibly speed up if x is a factor??
+  x <- as.numeric(x)
   if (x >= 1 & x <=4) { res <- "NREM" }
   else if (x == 5) { res <- "WAKE" }
   else if (x == 6) { res <- "REM" }
+  else if (x == 16) { res <- "SREM" }
   else { res <- "UNDEF" }
   
   res
