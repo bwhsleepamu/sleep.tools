@@ -5,9 +5,10 @@ setup_raster_data <- function(sleep_data, episodes, total_delta_powers) {
   # Sleep Data Setup
   sleep_data.v <<- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
-  sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
   sleep_data.v[,delta_power:=normalize_a(delta_power,activity_or_bedrest_episode,cutoff=.975,target_sleep_episode=1),by='subject_code']
-
+  sleep_data.v[stage %in% c(2,3), filtered_delta_power:=delta_power]
+  sleep_data.v[!is.na(filtered_delta_power), delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
   # Episodes
   episodes.v <<- copy(episodes)
@@ -148,7 +149,8 @@ plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activi
   ## Episodes and Cycles
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='iterative'])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
-  plot <- plot + geom_line(aes(y=delta_power), color="blue")
+  plot <- plot + geom_line(data=graph_data, aes(y=filtered_delta_power, group=delta_power_group), color="blue")
+  #plot <- plot + geom_line(data=graph_data, aes(y=delta_power), color="#009E73")
   plot <- plot + geom_line(data=graph_delta, aes(y=total_delta_power), color='red', size=1.2)
   plot <- plot + geom_point(data=graph_delta, aes(y=total_delta_power), color='red', size=3)
   
