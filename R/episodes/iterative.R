@@ -11,34 +11,49 @@ set_weight_stats <- function(label, length) {
          '3' = {l$l_34 <- length},
          '4' = {l$l_34 <- length},
          '5' = {l$l_w <- length},
-         '6' = {l$l_r <- length}
+         '6' = {l$l_r <- length},
+         '16' = {l$l_r <- length}
   )
   
   
   l
 }
 
-generate_episodes.iterative <- function(dt, min_nrem_length=30, min_rem_length=10, min_wake_length=10) {
+generate_episodes.iterative <- function(dt, min_nrem_length=30, min_rem_length=10, min_wake_length=10, undef_cutoff=2) {
   # Take series of epochs and collapse them into sequences of the same type  
-   min_nrem_length=30
-   min_rem_length=10
-   min_wake_length=20
+  min_nrem_length=30
+  min_rem_length=10
+  min_wake_length=20
+  undef_cutoff=2
 
+  # Create Sequences
   sequences <- dt[, chunk(stage, pk), by='subject_code,activity_or_bedrest_episode']
+  
+  # Initialize epoch stats for each sequence
   sequences <- sequences[,set_weight_stats(label,length),by='subject_code,activity_or_bedrest_episode,label,start_position,end_position,length']
+  
+  # Initialize columns
   sequences[,protect_from_merge:=FALSE]
+  
+  # Group sequences by epoch type
   sequences[,label:=map_epoch_type(label),by='start_position']
   sequences[,group:=set_group(sequences$label)]
   sequences <- sequences[,merge_group.iterative(.SD), by='subject_code,activity_or_bedrest_episode,group']
   
-  sequences <- remove_target_label.iterative(sequences, target_label="UNDEF")  
+  # Clean up short UNDEFs and protect long ones
+  sequences[label == "UNDEF" & length > undef_cutoff, protect_from_merge:=TRUE]
+  
+  sequences <- remove_target_label.iterative(sequences, "UNDEF")  
+  
+  # First REM conversion
+  sequences[label=="SREM", label:="REM"]
   
   episodes <- iterative_merge(sequences, min_nrem_length, min_rem_length, min_wake_length)
   
   episodes[,mean(length),by='label']
   
   episodes[,method:='iterative']
-  episodes[,`:=`(l_1=NULL, l_2=NULL, l_34=NULL,l_r=NULL,l_w=NULL,protect_from_merge=NULL,weight=NULL)]
+  episodes[,`:=`(l_1=NULL, l_2=NULL, l_34=NULL,l_r=NULL,l_w=NULL,protect_from_merge=NULL)]
   
   episodes
 }
@@ -47,9 +62,10 @@ generate_episodes.iterative <- function(dt, min_nrem_length=30, min_rem_length=1
 # basically, go from smallest to largest, merging until non are below cutoff
 iterative_merge <- function(sequences, min_nrem_length, min_rem_length, min_wake_length) {
   # Find First REM sequences in each sleep episode
-  sequences[label=="REM",rem_id:=seq(1,.N),by='subject_code,activity_or_bedrest_episode']
-  sequences[label=="REM" & rem_id==1,protect_from_merge:=TRUE]
-  sequences[,rem_id:=NULL]
+  sequences[,first_nrem_position:=min(.SD[label=="NREM"]$start_position), .SDcols=c("label", "start_position"), by='subject_code,activity_or_bedrest_episode']
+  sequences[label=="REM" & start_position > first_nrem_position, rem_id:=seq(1,.N),by='subject_code,activity_or_bedrest_episode']
+  sequences[label == "REM" & rem_id==1,protect_from_merge:=TRUE]
+  sequences[,`:=`(rem_id=NULL, first_nrem_position=NULL)]
   
   for(i in 1:max(min_nrem_length, min_rem_length, min_wake_length)) {
     print(paste("Merge iteration:", i))
@@ -146,12 +162,14 @@ calculate_weights <- function(label, length, l_1, l_2, l_34, l_r, l_w) {
 }
 
 remove_target_label.iterative <- function(sequences, target_label) {
-  # Re-label undefs
+  # Re-label
   sequences[,label:=relabel_to_neighbor.iterative(target_label, .SD),by='subject_code,activity_or_bedrest_episode']
+  
   # Group by labels
   sequences[,group:=set_group(label),by='subject_code,activity_or_bedrest_episode']
+  
   # Collapse groups
-  sequences <- sequences[,merge_group.iterative(.SD), by='subject_code,activity_or_bedrest_episode,group']
+  sequences <- sequences[, merge_group.iterative(.SD), by='subject_code,activity_or_bedrest_episode,group']
   
   sequences[,group:=NULL]
   
@@ -161,17 +179,16 @@ remove_target_label.iterative <- function(sequences, target_label) {
 relabel_to_neighbor.iterative <- function(label_to_merge, d) {
   weights <- d[,calculate_weights(label, length, l_1, l_2, l_34, l_r, l_w),by='start_position']$weight
   labels <- d$label
-  i <- which(labels==label_to_merge)
+  i <- which(labels==label_to_merge & !d$protect_from_merge)
   if(length(i)!=0L & length(labels) > 1) {
-    r <- merge_label.iterative(labels, weights, label_to_merge)
+    r <- merge_label.iterative(labels, weights, i, label_to_merge)
     f <- i + r
     labels[i] = labels[f]    
   }
   labels
 }
 
-merge_label.iterative <- function(labels, weights, label_to_merge) {
-  i <- which(labels==label_to_merge)
+merge_label.iterative <- function(labels, weights, i, label_to_merge) {
 #   print(labels)
 #   print(sprintf("I: %s", i))
   mapply(determine_merge_direction.iterative, i-1, i+1, MoreArgs=list(labels, weights))
