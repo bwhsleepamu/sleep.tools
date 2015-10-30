@@ -19,9 +19,9 @@ load_data(subjects = subjects)
 
 sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
 
-setup_episodes(sleep_data, sleep_data, types=c("raw", "trad"))
+setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data)
 setup_cycles(sleep_data, episodes)
-setup_raster_data(sleep_data, episodes, cycles)
+setup_raster_data(sleep_data, episodes, cycles,melatonin_phase)
 
 plot_raster("20A4DX", number_of_days = 6)
 

@@ -1,7 +1,11 @@
 ##################
 ## Iterative
 ##################
-set_weight_stats <- function(label, length) {
+set_weight_stats <- function(label, length, subject_code=NA, abe=NA) {
+  if(!is.na(subject_code) & !is.na(abe)) {
+    print(paste("Stats for:", subject_code, abe))
+  }
+  
   l <- list(l_1=0L,l_2=0L,l_34=0L,l_r=0L,l_w=0L)
   length <- as.integer(length)
   
@@ -21,17 +25,20 @@ set_weight_stats <- function(label, length) {
 
 generate_episodes.iterative <- function(dt, min_nrem_length=30, min_rem_length=10, min_wake_length=10, undef_cutoff=2) {
   # Take series of epochs and collapse them into sequences of the same type  
-  min_nrem_length=30
-  min_rem_length=10
-  min_wake_length=20
-  undef_cutoff=2
+#   min_nrem_length=30
+#   min_rem_length=10
+#   min_wake_length=20
+#   undef_cutoff=2
 
   # Create Sequences
+  print("Creating sequences!")
   sequences <- dt[, chunk(stage, pk), by='subject_code,activity_or_bedrest_episode']
+  sequences <- sequences[activity_or_bedrest_episode > 0]
   
   # Initialize epoch stats for each sequence
-  sequences <- sequences[,set_weight_stats(label,length),by='subject_code,activity_or_bedrest_episode,label,start_position,end_position,length']
-  
+  print("Calculating epoch stats!")
+  sequences <- sequences[,set_weight_stats(label,length,subject_code,activity_or_bedrest_episode),by='subject_code,activity_or_bedrest_episode,label,start_position,end_position,length']
+
   # Initialize columns
   sequences[,protect_from_merge:=FALSE]
   
@@ -43,14 +50,16 @@ generate_episodes.iterative <- function(dt, min_nrem_length=30, min_rem_length=1
   # Clean up short UNDEFs and protect long ones
   sequences[label == "UNDEF" & length > undef_cutoff, protect_from_merge:=TRUE]
   
+  print("Cleaning undefs!")
   sequences <- remove_target_label.iterative(sequences, "UNDEF")  
   
   # First REM conversion
   sequences[label=="SREM", label:="REM"]
   
+  print("Starting!")
   episodes <- iterative_merge(sequences, min_nrem_length, min_rem_length, min_wake_length)
   
-  episodes[,mean(length),by='label']
+  #episodes[,mean(length),by='label']
   
   episodes[,method:='iterative']
   episodes[,`:=`(l_1=NULL, l_2=NULL, l_34=NULL,l_r=NULL,l_w=NULL,protect_from_merge=NULL)]
@@ -75,12 +84,13 @@ iterative_merge <- function(sequences, min_nrem_length, min_rem_length, min_wake
     min_lengths[["NREM"]] <- min_nrem_length
     min_lengths[["REM"]] <- min_rem_length
     for(type in c("REM", "WAKE", "NREM")) {
+      print(paste("Type:", type))
       sequences[,weight:=calculate_weights(label,length,l_1,l_2,l_34,l_r,l_w),by='start_position']
       if(i <= min_lengths[[type]]) {
         # Re-label
-        sequences[,c('label','group'):=relabel_by_weight(type, i,label,length,weight,protect_from_merge),by='subject_code,activity_or_bedrest_episode']
+        sequences[,c('label','group'):=relabel_by_weight(type, i,label,length,weight,protect_from_merge,subject_code,activity_or_bedrest_episode),by='subject_code,activity_or_bedrest_episode']
         # Merge
-        sequences <- sequences[,merge_group.iterative(.SD), by='subject_code,activity_or_bedrest_episode,group']
+        sequences <- sequences[,merge_group.iterative(.SD, grp=.BY), by='subject_code,activity_or_bedrest_episode,group']
       }
     }
 
@@ -92,7 +102,7 @@ iterative_merge <- function(sequences, min_nrem_length, min_rem_length, min_wake
 
 
 ## Used here in iterative merge
-relabel_by_weight <- function(target_label, target_length, labels, lengths, weights, protected) {
+relabel_by_weight <- function(target_label, target_length, labels, lengths, weights, protected, sc=NULL, abe=NULL) {
 #  print("------")
 #   print(target_label)
 #   print(target_length )
@@ -102,6 +112,10 @@ relabel_by_weight <- function(target_label, target_length, labels, lengths, weig
   # Re-label
   targets <- which(lengths==target_length & labels==target_label & !protected)
 #  print(targets)
+  
+  if(!is.null(sc) & !is.null(abe)) {
+    print(paste("Relabeling", sc, abe))
+  }
 
   if(length(targets) > 0) {
     # Get neighboring lengths
@@ -136,7 +150,11 @@ relabel_by_weight <- function(target_label, target_length, labels, lengths, weig
   data.table(label=labels, group=groups)  
 }
 
-merge_group.iterative <- function(d) {
+merge_group.iterative <- function(d, grp=NULL) {
+#   if(!is.null(grp)) {
+#     print(paste("Merging", grp$subject_code, grp$activity_or_bedrest_episode))
+#   }
+    
   data.table(start_position=min(d$start_position), 
              end_position=max(d$end_position), 
              label=names(which.max(table(d$label))), 

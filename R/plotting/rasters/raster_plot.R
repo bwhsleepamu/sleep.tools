@@ -2,7 +2,7 @@
 
 
 ## Set up for plotting
-setup_raster_data <- function(sleep_data, episodes, cycles) { #, cycles, bedrest_episodes) {
+setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase) { #, cycles, bedrest_episodes) {
   # Sleep Data Setup
     sleep_data.v <<- copy(sleep_data)
     convert_stage_for_raster(sleep_data.v)
