@@ -54,7 +54,7 @@ read_subject_info <- function(file_path) {
 # Load a single sleep file
 load_sleep_file <- function(file_path) {  
   use <- TRUE
-  results <- data.table(character())
+  results <- data.table(character())analysis_episodes <- copy(all_episodes)
   
   if(file.exists(file_path)) {
     tryCatch(
@@ -83,7 +83,8 @@ load_sleep_statistics <- function() {
   # Load and set up sleep stats
   ## LOAD FROM NETWORK DRIVE!
   ## PARAMETERIZE PATHS
-  sleep_stats <- as.data.table(read.csv(sleep_stats_fp))
+  sleep_stats_fp <- "/I/Projects/Forced Desynchrony data projects/Sleep/AllSlp/AllSlpstat6c-2015a.xlsx"
+  sleep_stats <- as.data.table(read.xlsx(sleep_stats_fp))
   sleep_stats[,Sleep.Efficiency:=as.numeric(as.character(Sleep.Efficiency))]
   setnames(sleep_stats, c("Subject", "SPn"), c("subject_code", "activity_or_bedrest_episode"))
   setkey(sleep_stats, subject_code, activity_or_bedrest_episode)
@@ -100,6 +101,8 @@ load_sleep_statistics <- function() {
   sleep_efficiency <- sleep_efficiency[!J('1215H', 19)]
   sleep_efficiency <- sleep_efficiency[!J('2823GX', 31)]
   
+  sleep_efficiency[,activity_or_bedrest_episode:=as.integer(activity_or_bedrest_episode)]
+  
   setkey(sleep_efficiency, subject_code, activity_or_bedrest_episode)
   sleep_efficiency
 }
@@ -107,6 +110,7 @@ load_sleep_statistics <- function() {
 
 load_fd_times <- function() {
   # Get FD times
+  subjects[,`:=`(start_analysis=as.numeric(Start.analysis), end_analysis=as.numeric(End.Analysis))]
   fd_times <- subjects[, list(subject_code, start_analysis, end_analysis)]
   fd_times <- fd_times[!is.null(subject_code) & !is.na(start_analysis) & !is.na(end_analysis)]
   
@@ -137,8 +141,8 @@ load_data <- function(subject_fp=subject_fp.all, subject_list=NULL, subjects=NUL
   # Load and set up data for subject group
   sleep_data <<- load_sleep_data(subjects)
   
-  #if("start_analysis" %in% colnames(subjects))
-    #fd_times <<- load_fd_times()
-  #sleep_efficiency <<- load_sleep_statistics()
+  if("start_analysis" %in% colnames(subjects))
+    fd_times <<- load_fd_times()
+  sleep_efficiency <<- load_sleep_statistics()
  
 }

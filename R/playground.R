@@ -21,9 +21,10 @@ sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_lab
 
 setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data)
 setup_cycles(sleep_data, episodes)
-setup_raster_data(sleep_data, episodes, cycles,melatonin_phase)
+setup_melatonin_phase(subjects, sleep_episodes)
+setup_raster_data(sleep_data, episodes, cycles, melatonin_phase, normalize_labtime=TRUE, plot_double=FALSE)
 
-plot_raster("20A4DX", number_of_days = 6)
+plot_raster("3450GX", plot_double=FALSE)
 
 subjects
 View(subjects)

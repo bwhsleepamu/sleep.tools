@@ -2,54 +2,79 @@
 
 
 ## Set up for plotting
-setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase) { #, cycles, bedrest_episodes) {
-  # Sleep Data Setup
-    sleep_data.v <<- copy(sleep_data)
-    convert_stage_for_raster(sleep_data.v)
-    sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
-    sleep_data.v <<- double_plot(sleep_data.v,TRUE)
-    
-    # Sleep Episodes
-    sleep_episodes.v <<- copy(sleep_episodes)
-    sleep_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-    sleep_episodes.v <<- data.table(rbindlist(list(sleep_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(sleep_episodes.v[start_day_number!=end_day_number]))))
-    sleep_episodes.v[,length:=end_day_labtime-start_day_labtime]
-    sleep_episodes.v <<- sleep_episodes.v[,select_longer_split(.SD),by='subject_code,activity_or_bedrest_episode']
-    sleep_episodes.v[,day_number:=start_day_number]
-    sleep_episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-    sleep_episodes.v <<- double_plot(sleep_episodes.v,TRUE)
-    
-    # Episodes
-    episodes.v <<- copy(episodes)
-    episodes.v[,`:=`(length=convert_length_to_minutes(length))]
-    episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-    episodes.v <<- data.table(rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number]))))
-    episodes.v[,day_number:=start_day_number]
-    episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-    episodes.v <<- double_plot(episodes.v,TRUE)
-    
-    
-    # Cycles
-    cycles.v <<- copy(cycles)
-    cycles.v[,`:=`(length=convert_length_to_minutes(length))]
-    cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-    cycles.v <<- data.table(rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number]))))
-    cycles.v[,day_number:=start_day_number]
-    cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-    cycles.v <<- double_plot(cycles.v,TRUE)
+setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, normalize_labtime=FALSE,plot_double=TRUE) { #, cycles, bedrest_episodes) {
+  # Setup plot data tables
+  sleep_data.v <<- copy(sleep_data)
+  sleep_episodes.v <<- copy(sleep_episodes)
+  episodes.v <<- copy(episodes)
+  cycles.v <<- copy(cycles)
+  melatonin_phase.v <<- copy(melatonin_phase)
   
-    # Mel Phase
-    melatonin_phase.v <<- copy(melatonin_phase)
-    melatonin_phase.v[,c('day_number','day_labtime'):=set_days(labtime)]
+  if(normalize_labtime) {
+    labtime_lookup <- sleep_data.v[,list(sc=subject_code, min_labtime=min(labtime)),by='subject_code']
+    labtime_lookup[,subject_code:=NULL]
     
-    melatonin_phase.v <- double_plot(melatonin_phase.v)
+    sleep_data.v[,min_labtime:=min(labtime),by='subject_code']
+    sleep_data.v[,labtime:=labtime-min_labtime]
+    sleep_data.v[, min_labtime:=NULL]
+        
+    melatonin_phase.v[, min_labtime:=labtime_lookup[sc==subject_code]$min_labtime,by='subject_code']
+    melatonin_phase.v[, labtime:=labtime-min_labtime]
+    melatonin_phase.v[, min_labtime:=NULL]
     
-    NULL
+    lapply(list(sleep_episodes.v, episodes.v,cycles.v), function(dt) {
+      dt[, min_labtime:=labtime_lookup[sc==subject_code]$min_labtime,by='subject_code']
+      dt[, `:=`(start_labtime=start_labtime-min_labtime, end_labtime=end_labtime-min_labtime)]
+      dt[, min_labtime:=NULL]
+    })
+  }
+  
+  # Sleep Data Setup
+  convert_stage_for_raster(sleep_data.v)
+  sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
+  #
+  
+  # Sleep Episodes
+  sleep_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  sleep_episodes.v <<- data.table(rbindlist(list(sleep_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(sleep_episodes.v[start_day_number!=end_day_number]))))
+  sleep_episodes.v[,length:=end_day_labtime-start_day_labtime]
+  sleep_episodes.v <<- sleep_episodes.v[,select_longer_split(.SD),by='subject_code,activity_or_bedrest_episode']
+  sleep_episodes.v[,day_number:=start_day_number]
+  sleep_episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  
+  # Episodes
+  episodes.v[,`:=`(length=convert_length_to_minutes(length))]
+  episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  episodes.v <<- data.table(rbindlist(list(episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(episodes.v[start_day_number!=end_day_number]))))
+  episodes.v[,day_number:=start_day_number]
+  episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  
+  # Cycles
+  cycles.v[,`:=`(length=convert_length_to_minutes(length))]
+  cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
+  cycles.v <<- data.table(rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number]))))
+  cycles.v[,day_number:=start_day_number]
+  cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
+  
+  # Mel Phase
+  melatonin_phase.v[,c('day_number','day_labtime'):=set_days(labtime)]
+  
+  
+  
+  if(plot_double) {
+    sleep_data.v <<- double_plot(sleep_data.v,TRUE)
+    sleep_episodes.v <<- double_plot(sleep_episodes.v,TRUE)
+    episodes.v <<- double_plot(episodes.v,TRUE)
+    cycles.v <<- double_plot(cycles.v,TRUE)
+    melatonin_phase.v <- double_plot(melatonin_phase.v)  
+  }
+  
+  NULL
 }
 
 ## Raster plots!
 # Plotting
-plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH) {  
+plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH, plot_double=TRUE) {  
   ## SETUPP
 #   subject_code = '3450GX'
 #   number_of_days = NA
@@ -67,7 +92,8 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   
   # Get data subset
   graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
-  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
+  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & label != "UNDEF"])
+  graph_cycles <<- copy(cycles.v[type == "NREM" & subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
   graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_mel_phase <<- copy(melatonin_phase.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   
@@ -83,24 +109,34 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + xlab("Time (hours)")
   
   # Faceting
-  plot <- plot + facet_grid(day_number ~ double_plot_pos)
+  if(plot_double) {
+    plot <- plot + facet_grid(day_number ~ double_plot_pos)
+  } else {
+    plot <- plot + facet_grid(day_number ~ .)  
+  }
+  
   
   # Scaling and Margins
-  y_breaks <- c(-8.5,-8, -7.5, -6, -4.5, -3.5, -2.5, -1.5,-.5, 0)
+  y_breaks <- c(-2.5, -1.5,-.5, 0.5, 1, 2, 3, 3.5, 4)
+    plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20)) 
+  plot <- plot + scale_y_continuous(limits=c(-3.51, 4.01), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
-  plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20)) 
-  plot <- plot + scale_y_continuous(limits=c(-9, 0), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
-  
-  plot <- plot + theme(panel.margin.x = unit(0.00, "npc"))
+  plot <- plot + theme(panel.margin.x = unit(0.00, "npc"), legend.position="none")
   
   # Colors
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
   
   ## Episodes and Cycles
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -.95, ymax = -0.05, data = graph_episodes[label!="UNDEF" & method=='raw'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
-  #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.95, ymax = -2.05, data = graph_episodes[method=='iterative'])
-  #plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -3.95, ymax = -3.05, data = graph_episodes[method=='changepoint_compact'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -0.45, ymax = -0.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -0.95, ymax = -0.55, data=graph_cycles[method=="classic"])    
+  
+  
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.45, ymax = -1.05, data = graph_episodes[method=='iterative'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -1.95, ymax = -1.55, data=graph_cycles[method=="iterative"])    
+  
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.45, ymax = -2.05, data = graph_episodes[method=='changepoint_compact'])
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -2.95, ymax = -2.55, data=graph_cycles[method=="changepoint_compact"])    
+    
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=interaction(activity_or_bedrest_episode)))) #aes(colour=epoch_type)
 
   # Sleep Episode Numbers
@@ -109,7 +145,7 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   
   
   # Melatonin Phase
-  plot <- plot + geom_vline(aes(xintercept = day_labtime), size=2,colour="red",data=graph_mel_phase)
+  plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="red",data=graph_mel_phase)
   
   plot
 }
@@ -154,22 +190,22 @@ set_days <- function(labtimes, t_cycle=T_CYCLE) {
 }
 
 convert_stage_for_raster <- function(d) {
-  conv_map <- c(-7.5,-8,-8.5,-8.5,-4.5,-6)
+  conv_map <- c(3,3.5,4,4,1,2)
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
-  d[epoch_type=='UNDEF', stage_for_raster:=-4.0]
+  d[epoch_type=='UNDEF', stage_for_raster:=0.5]
 }
 
 y_axis_formatter <- function(x) {
-  if (x == -4.5) { res <- "WAKE" }
-  else if (x == -6) { res <- "REM" }
-  else if (x == -7.5) { res <- "" }
-  else if (x == -8) { res <- "NREM" }
-  else if (x == -8.5) { res <- "" }
-  else if (x == -.5) { res <- "Raw"}
-  else if (x == -1.5) { res <- "Traditional"}
-  else if (x == -2.5) { res <- "Extended"}
-  else if (x == -3.5) { res <- "Changepoint" }
+  if (x == 1) { res <- "WAKE" }
+  else if (x == 2) { res <- "REM" }
+  else if (x == 3) { res <- "" }
+  else if (x == 3.5) { res <- "NREM" }
+  else if (x == 4) { res <- "" }
+  else if (x == 0.5) { res <- ""}
+  else if (x == -.5) { res <- "Traditional"}
+  else if (x == -1.5) { res <- "Extended"}
+  else if (x == -2.5) { res <- "Changepoint" }
   else { res <- as.character(x) }
   
   res
@@ -192,8 +228,10 @@ double_plot <- function(dataset, plot_double=TRUE) {
     
     #     if(!is.null(right_side$day_s))
     #       r_df$day_s <- format(r_df$day, format="%Y-%m-%d")
-    return(rbind(left_side, right_side))
+    dataset <- rbind(left_side, right_side)
+    dataset
   } else {
     dataset[, double_plot_pos:=0]    
   }
+  
 }
