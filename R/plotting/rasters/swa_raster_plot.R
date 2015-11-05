@@ -5,9 +5,11 @@ setup_raster_data <- function(sleep_data, episodes, total_delta_powers) {
   # Sleep Data Setup
   sleep_data.v <<- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
-  sleep_data.v[,delta_power:=normalize_a(delta_power,activity_or_bedrest_episode,cutoff=.975,target_sleep_episode=1),by='subject_code']
-  sleep_data.v[stage %in% c(2,3), filtered_delta_power:=delta_power]
-  sleep_data.v[!is.na(filtered_delta_power), delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,delta_power:=normalize_j(delta_power),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,delta_power_in_stage_2_3:=normalize_j(delta_power_in_stage_2_3),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,delta_power_above_cutoff:=normalize_j(delta_power_above_cutoff),by='subject_code,activity_or_bedrest_episode']
+  
+  sleep_data.v[!is.na(delta_power_above_cutoff), delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
   # Episodes
@@ -21,8 +23,9 @@ setup_raster_data <- function(sleep_data, episodes, total_delta_powers) {
   # Delta Power
   total_delta_powers.v <<- copy(total_delta_powers)
   total_delta_powers.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
-  total_delta_powers.v[,total_delta_power:=normalize_j(total_delta_power),by='subject_code,activity_or_bedrest_episode']
-  
+  total_delta_powers.v[,delta_power_sum_full:=normalize_j(delta_power_sum_full),by='subject_code,activity_or_bedrest_episode']
+  total_delta_powers.v[,delta_power_sum_2_3:=normalize_j(delta_power_sum_2_3),by='subject_code,activity_or_bedrest_episode']
+  total_delta_powers.v[,delta_power_sum_filtered:=normalize_j(delta_power_sum_filtered),by='subject_code,activity_or_bedrest_episode']
   NULL
 }
 
@@ -81,8 +84,8 @@ normalize_a <- function(values, sleep_episode, cutoff=1, target_sleep_episode=1)
 normalize_j <- function(values, cutoff=1) {
   
   
-  max_v <- quantile(values,cutoff)
-  min_v <- min(values)
+  max_v <- quantile(values,cutoff,na.rm=TRUE)
+  min_v <- min(values,na.rm=TRUE)
   (values - min_v)*(10/(max_v-min_v))
 }
 
@@ -149,10 +152,10 @@ plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activi
   ## Episodes and Cycles
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='iterative'])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
-  plot <- plot + geom_line(data=graph_data, aes(y=filtered_delta_power, group=delta_power_group), color="blue")
+  plot <- plot + geom_line(data=graph_data, aes(y=delta_power_above_cutoff, group=interaction(nrem_episode_number,delta_power_group)), color="blue")
   #plot <- plot + geom_line(data=graph_data, aes(y=delta_power), color="#009E73")
-  plot <- plot + geom_line(data=graph_delta, aes(y=total_delta_power), color='red', size=1.2)
-  plot <- plot + geom_point(data=graph_delta, aes(y=total_delta_power), color='red', size=3)
+  plot <- plot + geom_line(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=1.2)
+  plot <- plot + geom_point(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=3)
   
 #   plot <- plot + geom_line(data=graph_jdata[data_type=="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode,delta_power_group), color=data_type, y=value))
 #   plot <- plot + geom_line(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
