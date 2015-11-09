@@ -165,7 +165,7 @@ marrangeGrob(ps, ncol=2, nrow=3)
 
 
 
-inter_rp <- ggplot(data=inter_state_intervals[type=="REM"], aes(interval_length))
+inter_rp <- ggplot(data=inter_state_intervals[type=="REM" & percent_wake >= 0.1], aes(interval_length))
 inter_rp <- inter_rp + geom_histogram(binwidth=1) + coord_cartesian(ylim=c(0, 1000), xlim=c(0,300)) + ggtitle("Inter-REM Interval Histogram")
 inter_rp
 

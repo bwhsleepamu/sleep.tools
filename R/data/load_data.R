@@ -54,7 +54,7 @@ read_subject_info <- function(file_path) {
 # Load a single sleep file
 load_sleep_file <- function(file_path) {  
   use <- TRUE
-  results <- data.table(character())analysis_episodes <- copy(all_episodes)
+  results <- data.table(character())
   
   if(file.exists(file_path)) {
     tryCatch(

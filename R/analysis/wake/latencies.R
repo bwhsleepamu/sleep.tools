@@ -106,6 +106,12 @@ inter_state_intervals[,pik:=.I]
 inter_state_intervals[,cycle_number:=cs[(start_position + interval_length/2) >= start_position & (start_position + interval_length/2) <= end_position]$cycle_number, by='pik']
 
 
+isi_stats <- function(start, end, sleep_data) {
+    as.list(table(sleep_data[start:end]$high_res_epoch_type))
+}
+
+inter_state_intervals[,c("N1", "N2", "REM", "SWS", "UNDEF", "WAKE"):=isi_stats(start_position,end_position,sleep_data),by='pik']
+
 sequences
 
 
