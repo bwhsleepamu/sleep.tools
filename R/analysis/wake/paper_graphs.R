@@ -1,14 +1,28 @@
 library(gridExtra)
+source("R/plotting/rasters/sequence_raster_plot.R")
 
+# Mini
+plot_raster("3319GX", plot_double=FALSE, labels=FALSE)
+# One day
+plot_raster("3319GX", plot_double=FALSE, first_day = 28, number_of_days = 1)
+
+sequences$label <- sequences$old_label
+sequences$label_f <- as.factor(sequences$label)
+sequences$label_f <- factor(sequences$label_f, levels=c("WAKE", "REM", "NREM", "N1", "N2", "SWS", "UNDEF"))
+
+sequences$label_f <- factor(unique(sequences$label), levels=c("WAKE", "REM", "NREM", "N1", "N2", "SWS", "UNDEF"))
+
+sequences$old_label <- sequences$label  
+sequences$label <- sequences$label_f
 
 # Distribution of sequence lengths - whole night and 1,2,3,4+
 # - NREM
 # - REM
 # - WAKE
-seq
-
-seq_len_p <- ggplot(data=sequences[(label!="UNDEF" & tag=="high_res") | (tag=="normal" & label=="NREM")], aes(x=length))
-seq_len_p + geom_histogram(binwidth=1) + facet_grid(label ~ ., scales='free') + coord_cartesian(xlim=c(0,300)) + ggtitle("Distribution of sequence lengths by state") + scale_y_continuous(trans='log1p')
+  
+  
+seq_len_p <- ggplot(data=sequences[(label!="UNDEF" & tag=="high_res") | (tag=="normal" & label=="NREM")], aes(x=length)) + labs(x="Length (minutes)", y="") + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
+seq_len_p + geom_histogram(binwidth=1) + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank()) + facet_wrap(~ label_f, as.table=TRUE, ncol=3, scales='free') + coord_cartesian(xlim=c(0,300)) + ggtitle("Distribution of Sequence Lengths by State") + scale_y_continuous(trans='log1p')
 
 seq_len_p1 <- ggplot(data=sequences[label%in% c("N1", "N2", "SWS")], aes(x=length,fill=label))
 seq_len_p1 <- seq_len_p1 + geom_histogram(binwidth=1) + coord_cartesian(xlim=c(0,200)) + ggtitle("Distribution of NREM stage sequences") + scale_y_continuous(trans='log1p')
@@ -66,16 +80,25 @@ draw_latency("REM")
 # - Stage 3
 # - WAKE
 
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
 
-l <- c("REM", "NREM", "WAKE", "N2", "SWS", "SWS")
+myleg <- g_legend(ps[[1]])
+
+
+
+l <- c("NREM", "REM", "N1", "WAKE", "N2", "SWS")
 
 ps <- lapply(l, function(t){
-  p <- ggplot(data=sequences[tag == "high_res" & label=="WAKE" & prev_label %in% c("REM", "N1", "N2", "SWS")])
-  p <- p + geom_density(aes_string(x=paste(t,"latency", sep="_"), color="length_class")) + facet_grid(prev_label ~ ., scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle(paste(t, "latency after WAKE by preceding state",sep=" "))
+  p <- ggplot(data=sequences[tag == "high_res" & label=="WAKE" & prev_label %in% c("REM", "N1", "N2", "SWS")]) + scale_colour_manual(values=cbbbPalette) + theme(axis.text.y = element_blank(), axis.ticks.y=element_blank()) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
+  p <- p + geom_density(aes_string(x=paste(t,"latency", sep="_"), color="length_class")) + facet_grid(prev_label ~ ., scales = 'free') + coord_cartesian(xlim=c(0,240)) + ggtitle(paste(t, "latency after WAKE by preceding state",sep=" "))
   p  
 })
 
-marrangeGrob(ps, ncol=2, nrow=3)
+grid.arrange(arrangeGrob(grobs=lapply(ps, function(x){x + theme(legend.position="none")})), myleg, ncol=2, widths=c(15,1))
 
 # rem_p1 <- rem_p1 + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ phase_label, scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle("REM latency after WAKE by preceding state")
 # rem_p1
@@ -165,8 +188,9 @@ marrangeGrob(ps, ncol=2, nrow=3)
 
 
 
-inter_rp <- ggplot(data=inter_state_intervals[type=="REM" & percent_wake >= 0.1], aes(interval_length))
-inter_rp <- inter_rp + geom_histogram(binwidth=1) + coord_cartesian(ylim=c(0, 1000), xlim=c(0,300)) + ggtitle("Inter-REM Interval Histogram")
+
+inter_rp <- ggplot(data=inter_state_intervals[type%in%c("REM", "SWS", "NREM")], aes(interval_length)) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
+inter_rp <- inter_rp + geom_histogram(binwidth=1, fill=element_blank()) + coord_cartesian(ylim=c(0, 400), xlim=c(0,180)) + ggtitle("Inter-State Intervals by Wake Content") + facet_grid(type ~ wake_level) + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
 inter_rp
 
 

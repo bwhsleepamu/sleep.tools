@@ -74,7 +74,7 @@ setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, nor
 
 ## Raster plots!
 # Plotting
-plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH, plot_double=TRUE) {  
+plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH, plot_double=TRUE, labels=TRUE) {  
   ## SETUPP
 #   subject_code = '3450GX'
 #   number_of_days = NA
@@ -104,10 +104,10 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- ggplot(graph_data, aes(x=day_labtime, y=stage_for_raster, group=day_number), environment = .e)
   
   # Labels and theming
-  plot <- plot + ggtitle(subject_code)
   plot <- plot + theme(axis.title.y=element_blank(), legend.title=element_blank(), axis.line = element_blank(),panel.grid.minor=element_blank(),strip.text.x=element_blank())
-  plot <- plot + xlab("Time (hours)")
-  
+  if(labels)
+    plot <- plot + xlab("Time (hours)")
+
   # Faceting
   if(plot_double) {
     plot <- plot + facet_grid(day_number ~ double_plot_pos)
@@ -117,32 +117,21 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   
   
   # Scaling and Margins
-  y_breaks <- c(-2.5, -1.5,-.5, 0.5, 1, 2, 3, 3.5, 4)
-  plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20)) 
-  plot <- plot + scale_y_continuous(limits=c(-3.51, 4.01), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  y_breaks <- c(-1,0.5, 1.5, 2.5, 3, 3.5)
+  plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20,24)) 
+  plot <- plot + scale_y_continuous(limits=c(-2.01, 3.51), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter, labels))
   
-  plot <- plot + theme(panel.margin.x = unit(0.00, "npc"), legend.position="none")
+  plot <- plot + theme(panel.margin.x = unit(0.00, "npc"), legend.position="bottom")
+  
+  if(!labels)
+    plot <- plot + theme(legend.position="none", axis.title.x=element_blank(), axis.text=element_blank(), axis.ticks=element_blank(), strip.text.y=element_blank(), strip.background=element_blank(), plot.margin=unit(c(0,-0.5,-0.5,-0.5) ,'line'), panel.margin=unit(1, "points")) + labs(x=NULL, y=NULL)
   
   # Colors
   plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
   
   ## Episodes and Cycles
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -0.45, ymax = -0.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -0.95, ymax = -0.55, data=graph_cycles[method=="classic"])    
-  
-  
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.45, ymax = -1.05, data = graph_episodes[method=='iterative'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -1.95, ymax = -1.55, data=graph_cycles[method=="iterative"])    
-  
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.45, ymax = -2.05, data = graph_episodes[method=='changepoint_compact'])
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -2.95, ymax = -2.55, data=graph_cycles[method=="changepoint_compact"])    
-    
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -0.05, data = graph_episodes[method=='raw'])# & keep==TRUE])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=interaction(activity_or_bedrest_episode)))) #aes(colour=epoch_type)
-
-  # Sleep Episode Numbers
-  #plot <- plot + geom_rect(aes(NULL, NULL, xmin=start_day_labtime, xmax=end_day_labtime+epoch_length), ymin=-8, ymax=-7, fill=NA, color="black", data=graph_sleep_episodes)
-  plot <- plot + geom_text(aes(x = (start_day_labtime+end_day_labtime)/2, label=activity_or_bedrest_episode), y=-8.7, size=2.5, data=graph_sleep_episodes)
-  
   
   # Melatonin Phase
   plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="red",data=graph_mel_phase)
@@ -190,25 +179,26 @@ set_days <- function(labtimes, t_cycle=T_CYCLE) {
 }
 
 convert_stage_for_raster <- function(d) {
-  conv_map <- c(3,3.5,4,4,1,2)
+  conv_map <- c(2.5,3,3.5,3.5,0.5,1.5)
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
   d[epoch_type=='UNDEF', stage_for_raster:=0.5]
 }
 
-y_axis_formatter <- function(x) {
-  if (x == 1) { res <- "WAKE" }
-  else if (x == 2) { res <- "REM" }
-  else if (x == 3) { res <- "" }
-  else if (x == 3.5) { res <- "NREM" }
-  else if (x == 4) { res <- "" }
-  else if (x == 0.5) { res <- ""}
-  else if (x == -.5) { res <- "Traditional"}
-  else if (x == -1.5) { res <- "Extended"}
-  else if (x == -2.5) { res <- "Changepoint" }
+y_axis_formatter <- function(x, labels=TRUE) {
+  if (x == 0.5) { res <- "WAKE" }
+  else if (x == 1.5) { res <- "REM" }
+  else if (x == 2.5) { res <- "NREM1" }
+  else if (x == 3) { res <- "NREM2" }
+  else if (x == 3.5) { res <- "NREM3/4" }
+  else if (x == 0) { res <- ""}
+  else if (x == -1) { res <- "Sequences"}
   else { res <- as.character(x) }
   
-  res
+  if(labels)
+    res
+  else
+    ""
 }
 
 

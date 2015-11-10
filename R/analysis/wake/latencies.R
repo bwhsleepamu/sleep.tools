@@ -112,6 +112,10 @@ isi_stats <- function(start, end, sleep_data) {
 
 inter_state_intervals[,c("N1", "N2", "REM", "SWS", "UNDEF", "WAKE"):=isi_stats(start_position,end_position,sleep_data),by='pik']
 
+inter_state_intervals[WAKE/interval_length_in_epochs <= .2, wake_level:="Low"]
+inter_state_intervals[WAKE/interval_length_in_epochs > .2, wake_level:="High"]
+inter_state_intervals[WAKE/interval_length_in_epochs == 0, wake_level:="None"]
+
 sequences
 
 
