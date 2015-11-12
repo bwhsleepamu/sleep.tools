@@ -2,7 +2,7 @@
 
 inter_intervals <- function(starts,ends,t) {
   n <- length(starts)
-  return_dt <- data.table(start_position=ends[-n], end_position=starts[-1L], i_length=starts[-1L] - ends[-n])
+  return_dt <- data.table(start_position=ends[-n]+1, end_position=starts[-1L]-1, i_length=starts[-1L] - ends[-n]-1)
   return_dt[,type:=t]
 }
 
@@ -86,16 +86,16 @@ ini <-   sequences[label=="NREM" & tag == "normal", inter_intervals(start_positi
 inter_state_intervals <- rbindlist(inter_state_interval_list)
 inter_state_intervals <- rbindlist(list(inter_state_intervals, ini))
   
-iwi[,episode_type:=episodes.classic[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$label, by='pik']
+#iwi[,episode_type:=episodes.classic[(start_position + i_length/2) >= start_position & (start_position + i_length/2) <= end_position]$label, by='pik']
 
 setnames(inter_state_intervals, c('i_length'), c('interval_length') )
-inter_state_intervals[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
+inter_state_intervals[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime+EPOCH_LENGTH)]
 
 # Convert lengths to minutes
 inter_state_intervals[,interval_length_in_epochs:=interval_length]
 inter_state_intervals[,interval_length:=interval_length*length_coefficient]
 
-setcolorder(inter_state_intervals, c('subject_code', 'activity_or_bedrest_episode', 'type', 'interval_length', 'start_labtime', 'end_labtime', 'episode_type', 'cycle_number', 'start_position', 'end_position', 'interval_length_in_epochs'))
+setcolorder(inter_state_intervals, c('subject_code', 'activity_or_bedrest_episode', 'type', 'interval_length', 'start_labtime', 'end_labtime', 'start_position', 'end_position', 'interval_length_in_epochs'))
 
 
 # Add phase information
@@ -112,11 +112,53 @@ isi_stats <- function(start, end, sleep_data) {
 
 inter_state_intervals[,c("N1", "N2", "REM", "SWS", "UNDEF", "WAKE"):=isi_stats(start_position,end_position,sleep_data),by='pik']
 
-inter_state_intervals[WAKE/interval_length_in_epochs <= .2, wake_level:="Low"]
-inter_state_intervals[WAKE/interval_length_in_epochs > .2, wake_level:="High"]
-inter_state_intervals[WAKE/interval_length_in_epochs == 0, wake_level:="None"]
+inter_state_intervals[,wake_percentage:=WAKE/interval_length_in_epochs]
+
+inter_state_intervals[wake_percentage <= .05, wake_level:="0% - 5%"]
+inter_state_intervals[wake_percentage > .05 & wake_percentage <=.2, wake_level:="5% - 20%"]
+inter_state_intervals[wake_percentage > .2, wake_level:="20% - 100%"]
+
+inter_state_intervals$wake_level <- factor(inter_state_intervals$wake_level, levels(factor(inter_state_intervals$wake_level))[c(2,3,1)])
+
+
+inter_state_intervals[,interval_length_without_wake:=(interval_length_in_epochs-WAKE)*length_coefficient]
+inter_state_intervals[,interval_length_wake:=(WAKE)*length_coefficient]
 
 sequences
 
+# isi heatmap
+isi_type <- "REM"
+isi_range <- c(1, 9000)
+y_data <- inter_state_intervals[type==isi_type & interval_length <= isi_range[2] & interval_length > isi_range[1]]$interval_length_wake
+x_data <- inter_state_intervals[type==isi_type & interval_length <= isi_range[2] & interval_length > isi_range[1]]$interval_length_without_wake
+y_bin_width <- 10
+x_bin_width <- 10
+scale_cutoff <- 0.31
 
+y_breaks <- c(seq(from=0, to=max(y_data)+bin_width, by=y_bin_width))
+y_bins <- cut(y_data, y_breaks,include.lowest = TRUE, right=FALSE, ordered_result = TRUE)
+
+x_breaks <- c(seq(from=0, to=max(x_data)+bin_width, by=x_bin_width))
+x_bins <- cut(x_data, x_breaks,include.lowest = TRUE, right=FALSE, ordered_result = TRUE)
+
+heat_dt <- data.table(y=y_data, x=x_data, y_bin=y_bins, x_bin=x_bins)
+heat_dt[,row_count:=.N,by='y_bin']
+
+heat_dt[,val:=min(c(.N/row_count, scale_cutoff)),by='y_bin,x_bin']
+
+x_lab_count <- seq(from=1, to=length(levels(x_bins)), by=5)
+x_labels <- rep("", length(levels(x_bins)))
+x_labels[x_lab_count] <-  levels(x_bins)[x_lab_count]
+
+y_lab_count <- seq(from=1, to=length(levels(y_bins)), by=5)
+y_labels <- rep("", length(levels(y_bins)))
+y_labels[y_lab_count] <-  levels(y_bins)[y_lab_count]
+
+ggplot(heat_dt, aes(x_bin,y_bin)) +
+  geom_tile(aes(fill=val), color="white") + 
+  scale_fill_gradient(low="white", high="steelblue") +
+  theme(panel.background=element_blank()) +
+  labs(y=paste("Length of Inter-", isi_type,"wake"), x=paste("length of Inter-", isi_type, "non-wake")) +
+  scale_x_discrete(breaks=levels(x_bins), labels=x_labels) +
+  scale_y_discrete(breaks=levels(y_bins), labels=y_labels)
 
