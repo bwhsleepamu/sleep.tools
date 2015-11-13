@@ -9,6 +9,8 @@ setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, nor
   episodes.v <<- copy(episodes)
   cycles.v <<- copy(cycles)
   melatonin_phase.v <<- copy(melatonin_phase)
+  fd_start.v <<- copy(subjects[,list(subject_code, labtime=Start.analysis)])
+  fd_end.v <<- copy(subjects[,list(subject_code, labtime=End.Analysis)])
   
   if(normalize_labtime) {
     labtime_lookup <- sleep_data.v[,list(sc=subject_code, min_labtime=min(labtime)),by='subject_code']
@@ -21,6 +23,14 @@ setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, nor
     melatonin_phase.v[, min_labtime:=labtime_lookup[sc==subject_code]$min_labtime,by='subject_code']
     melatonin_phase.v[, labtime:=labtime-min_labtime]
     melatonin_phase.v[, min_labtime:=NULL]
+    
+    fd_start.v[, min_labtime:=labtime_lookup[sc==subject_code]$min_labtime,by='subject_code']
+    fd_start.v[, labtime:=labtime-min_labtime]
+    fd_start.v[, min_labtime:=NULL]
+
+    fd_end.v[, min_labtime:=labtime_lookup[sc==subject_code]$min_labtime,by='subject_code']
+    fd_end.v[, labtime:=labtime-min_labtime]
+    fd_end.v[, min_labtime:=NULL]
     
     lapply(list(sleep_episodes.v, episodes.v,cycles.v), function(dt) {
       dt[, min_labtime:=labtime_lookup[sc==subject_code]$min_labtime,by='subject_code']
@@ -59,7 +69,9 @@ setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, nor
   # Mel Phase
   melatonin_phase.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
-  
+  # FD start end
+  fd_end.v[,c('day_number','day_labtime'):=set_days(labtime)]
+  fd_start.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
   if(plot_double) {
     sleep_data.v <<- double_plot(sleep_data.v,TRUE)
@@ -67,6 +79,8 @@ setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, nor
     episodes.v <<- double_plot(episodes.v,TRUE)
     cycles.v <<- double_plot(cycles.v,TRUE)
     melatonin_phase.v <- double_plot(melatonin_phase.v)  
+    fd_end.v <- double_plot(fd_end.v)  
+    fd_start.v <- double_plot(fd_start.v)  
   }
   
   NULL
@@ -74,6 +88,7 @@ setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, nor
 
 ## Raster plots!
 # Plotting
+
 plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH, plot_double=TRUE, labels=TRUE) {  
   ## SETUPP
 #   subject_code = '3450GX'
@@ -83,6 +98,8 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   
   # Limit by subject
   subject_list <- c(subject_code)
+
+  print(subject_code)
   
   # Limit by day
   days_to_graph <- unique(sleep_data.v[subject_code %in% subject_list]$day_number)
@@ -96,12 +113,18 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   graph_cycles <<- copy(cycles.v[type == "NREM" & subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
   graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_mel_phase <<- copy(melatonin_phase.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_fd_start <<- copy(fd_start.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_fd_end <<- copy(fd_end.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   
-  # Draw
+  if(nrow(graph_data) == 0)
+    return(NA)
+  
   .e <- environment()
+  
   
   # Main Plot
   plot <- ggplot(graph_data, aes(x=day_labtime, y=stage_for_raster, group=day_number), environment = .e)
+  
   
   # Labels and theming
   plot <- plot + theme(axis.title.y=element_blank(), legend.title=element_blank(), axis.line = element_blank(),panel.grid.minor=element_blank(),strip.text.x=element_blank())
@@ -118,10 +141,14 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   
   # Scaling and Margins
   y_breaks <- c(-1,0.5, 1.5, 2.5, 3, 3.5)
-  plot <- plot + scale_x_continuous(limits=c(0 - epoch_length, 24 + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20,24)) 
-  plot <- plot + scale_y_continuous(limits=c(-2.01, 3.51), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter, labels))
+  plot <- plot + scale_x_continuous(limits=c(0 - EPOCH_LENGTH, 24 + EPOCH_LENGTH), expand=c(0,0), breaks=c(0,4,8,12,16,20,24)) 
+  plot <- plot + scale_y_continuous(limits=c(-2.01, 0), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter, labels))
   
   plot <- plot + theme(panel.margin.x = unit(0.00, "npc"), legend.position="bottom")
+  
+  sc <- subject_code
+  title <- paste(subjects[subject_code == sc]$study, subjects[subject_code == sc]$subject_code, sep="_")
+  plot <- plot + ggtitle(title) + theme(plot.title = element_text(size = rel(.3)))
   
   if(!labels)
     plot <- plot + theme(legend.position="none", axis.title.x=element_blank(), axis.text=element_blank(), axis.ticks=element_blank(), strip.text.y=element_blank(), strip.background=element_blank(), plot.margin=unit(c(0,-0.5,-0.5,-0.5) ,'line'), panel.margin=unit(1, "points")) + labs(x=NULL, y=NULL)
@@ -134,9 +161,17 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=interaction(activity_or_bedrest_episode)))) #aes(colour=epoch_type)
   
   # Melatonin Phase
-  plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="red",data=graph_mel_phase)
+  plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="blue",data=graph_mel_phase)
+
+  plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="green",data=graph_fd_start)
+  plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="red",data=graph_fd_end)
+  
+  
+  ggsave(plot=plot, filename=paste("~/Desktop/rst/", title, ".png", sep=""), units="cm", width=5, height=10)
   
   plot
+  NA
+  
 }
 
 

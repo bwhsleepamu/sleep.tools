@@ -23,3 +23,32 @@ write.csv(subjects[subject_code %in% allowed_subject_codes], file='/home/pwm4/De
 write.csv(inter_state_intervals, file='/home/pwm4/Desktop/beth_output/inter_state_intervals_20151006.csv', row.names=FALSE, na=".")
 
 
+
+# Paper output
+
+write.csv(inter_state_intervals, file='/X/Manuscripts/Original Report/Inprep/Mankowski Sleep Episode Structure/Data/inter_state_intervals.csv', row.names=FALSE, na="")
+
+
+# Matrices for heatmaps
+write_heatmap_matrix <- function(d, type = "REM", bin_size=10, i_range=c(0,400)) {
+  hd <- isi_heatmap(d, type, isi_range=i_range, bin_width=c(bin_size,bin_size), scale_cutoff = 1)
+  print(hd$heatmap_data)
+  print(length(hd$y_levels))
+  print(length(hd$x_levels))
+  m <- matrix(nrow=length(hd$y_levels), ncol=length(hd$x_levels), dimnames=list(hd$y_levels, hd$x_levels))
+  hd$heatmap_data[,{ m[y_bin, x_bin] <<- .N }, by='y_bin,x_bin']
+  
+  write.csv(m, file=paste('/X/Manuscripts/Original Report/Inprep/Mankowski Sleep Episode Structure/Data/heatmap', type, bin_size, 'matrix.csv', sep="_"), na="")
+}
+
+target_d <- heatmap_data_list$REM
+
+m <- matrix(nrow=length(target_d$x_levels), ncol=length(target_d$y_levels), dimnames=list(target_d$x_levels, target_d$y_levels))
+target_d$heatmap_data[,{m[x_bin,y_bin]<<-.N},by='x_bin,y_bin']
+
+heatmap_data_list$REM$heatmap_data
+
+
+
+?matrix
+matrix(data=heatmap_data_list$REM$heatmap_data, byrow=true, dimnames = c(levels(heatmap_data_list$REM$heatmap_data$ypa_bin), levels(heatmap_data_list$REM$heatmap_data$x_bin) 

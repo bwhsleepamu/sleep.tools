@@ -1,5 +1,3 @@
-library(gridExtra)
-source("R/plotting/rasters/sequence_raster_plot.R")
 
 # Mini
 plot_raster("3319GX", plot_double=FALSE, labels=FALSE)
@@ -100,72 +98,6 @@ ps <- lapply(l, function(t){
 
 grid.arrange(arrangeGrob(grobs=lapply(ps, function(x){x + theme(legend.position="none")})), myleg, ncol=2, widths=c(10,1))
 
-# rem_p1 <- rem_p1 + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ phase_label, scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle("REM latency after WAKE by preceding state")
-# rem_p1
-# 
-# 
-# nrem_p1 <- ggplot(data=sequences_with_latency[label=="WAKE" & prev_label %in% c("REM", "NREM") & phase_label %in% c("in_phase", "out_of_phase")], aes(x=nrem_latency))
-# nrem_p1 <- nrem_p1 + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ phase_label, scales = 'free') + coord_cartesian(xlim=c(0,30)) + ggtitle("NREM latency after WAKE by preceding state")
-# nrem_p1
-# 
-# 
-# p <- ggplot(data=sequences_with_latency[label=="WAKE" & prev_label %in% c("REM", "WAKE") & phase_label %in% c("in_phase", "out_of_phase")], aes(x=rem_latency))
-# p <- p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ phase_label, scales = 'free') + coord_cartesian(xlim=c(0,100)) + ggtitle("Latency after WAKE by preceding state")
-# p
-
-
-
-# Latency by length and night location
-# - REM
-# - NREM
-# - Stage 2
-# - Stage 3
-# - WAKE
-
-# rem_p <- ggplot(data=rem_latencies[label=="WAKE" & cycle_number < 6 ], aes(x=rem_latency))
-# rem_p + geom_density(aes(color=length_class)) + facet_grid(cycle_number ~ ., scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle("REM latency after WAKE by NREM cycle and previous state")
-# rem_p <- ggplot(data=rem_latencies[label=="WAKE" & cycle_number < 6 & !(length_class %in% c("[0,1]", "(1,2]"))], aes(x=rem_latency))
-# rem_p + geom_density(aes(color=length_class)) + facet_grid(cycle_number ~ ., scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle("REM latency after WAKE by NREM cycle (WAKE length > 2 epochs)")
-# 
-# 
-# nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & cycle_number < 6], aes(x=nrem_latency))
-# nrem_p + geom_density(aes(color=length_class)) + facet_grid(cycle_number ~ ., scales = 'free') + coord_cartesian(xlim=c(0,30)) + ggtitle("NREM latency after WAKE by NREM cycle")
-# nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & cycle_number < 6 & !(length_class %in% c("[0,1]", "(1,2]"))], aes(x=nrem_latency))
-# nrem_p + geom_density(aes(color=length_class)) + facet_grid(cycle_number ~ ., scales = 'free') + coord_cartesian(xlim=c(0,30)) + ggtitle("REM latency after WAKE by NREM cycle (WAKE length > 2 epochs)")
-# 
-# wake_p <- ggplot(data=wake_latencies[label=="WAKE" & cycle_number < 6], aes(x=wake_latency))
-# wake_p + geom_density(aes(color=length_class)) + facet_grid(cycle_number ~ ., scales = 'free') + coord_cartesian(xlim=c(0,50)) + ggtitle("WAKE latency after WAKE by NREM cycle")
-# 
-# s2_p <- ggplot(data=e[label=="WAKE" & cycle_number < 6], aes(x=stage_2_latency))
-# s2_p + geom_density(aes(color=length_class)) + facet_grid(cycle_number ~ ., scales = 'free') + coord_cartesian(xlim=c(0,50)) + ggtitle("Stage 2 latency after WAKE by NREM cycle")
-# 
-# s3_p <- ggplot(data=e[label=="WAKE" & cycle_number < 6], aes(x=stage_3_latency))
-# s3_p + geom_density(aes(color=length_class)) + facet_grid(cycle_number ~ ., scales = 'free') + coord_cartesian(xlim=c(0,400)) + ggtitle("Stage 3 latency after WAKE by NREM cycle")
-# 
-# # Latency by length and NREM cycle and prev state
-# # - REM
-# # - NREM
-# # - Stage 2
-# # - Stage 3
-# # - WAKE
-# 
-# rem_p <- ggplot(data=rem_latencies[label=="WAKE" & cycle_number < 6 & prev_label %in% c("REM", "NREM")], aes(x=rem_latency))
-# rem_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ cycle_number, scales = 'free') + coord_cartesian(xlim=c(0,250)) + ggtitle("REM latency after WAKE by NREM cycle and previous state")
-# 
-# nrem_p <- ggplot(data=nrem_latencies[label=="WAKE" & cycle_number < 6 & prev_label %in% c("REM", "NREM")], aes(x=nrem_latency))
-# nrem_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ cycle_number, scales = 'free') + coord_cartesian(xlim=c(0,30)) + ggtitle("NREM latency after WAKE by episode type")
-# 
-# wake_p <- ggplot(data=wake_latencies[label=="WAKE" & cycle_number < 6 & prev_label %in% c("REM", "NREM")], aes(x=wake_latency))
-# wake_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ cycle_number, scales = 'free') + coord_cartesian(xlim=c(0,50)) + ggtitle("WAKE latency after WAKE by episode type")
-# 
-# s2_p <- ggplot(data=e[label=="WAKE" & cycle_number < 6 & prev_label %in% c("REM", "NREM")], aes(x=stage_2_latency))
-# s2_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ cycle_number, scales = 'free') + coord_cartesian(xlim=c(0,50)) + ggtitle("Stage 2 latency after WAKE by episode type")
-# 
-# s3_p <- ggplot(data=e[label=="WAKE" & cycle_number < 6 & prev_label %in% c("REM", "NREM")], aes(x=stage_3_latency))
-# s3_p + geom_density(aes(color=length_class)) + facet_grid(prev_label ~ cycle_number, scales = 'free') + coord_cartesian(xlim=c(0,400)) + ggtitle("Stage 3 latency after WAKE by episode type")
-# 
-
-
 ####
 # INTER-state Intervals
 ####
@@ -241,3 +173,19 @@ setkey(transitions, prev_label, label)
 transition_matrix <- matrix(data=transitions$p, nrow=5, ncol=5, dimnames = list(c("N1", "N2", "REM", "SWS", "WAKE"), c("N1", "N2", "REM", "SWS", "WAKE")) , byrow=TRUE)
 
 ## Hazard Functions
+
+
+## ISI heatmaps
+
+
+plot_isi_heatmap <- function(d) {
+  ggplot(d$heatmap_data, aes(x_bin,y_bin)) +
+    geom_tile(aes(fill=val), color="white") + 
+    scale_fill_gradient(low="white", high="steelblue") +
+    theme(panel.background=element_blank()) +
+    labs(y=paste("Length of Inter-", d$type, "wake"), x=paste("length of Inter-", d$type, "non-wake")) +
+    scale_x_discrete(breaks=levels(d$heatmap_data$x_bin), labels=d$x_labs) +
+    scale_y_discrete(breaks=levels(d$heatmap_data$y_bin), labels=d$y_labs)
+}
+
+plot_isi_heatmap(heatmap_data_list$REM)

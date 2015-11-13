@@ -7,6 +7,8 @@ setnames(subjects, c("Subject", "Age.Group", "Study"), c("subject_code", "age_gr
 subjects[,file_path:=paste("/I/AMU Cleaned Data Sets/", subject_code, "/Sleep/", subject_code, "Slp.01.csv", sep="")]
 
 subjects[,X:=NULL]
+subjects[,study:=as.character(study)]
+subjects[,subject_code:=as.character(subject_code)]
 
 number_cols <- c('Hab.Wake', 'FD.T.cycle', 'FD.SP.length', 'FD.WP.Length', 'Start.analysis', 'End.Analysis', 'Mel.Tau', 'Mel.Comp.Amp', 'MelAmp.Circad', 'Mel.Comp.Max', 'Mel.Fund.Max', 'CBT.Tau', 'CBT.Comp.Ampl', 'CBTAmp.Circad', 'CBT.Comp.Min', 'CBT.Fund.Min')
 for (c in number_cols) set(subjects,j=c,value=as.double(as.character(subjects[[c]])))
