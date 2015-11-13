@@ -170,6 +170,7 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   ggsave(plot=plot, filename=paste("~/Desktop/rst/", title, ".png", sep=""), units="cm", width=5, height=10)
   
   plot
+  
   NA
   
 }

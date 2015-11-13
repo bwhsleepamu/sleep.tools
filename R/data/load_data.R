@@ -98,9 +98,6 @@ load_sleep_statistics <- function() {
   sleep_efficiency <- sleep_stats[,data.table(subject_code, activity_or_bedrest_episode,se_label,raw_se=Sleep.Efficiency/100.0)]
   sleep_efficiency <- sleep_efficiency[!is.na(se_label)]
   
-  sleep_efficiency <- sleep_efficiency[!J('1215H', 19)]
-  sleep_efficiency <- sleep_efficiency[!J('2823GX', 31)]
-  
   sleep_efficiency[,activity_or_bedrest_episode:=as.integer(activity_or_bedrest_episode)]
   
   setkey(sleep_efficiency, subject_code, activity_or_bedrest_episode)
@@ -140,9 +137,5 @@ load_data <- function(subject_fp=subject_fp.all, subject_list=NULL, subjects=NUL
   
   # Load and set up data for subject group
   sleep_data <<- load_sleep_data(subjects)
-  
-  if("start_analysis" %in% colnames(subjects))
-    fd_times <<- load_fd_times()
   sleep_efficiency <<- load_sleep_statistics()
- 
 }
