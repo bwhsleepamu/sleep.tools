@@ -103,9 +103,22 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   
   # Limit by day
   days_to_graph <- unique(sleep_data.v[subject_code %in% subject_list]$day_number)
+  
   if(!is.na(number_of_days))
     days_to_graph <- days_to_graph[first_day:(first_day+number_of_days-1)]
   print(days_to_graph)
+
+  # Missing day correction
+  day_range <- range(days_to_graph)
+  all_days <- seq(from=day_range[1], to=day_range[2], by=1)
+  missing_days <- all_days[!(all_days %in% days_to_graph)]
+  days_to_graph <- all_days
+  
+    print(days_to_graph)
+  print(all_days)
+  print(missing_days)
+  
+ 
   
   # Get data subset
   graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
@@ -115,6 +128,11 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   graph_mel_phase <<- copy(melatonin_phase.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_fd_start <<- copy(fd_start.v[subject_code %in% subject_list & day_number %in% days_to_graph])
   graph_fd_end <<- copy(fd_end.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  
+  if(length(missing_days) > 0) {
+    missing_rows <- data.table(subject_code = subject_code, activity_or_bedrest_episode=-99, stage_for_raster=NA, day_number=missing_days, day_labtime=1.0)
+    graph_data <<- rbind(graph_data, missing_rows, use.names=TRUE, fill=TRUE)
+  }
   
   if(nrow(graph_data) == 0)
     return(NA)
@@ -172,7 +190,6 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot
   
   NA
-  
 }
 
 
