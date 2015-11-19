@@ -17,16 +17,30 @@ setkey(subjects, subject_code)
 
 allowed_subject_codes <- as.character(subjects[grep('Y', get('Permission.'))]$subject_code)
 
+# Protocol Info
+protocol_info <- as.data.table(read.xlsx("/X/Manuscripts/Original Report/Inprep/Mankowski Sleep Episode Structure/Figures/subject_rasters/raster_notes.xlsx"))
+protocol_info <- protocol_info[use == "Y"]
+protocol_info[,c('entrained_from', 'entrained_to'):=as.list(as.numeric(strsplit(entrained, split = ':')[[1]])), by='subject_code']
+protocol_info[,c('fd_from', 'fd_to'):=as.list(as.numeric(strsplit(fd, split = ':')[[1]])), by='subject_code']
+protocol_info[,c('post_from', 'post_to'):=as.list(as.numeric(strsplit(post, split = ':')[[1]])), by='subject_code']
+setkey(protocol_info, subject_code)
+## Sleep Data
 load_data(subjects = subjects)
+
+##
 
 sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
 
-setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data)
+setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data,types=c("raw"))
 setup_cycles(sleep_data, episodes)
 setup_melatonin_phase(subjects, sleep_episodes)
 setup_raster_data(sleep_data, episodes, cycles, melatonin_phase, normalize_labtime=TRUE, plot_double=FALSE)
 
-plot_raster("3450GX", plot_double=FALSE)
+plot_raster("3450GX", plot_double=FALSE, labels = FALSE)
+
+
+subjects[subject_code %in% unique(sleep_data$subject_code),{ plot_raster(subject_code, plot_double=FALSE, labels=FALSE) },by='study,subject_code']
+
 
 subjects
 View(subjects)

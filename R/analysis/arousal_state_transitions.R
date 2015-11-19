@@ -10,6 +10,20 @@ inter_intervals <- function(starts,ends,t) {
   return_dt[,type:=t]
 }
 
+set_protocol_section <- function(abe, pi) {
+  if(!is.na(pi$entrained) & abe >= pi$entrained_from & abe <= pi$entrained_to) {
+    "baseline"
+  }
+  else if (!is.na(pi$fd) & abe >= pi$fd_from & abe <= pi$fd_to) {
+    "fd"
+  }
+  else if (!is.na(pi$post) & abe >= pi$post_from & abe <= pi$post_to) {
+    "recovery"
+  }
+  else {
+    "none"
+  }
+}
 
 isi_stats <- function(start, end, sleep_data) {
   as.list(table(sleep_data[start:end]$high_res_epoch_type))
@@ -87,19 +101,25 @@ function() {
   setkey(sequences, pik)
   
   # Determine what cycle each sequence is in
-  cs <- copy(cycles[method=='classic' & type == "NREM"])
-  setnames(cs, c('start_position', 'end_position'), c('sp', 'ep'))
-  sequences[,cycle_number:=cs[start_position >= sp & end_position <= ep]$cycle_number, by='pik']
+  #cs <- copy(cycles[method=='classic' & type == "NREM"])
+  #setnames(cs, c('start_position', 'end_position'), c('sp', 'ep'))
+  #sequences[,cycle_number:=cs[start_position >= sp & end_position <= ep]$cycle_number, by='pik']
   
   # Determine what type of (traditional) episode each sequence is in
   # ep <- copy(episodes.classic)
   # setnames(ep, c('start_position', 'end_position'), c('sp', 'ep'))
   # sequences[,episode_type:=ep[start_position >= sp & end_position <= ep]$label, by='pik']
   
+  # Determine part of protocol for each sequence
+  sequences <- sequences[subject_code %in% protocol_info$subject_code]
+  sequences[,protocol_section:=set_protocol_section(activity_or_bedrest_episode, protocol_info[subject_code]),by='subject_code,activity_or_bedrest_episode']
+  sequences <- sequences[protocol_section != "none"]
+  
   
   # Determine information about the previous sequence
   sequences[,prev_label:=c(NA,label[-.N]),by='subject_code,activity_or_bedrest_episode,tag']
   sequences[,prev_length:=c(NA,length[-.N]),by='subject_code,activity_or_bedrest_episode,tag']
+  sequences[,prev_length:=prev_length*length_coefficient]
   
   
   # Use sleep data to find stage 2,3 latencies
@@ -128,6 +148,9 @@ function() {
   sequences[,length_in_epochs:=length]
   sequences[,length:=length_in_epochs*length_coefficient]
   
+  # Phase
+  sequences[,phase_label:=sleep_episodes[list(sequences$subject_code, sequences$activity_or_bedrest_episode)]$phase_label]
+  
   
   
   
@@ -146,20 +169,22 @@ function() {
   
   setnames(inter_state_intervals, c('i_length'), c('interval_length') )
   inter_state_intervals[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime+EPOCH_LENGTH)]
+  inter_state_intervals[,protocol_section:=set_protocol_section(activity_or_bedrest_episode, protocol_info[subject_code]),by='subject_code,activity_or_bedrest_episode']
+  
+  
   
   # Convert lengths to minutes
   inter_state_intervals[,interval_length_in_epochs:=interval_length]
   inter_state_intervals[,interval_length:=interval_length*length_coefficient]
   
-  setcolorder(inter_state_intervals, c('subject_code', 'activity_or_bedrest_episode', 'type', 'interval_length', 'start_labtime', 'end_labtime', 'start_position', 'end_position', 'interval_length_in_epochs'))
+  setcolorder(inter_state_intervals, c('subject_code', 'activity_or_bedrest_episode', 'type', 'interval_length', 'start_labtime', 'end_labtime', 'start_position', 'end_position', 'protocol_section', 'interval_length_in_epochs'))
   
   
   # Add phase information
   setkey(sleep_episodes, subject_code, activity_or_bedrest_episode)
-  sequences[,phase_label:=sleep_episodes[list(sequences$subject_code, sequences$activity_or_bedrest_episode)]$phase_label]
   inter_state_intervals[,phase_label:=sleep_episodes[list(inter_state_intervals$subject_code, inter_state_intervals$activity_or_bedrest_episode)]$phase_label]
   inter_state_intervals[,pik:=.I]
-  inter_state_intervals[,cycle_number:=cs[(start_position + interval_length/2) >= start_position & (start_position + interval_length/2) <= end_position]$cycle_number, by='pik']
+  #inter_state_intervals[,cycle_number:=cs[(start_position + interval_length/2) >= start_position & (start_position + interval_length/2) <= end_position]$cycle_number, by='pik']
   
   inter_state_intervals[,c("N1", "N2", "REM", "SWS", "UNDEF", "WAKE"):=isi_stats(start_position,end_position,sleep_data),by='pik']
   inter_state_intervals[,wake_percentage:=WAKE/interval_length_in_epochs]
@@ -173,7 +198,14 @@ function() {
   
   inter_state_intervals[,interval_length_without_wake:=(interval_length_in_epochs-WAKE)*length_coefficient]
   inter_state_intervals[,interval_length_wake:=(WAKE)*length_coefficient]
-  
+
+  inter_state_intervals[interval_length_wake <= 2.0, interval_length_wake_label:="0 - 2"]
+  inter_state_intervals[interval_length_wake > 2.0 & interval_length_wake <= 10.0, interval_length_wake_label:="2 - 10"]
+  inter_state_intervals[interval_length_wake > 10.0 & interval_length_wake <= 20.0, interval_length_wake_label:="10 - 20"]
+  inter_state_intervals[interval_length_wake > 20.0 & interval_length_wake <= 30.0, interval_length_wake_label:="20 - 30"]
+  inter_state_intervals[interval_length_wake > 30.0 & interval_length_wake <= 40.0, interval_length_wake_label:="30 - 40"]
+  inter_state_intervals[interval_length_wake > 40.0 & interval_length_wake <= 50.0, interval_length_wake_label:="40 - 50"]
+  inter_state_intervals[interval_length_wake > 50.0, interval_length_wake_label:=">50"]
   
   # function(isi_data, isi_type, isi_range = c(1,9000), bin_widths=c(10,10), scale_cutoff=1)
     
@@ -185,5 +217,8 @@ function() {
     N1=isi_heatmap(inter_state_intervals, "N1", isi_range=c(0,400), bin_width=c(10,10)),
     N2=isi_heatmap(inter_state_intervals, "N2", isi_range=c(0,400), bin_width=c(10,10))
   )
+  
+  hdb <- isi_heatmap(inter_state_intervals[protocol_section=="baseline"], "REM", isi_range=c(0,400), bin_width=c(5,5), scale_cutoff = c(.01, .3), axis_ranges = c(120,180))
+  hdf <- isi_heatmap(inter_state_intervals[protocol_section=="fd"], "REM", isi_range=c(0,400), bin_width=c(5,5), scale_cutoff = c(.01, .3), axis_ranges = c(120,180))
   
 }
