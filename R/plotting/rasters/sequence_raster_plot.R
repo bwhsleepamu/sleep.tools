@@ -114,7 +114,7 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   missing_days <- all_days[!(all_days %in% days_to_graph)]
   days_to_graph <- all_days
   
-    print(days_to_graph)
+  print(days_to_graph)
   print(all_days)
   print(missing_days)
   
@@ -184,12 +184,14 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="green",data=graph_fd_start)
   plot <- plot + geom_vline(aes(xintercept = day_labtime), size=1,colour="red",data=graph_fd_end)
   
+  plot <- plot + geom_text(aes(x = (start_day_labtime+end_day_labtime)/2, label=activity_or_bedrest_episode), y=-1, size=2.5, data=graph_sleep_episodes)
+  
   
   ggsave(plot=plot, filename=paste("~/Desktop/rst/", title, ".png", sep=""), units="cm", width=5, height=10)
   
   plot
-  
   NA
+
 }
 
 
