@@ -199,13 +199,23 @@ function() {
   inter_state_intervals[,interval_length_without_wake:=(interval_length_in_epochs-WAKE)*length_coefficient]
   inter_state_intervals[,interval_length_wake:=(WAKE)*length_coefficient]
 
-  inter_state_intervals[interval_length_wake <= 2.0, interval_length_wake_label:="0 - 2"]
-  inter_state_intervals[interval_length_wake > 2.0 & interval_length_wake <= 10.0, interval_length_wake_label:="2 - 10"]
-  inter_state_intervals[interval_length_wake > 10.0 & interval_length_wake <= 20.0, interval_length_wake_label:="10 - 20"]
-  inter_state_intervals[interval_length_wake > 20.0 & interval_length_wake <= 30.0, interval_length_wake_label:="20 - 30"]
-  inter_state_intervals[interval_length_wake > 30.0 & interval_length_wake <= 40.0, interval_length_wake_label:="30 - 40"]
-  inter_state_intervals[interval_length_wake > 40.0 & interval_length_wake <= 50.0, interval_length_wake_label:="40 - 50"]
-  inter_state_intervals[interval_length_wake > 50.0, interval_length_wake_label:=">50"]
+  
+  # Set wake intervals
+  breaks <- c(0,2,5,10,20,30,60,90,120)
+  
+  max_l <- max(inter_state_intervals$interval_length_wake, na.rm=TRUE)+1
+  breaks <- c(breaks[breaks < max_l], max_l)
+  labels <- paste(breaks[-length(breaks)], breaks[-1L], sep=' to ')
+  
+  inter_state_intervals[,interval_length_wake_label:=cut(interval_length_wake, breaks = breaks, labels = labels, ordered_result = TRUE, right=FALSE)]
+  
+  # inter_state_intervals[interval_length_wake <= 2.0, interval_length_wake_label:="0 - 2"]
+  # inter_state_intervals[interval_length_wake > 2.0 & interval_length_wake <= 10.0, interval_length_wake_label:="2 - 10"]
+  # inter_state_intervals[interval_length_wake > 10.0 & interval_length_wake <= 20.0, interval_length_wake_label:="10 - 20"]
+  # inter_state_intervals[interval_length_wake > 20.0 & interval_length_wake <= 30.0, interval_length_wake_label:="20 - 30"]
+  # inter_state_intervals[interval_length_wake > 30.0 & interval_length_wake <= 40.0, interval_length_wake_label:="30 - 40"]
+  # inter_state_intervals[interval_length_wake > 40.0 & interval_length_wake <= 50.0, interval_length_wake_label:="40 - 50"]
+  # inter_state_intervals[interval_length_wake > 50.0, interval_length_wake_label:=">50"]
   
   # function(isi_data, isi_type, isi_range = c(1,9000), bin_widths=c(10,10), scale_cutoff=1)
     

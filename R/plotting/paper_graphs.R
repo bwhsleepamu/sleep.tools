@@ -121,20 +121,30 @@ ps <- lapply(l, function(e){
 ps <- 'baseline'
 pl <- 'in_phase'
 
-plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_phase", "out_of_phase", "NA", "neither"), wl = c("0 - 2", "2 - 10", "10 - 20", ">50", "40 - 50", "30 - 40", "20 - 30"), bw=1, to_graph='interval_length') {
-  d <- inter_state_intervals[type==t & protocol_section%in% ps & phase_label %in% pl & interval_length_wake_label %in% wl]
-  p <- ggplot(data=d, aes_string(to_graph)) + geom_histogram(binwidth=bw) + ggtitle(paste("Inter-", t, " Interval Histogram | ", paste(ps, collapse='/'), " | ", paste(pl,collapse='/'), sep=""))
+plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_phase", "out_of_phase", "NA", "neither"), bw=1, to_graph='interval_length') {
+  d <- copy(inter_state_intervals[type==t & protocol_section%in% ps & phase_label %in% pl])
   
+  labs <- levels(d$interval_length_wake_label)
+  
+  ps <- lapply(labs, function(l) {
+    
+    ggplot(data=d[interval_length_wake_label==l], aes_string(to_graph)) + geom_histogram(binwidth=bw)  + coord_cartesian(xlim=c(0,180)) + ggtitle(l)
+    # ggtitle(paste("Inter-", t, " Interval Histogram | ", paste(ps, collapse='/'), " | ", paste(pl,collapse='/'), sep=""))
+        
+  })
+  
+  grid.arrange(grobs=ps, ncol=1)
+
   # if(!is.na(to_facet))
   #   p <- p + facet_wrap(as.formula(paste("~", to_facet)), ncol=1)
   # 
-  built_data <- as.data.table(ggplot_build(p)$data[[1]])
+  #built_data <- as.data.table(ggplot_build(p)$data[[1]])
   
   #print(build_data)
   
-  max_y <- built_data[x > 10]$count * 3
+  #max_y <- built_data[x > 10]$count * 3
 
-  p + coord_cartesian(xlim=c(0,180))  
+  #p + coord_cartesian(xlim=c(0,180))  
   
   
   
@@ -172,8 +182,8 @@ ggplot(data=inter_state_intervals[type==e & protocol_section == 'fd' & phase_lab
 marrangeGrob(ps, ncol=2, nrow=3)
 
 
-inter_p <- ggplot(data=inter_state_intervals[type%in%c("REM", "SWS")], aes(interval_length)) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
-inter_p <- inter_p + geom_histogram(binwidth=1, fill=element_blank()) + coord_cartesian(ylim=c(0, 400), xlim=c(0,180)) + ggtitle("Inter-State Intervals") + facet_grid(type ~ wake_level, scales = "free") + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
+inter_p <- ggplot(data=inter_state_intervals[type%in%c("REM", "SWS", "N1", "N2")], aes(interval_length)) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
+inter_p <- inter_p + geom_histogram(binwidth=1, fill=element_blank()) + coord_cartesian(ylim=c(0, 500), xlim=c(0,180)) + ggtitle("Inter-State Intervals") + facet_grid(type ~ ., scales = "free") + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
 inter_p
 
 
@@ -216,10 +226,10 @@ grid.arrange(inter_rp, inter_np, inter_wp, ncol=3)
 
 
 ## Transition table
-transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60,90), from_state="WAKE", ps = "fd") {
-  d <- copy(d[protocol_section == ps & prev_label==from_state & tag=='high_res' & label != "UNDEF"])
+transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60,90), ps = "fd") {
+  d <- copy(d[protocol_section == ps & tag=='high_res' & label != "UNDEF"])
   
-  max_l <- max(d$prev_length)+1
+  max_l <- max(d$prev_length, na.rm=TRUE)+1
   breaks <- c(breaks[breaks < max_l], max_l)
   labels <- paste(breaks[-length(breaks)], breaks[-1L], sep=' to ')
   
@@ -228,36 +238,36 @@ transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60,90), from
   # trans_d <- d[,list(prev_length, label, length, total=.N),by='prev_label,prev_length_label']
   # trans_d <- trans_d[,list(count=.N,total=max(total)),by='prev_label,prev_length_label,label']
 
-  trans_d <- d[,list(prev_length, prev_length_label, label, length, total=.N),by='prev_label,label']
+  trans_d <- d[,list(prev_length, prev_length_label, label, length, total=.N), by='prev_label,prev_length_label']
   trans_d <- trans_d[,list(count=.N,total=max(total)),by='prev_label,prev_length_label,label']
   
   trans_d[,prob:=count/total]
   
-  ggplot(trans_d, aes(label,prev_length_label)) +
+  ggplot(trans_d[!is.na(prev_label) & prev_label != "UNDEF"], aes(label,prev_length_label)) +
     geom_tile(aes(fill=prob), color="white") + 
-    scale_fill_gradient(low="white", high="steelblue") +
-    theme(panel.background=element_blank())
+    scale_fill_gradient(low="white", high="steelblue") + ggtitle("State Transition Heatmaps") +
+    theme(panel.background=element_blank()) + facet_wrap(~ prev_label, ncol = 3, scales = "free") + labs(x = "Target State", y="Source State Length (minutes)")
     #labs(y=paste("Length of Inter-", d$type, "wake"), x=paste("length of Inter-", d$type, "non-wake")) +
     #scale_x_discrete(breaks=levels(d$heatmap_data$x_bin), labels=d$x_labs) +
     #scale_y_discrete(breaks=levels(d$heatmap_data$y_bin), labels=d$y_labs)
 }
 
-transitions <- sequences[tag=='high_res' & label != "UNDEF" & !is.na(prev_label) & prev_label != "UNDEF",list(count=.N),by='prev_label,label,protocol_section']
-transitions[,total:=sum(count),by='prev_label,protocol_section']
-transitions[,p:=count/total]
-
-null_transitions <- data.table(prev_label=c("N1", "N2", "REM", "SWS", "WAKE"), label=c("N1", "N2", "REM", "SWS", "WAKE"),count=c(0,0,0,0,0), total=c(108455, 137080, 49474, 59164,77204), p=c(0,0,0,0,0))
-
-ggplot(transitions, aes(prev_label, label))
-
-
-transitions <- rbind(transitions, null_transitions)
-
-setkey(transitions, prev_label, label)
-
-transition_matrix <- matrix(data=transitions$p, nrow=5, ncol=5, dimnames = list(c("N1", "N2", "REM", "SWS", "WAKE"), c("N1", "N2", "REM", "SWS", "WAKE")) , byrow=TRUE)
-
-
+# transitions <- sequences[tag=='high_res' & label != "UNDEF" & !is.na(prev_label) & prev_label != "UNDEF",list(count=.N),by='prev_label,label,protocol_section']
+# transitions[,total:=sum(count),by='prev_label,protocol_section']
+# transitions[,p:=count/total]
+# 
+# null_transitions <- data.table(prev_label=c("N1", "N2", "REM", "SWS", "WAKE"), label=c("N1", "N2", "REM", "SWS", "WAKE"),count=c(0,0,0,0,0), total=c(108455, 137080, 49474, 59164,77204), p=c(0,0,0,0,0))
+# 
+# ggplot(transitions, aes(prev_label, label))
+# 
+# 
+# transitions <- rbind(transitions, null_transitions)
+# 
+# setkey(transitions, prev_label, label)
+# 
+# transition_matrix <- matrix(data=transitions$p, nrow=5, ncol=5, dimnames = list(c("N1", "N2", "REM", "SWS", "WAKE"), c("N1", "N2", "REM", "SWS", "WAKE")) , byrow=TRUE)
+# 
+# 
 
 
 ## Hazard Functions
