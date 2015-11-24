@@ -1,5 +1,6 @@
 source("R/sources.R")
 source("R/plotting/rasters/sequence_raster_plot.R")
+library(fitdistrplus)
 library(gridExtra)
 
 # Helper Methods
@@ -201,7 +202,7 @@ function() {
 
   
   # Set wake intervals
-  breaks <- c(0,2,5,10,20,30,60,90,120)
+  breaks <- c(0,2,5,10,20,30,60)
   
   max_l <- max(inter_state_intervals$interval_length_wake, na.rm=TRUE)+1
   breaks <- c(breaks[breaks < max_l], max_l)
