@@ -5,12 +5,6 @@ plot_raster("3319GX", plot_double=FALSE, labels=FALSE)
 plot_raster("3319GX", plot_double=FALSE, first_day = 28, number_of_days = 1)
 
 sequences$label_f <- as.factor(sequences$label)
-#sequences$label_f <- factor(sequences$label_f, levels=c("WAKE", "REM", "NREM", "N1", "N2", "SWS", "UNDEF"))
-
-#sequences$label_f <- factor(unique(sequences$label), levels=c("WAKE", "REM", "NREM", "N1", "N2", "SWS", "UNDEF"))
-
-#sequences$old_label <- sequences$label  
-#sequences$label <- sequences$label_f
 
 # Distribution of sequence lengths - whole night and 1,2,3,4+
 # - NREM
@@ -102,9 +96,6 @@ grid.arrange(arrangeGrob(grobs=lapply(ps, function(x){x + theme(legend.position=
 ####
 # INTER-state Intervals
 ####
-inter_state_intervals$interval_length
-
-
 p <- ggplot(data=inter_state_intervals[type=="REM" & !is.na(phase_label)], aes(x=interval_length_in_epochs)) + geom_density(aes(color=phase_label)) + coord_cartesian(xlim=c(0,300))
 p
 
@@ -161,84 +152,8 @@ plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_p
 peak_avg_wake <- data.table(average_wake=as.numeric(avg_wakes), mean=as.numeric(peak_lengths))
 
 ggplot(peak_avg_wake, aes(average_wake,mean)) + geom_point()
-# 
-# 
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length_without_wake', wl=c('0 - 2'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length_without_wake', wl=c('2 - 10'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length_without_wake', wl=c('10 - 20'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length_without_wake', wl=c('20 - 30'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length_without_wake', wl=c('30 - 40'))
-# plot_isi_histogram("REM", bw=5, to_graph = 'interval_length_without_wake', wl=c('40 - 50'))
-# plot_isi_histogram("REM", bw=5, to_graph = 'interval_length_without_wake', wl=c('>50'))
-# 
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length', wl=c('0 - 2'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length', wl=c('2 - 10'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length', wl=c('10 - 20'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length', wl=c('20 - 30'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length', wl=c('30 - 40'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length', wl=c('40 - 50'))
-# plot_isi_histogram("REM", bw=3, to_graph = 'interval_length', wl=c('>50'))
 
-
-
-# REM - Baseline
-plot_isi_histogram("REM", ps=c('fd'), bw=1)
-ggplot(data=inter_state_intervals[type==e & protocol_section == 'baseline'], aes(interval_length)) + geom_histogram(binwidth=4) + coord_cartesian(ylim=c(0,250),xlim=c(0,180)) + ggtitle(paste("Inter-", e, " Interval Histogram | Baseline", sep=""))
-
-# REM - In Phase
-ggplot(data=inter_state_intervals[type==e & protocol_section == 'fd' & phase_label == 'in_phase'], aes(interval_length)) + geom_histogram(binwidth=2) + coord_cartesian(ylim=c(0,250),xlim=c(0,180)) + ggtitle(paste("Inter-", e, " Interval Histogram | Baseline", sep=""))
-
-# REM - Out of Phase
-ggplot(data=inter_state_intervals[type==e & protocol_section == 'fd' & phase_label == 'out_of_phase'], aes(interval_length)) + geom_histogram(binwidth=2) + coord_cartesian(ylim=c(0,250),xlim=c(0,180)) + ggtitle(paste("Inter-", e, " Interval Histogram | ",l, sep=""))
-
-
-marrangeGrob(ps, ncol=2, nrow=3)
-
-
-inter_p <- ggplot(data=inter_state_intervals[type%in%c("REM", "SWS", "N1", "N2")], aes(interval_length)) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
-inter_p <- inter_p + geom_histogram(binwidth=1, fill=element_blank()) + coord_cartesian(ylim=c(0, 500), xlim=c(0,180)) + ggtitle("Inter-State Intervals") + facet_grid(type ~ ., scales = "free") + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
-inter_p
-
-
-inter_p <- ggplot(data=inter_state_intervals[type%in%c("REM", "SWS")], aes(interval_length)) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
-inter_p <- inter_p + geom_histogram(binwidth=1, fill=element_blank()) + coord_cartesian(ylim=c(0, 400), xlim=c(0,180)) + ggtitle("Inter-State Intervals") + facet_grid(type ~ wake_level, scales = "free") + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
-inter_p
-
-inter_p2 <- ggplot(data=inter_state_intervals[type%in%c("REM", "SWS")], aes(interval_length_without_wake)) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
-inter_p2 <- inter_p2 + geom_histogram(binwidth=1, fill=element_blank()) + coord_cartesian(ylim=c(0, 400), xlim=c(0,180)) + ggtitle("Inter-State Intervals - Excluding Wake") + facet_grid(type ~ wake_level) + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
-inter_p2
-
-
-inter_p3 <- ggplot(data=inter_state_intervals[type%in%c("REM", "SWS")], aes(interval_length_wake)) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
-inter_p3 <- inter_p3 + geom_histogram(binwidth=1, fill=element_blank()) + coord_cartesian(ylim=c(0, 400), xlim=c(0,120)) + ggtitle("Inter-State Intervals - Only Wake") + facet_grid(type ~ wake_level) + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
-inter_p3
-
-grid.arrange(inter_p, inter_p2, inter_p3)
-
-
-inter_p <- ggplot(data=iri[cycle_number <= 6],aes(i_length))
-inter_p + geom_histogram(binwidth=1) + coord_cartesian(ylim=c(0, 100), xlim=c(0,300)) + facet_grid(cycle_number ~ .) + ggtitle("Inter-REM Interval Histogram by NREM Cycle")
-
-# NREM
-inter_np <- ggplot(data=ini,aes(i_length))
-inter_np <- inter_np + geom_histogram(binwidth=1) + coord_cartesian(ylim=c(0, 1000), xlim=c(0,300)) + ggtitle("Inter-NREM Interval Histogram") + scale_y_log10()
-
-inter_p + geom_histogram(binwidth=.01) + ggtitle("Inter-NREM Interval Histogram") + scale_y_log10() + scale_x_log10()
-
-inter_p <- ggplot(data=ini[cycle_number <= 6],aes(i_length))
-inter_p + geom_histogram(binwidth=1) + coord_cartesian(ylim=c(0, 500), xlim=c(0,300)) + facet_grid(cycle_number ~ .) + ggtitle("Inter-NREM Interval Histogram by NREM Cycle")
-
-# WAKE
-inter_wp <- ggplot(data=iwi,aes(i_length))
-inter_wp <- inter_wp + geom_histogram(binwidth=1) + coord_cartesian(ylim=c(0, 1000), xlim=c(0,300)) + ggtitle("Inter-WAKE Interval Histogram")
-
-inter_p <- ggplot(data=iwi[cycle_number <= 6],aes(i_length))
-inter_p + geom_histogram(binwidth=1) + coord_cartesian(ylim=c(0, 500), xlim=c(0,300)) + facet_grid(cycle_number ~ .) + ggtitle("Inter-WAKE Interval Histogram by NREM Cycle")
-
-grid.arrange(inter_rp, inter_np, inter_wp, ncol=3)
-
-
-## Transition table
+## Transition heatmaps
 transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "fd") {
   d <- copy(d[protocol_section == ps & tag=='high_res' & label != "UNDEF"])
   
@@ -248,6 +163,9 @@ transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "f
   
   d[,prev_length_label:=cut(prev_length, breaks = breaks, labels = labels, ordered_result = TRUE)]
   
+  counts <- d[!is.na(prev_label) & prev_label!="UNDEF",list(count=.N),by='prev_label,prev_length_label']
+  counts[,fake_x:="--"]
+  
   # trans_d <- d[,list(prev_length, label, length, total=.N),by='prev_label,prev_length_label']
   # trans_d <- trans_d[,list(count=.N,total=max(total)),by='prev_label,prev_length_label,label']
 
@@ -256,32 +174,14 @@ transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "f
   
   trans_d[,prob:=count/total]
   
-  ggplot(trans_d[!is.na(prev_label) & prev_label != "UNDEF"], aes(label,prev_length_label)) +
+  ggplot(trans_d[!is.na(prev_label) & prev_label != "UNDEF"], aes(label,revFactor(prev_length_label))) +
     geom_tile(aes(fill=prob), color="white") + 
-    scale_fill_gradient(low="white", high="steelblue", trans=log2_trans()) + ggtitle("State Transition Heatmaps") +
-    theme(panel.background=element_blank()) + facet_wrap(~ prev_label, ncol = 3, scales = "free") + labs(x = "Target State", y="Source State Length (minutes)")
+    scale_fill_gradient(low="white", high="steelblue4") + ggtitle("State Transition Heatmaps") + geom_text(data=counts, mapping=aes(label=count, x=fake_x)) +
+    theme(panel.background=element_blank(), panel.grid.minor=element_blank(), panel.grid.major=element_blank()) + facet_wrap(~ prev_label, ncol = 3, scales = "free") + labs(x = "Target State", y="Source State Length (minutes)")
     #labs(y=paste("Length of Inter-", d$type, "wake"), x=paste("length of Inter-", d$type, "non-wake")) +
     #scale_x_discrete(breaks=levels(d$heatmap_data$x_bin), labels=d$x_labs) +
     #scale_y_discrete(breaks=levels(d$heatmap_data$y_bin), labels=d$y_labs)
 }
-
-# transitions <- sequences[tag=='high_res' & label != "UNDEF" & !is.na(prev_label) & prev_label != "UNDEF",list(count=.N),by='prev_label,label,protocol_section']
-# transitions[,total:=sum(count),by='prev_label,protocol_section']
-# transitions[,p:=count/total]
-# 
-# null_transitions <- data.table(prev_label=c("N1", "N2", "REM", "SWS", "WAKE"), label=c("N1", "N2", "REM", "SWS", "WAKE"),count=c(0,0,0,0,0), total=c(108455, 137080, 49474, 59164,77204), p=c(0,0,0,0,0))
-# 
-# ggplot(transitions, aes(prev_label, label))
-# 
-# 
-# transitions <- rbind(transitions, null_transitions)
-# 
-# setkey(transitions, prev_label, label)
-# 
-# transition_matrix <- matrix(data=transitions$p, nrow=5, ncol=5, dimnames = list(c("N1", "N2", "REM", "SWS", "WAKE"), c("N1", "N2", "REM", "SWS", "WAKE")) , byrow=TRUE)
-# 
-# 
-
 
 ## Hazard Functions
 

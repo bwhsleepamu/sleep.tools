@@ -2,6 +2,7 @@ source("R/sources.R")
 source("R/plotting/rasters/sequence_raster_plot.R")
 library(fitdistrplus)
 library(gridExtra)
+library(Rcell)
 
 # Helper Methods
 
