@@ -35,17 +35,21 @@ seq_len_p + geom_histogram(binwidth=2) + facet_grid(label ~ protocol_section, sc
 #wake_lat_p <- ggplot(data=sequences_with_latency[label=="WAKE"])
 label_list <- c('WAKE', 'REM', 'NREM')
 
+l <- 'REM'
+name_x_val <- c("WAKE_latency", 100)
 draw_latency <- function(l) {
   lat_p <- ggplot(data=sequences[tag=="high_res" & label==l & phase_label %in% c('in_phase', 'out_of_phase', 'neither')])
   latency_types <- list(c("REM_latency", 250), c("NREM_latency", 50), c("WAKE_latency", 100), c("N2_latency", 100), c("SWS_latency", 400))
   
   lat_graphs <- lapply(latency_types, function(name_x_val){
     print(name_x_val)
-    lat_p + geom_density(aes_string(x=name_x_val[1], color="phase_label")) + coord_cartesian(xlim=c(0,as.numeric(name_x_val[2]))) + ggtitle(paste(name_x_val[1], "after", l)) #+ facet_grid(cycle_number ~ .)
+    lat_p + geom_density(aes_string(x=name_x_val[1], color="length_class")) + coord_cartesian(xlim=c(0,as.numeric(name_x_val[2]))) + ggtitle(paste(name_x_val[1], "after", l)) + facet_grid(. ~ phase_label)
   });
   
-  marrangeGrob(grobs = lat_graphs, nrow=5, ncol=1)
+  grid.arrange(arrangeGrob(grobs=lat_graphs, nrow=5, ncol=1))
 }
+
+draw_latency(label_list)
 
 draw_latency <- function(l) {
   lat_p <- ggplot(data=sequences[label==l & phase_label %in% c('in_phase', 'out_of_phase', 'neither') & cycle_number <= 6])
@@ -55,8 +59,9 @@ draw_latency <- function(l) {
     print(name_x_val)
     lat_p + geom_density(aes_string(x=name_x_val[1], color="phase_label")) + coord_cartesian(xlim=c(0,as.numeric(name_x_val[2]))) + ggtitle(paste(name_x_val[1], "after", l)) #+ facet_grid(cycle_number ~ .)
   });
+  grid.arrange(arrangeGrob(grobs=lat_graphs, nrow=5, ncol=1))
   
-  marrangeGrob(grobs = lat_graphs, nrow=5, ncol=1)
+  #marrangeGrob(grobs = lat_graphs, nrow=5, ncol=1)
 }
 
 draw_latency("WAKE")
@@ -101,11 +106,11 @@ p
 
 # REM
 l <- c("REM", "WAKE", "NREM", "N1", "N2", "SWS")
-e <- "SWS"
+e <- "REM"
 
 ps <- lapply(l, function(e){
-  p <- ggplot(data=inter_state_intervals[type==e], aes(interval_length))
-  p <- p + geom_histogram(binwidth=1) + coord_cartesian(xlim=c(0,300)) + ggtitle(paste("Inter-", e, " Interval Histogram", sep=""))
+  p <- ggplot(data=inter_state_intervals[protocol_section == 'fd' & phase_label %in% c("in_phase", "neither", "out_of_phase")], aes(interval_length))
+  p <- p + geom_histogram(binwidth=1) + coord_cartesian(xlim=c(0,200), ylim=c(0,500)) + ggtitle(paste("Inter-", e, " Interval Histogram", sep="")) + facet_grid(phase_label ~ type, scales = "free")
   p
 })
 
@@ -163,21 +168,21 @@ transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "f
   
   d[,prev_length_label:=cut(prev_length, breaks = breaks, labels = labels, ordered_result = TRUE)]
   
-  counts <- d[!is.na(prev_label) & prev_label!="UNDEF",list(count=.N),by='prev_label,prev_length_label']
+  counts <- d[!is.na(prev_label) & prev_label!="UNDEF",list(count=.N),by='phase_label,prev_label,prev_length_label']
   counts[,fake_x:="--"]
   
   # trans_d <- d[,list(prev_length, label, length, total=.N),by='prev_label,prev_length_label']
   # trans_d <- trans_d[,list(count=.N,total=max(total)),by='prev_label,prev_length_label,label']
 
-  trans_d <- d[,list(prev_length, prev_length_label, label, length, total=.N), by='prev_label,prev_length_label']
-  trans_d <- trans_d[,list(count=.N,total=max(total)),by='prev_label,prev_length_label,label']
+  trans_d <- d[,list(prev_length, prev_length_label, label, length, total=.N), by='phase_label,prev_label,prev_length_label']
+  trans_d <- trans_d[,list(count=.N,total=max(total)),by='phase_label,prev_label,prev_length_label,label']
   
   trans_d[,prob:=count/total]
   
   ggplot(trans_d[!is.na(prev_label) & prev_label != "UNDEF"], aes(label,revFactor(prev_length_label))) +
     geom_tile(aes(fill=prob), color="white") + 
     scale_fill_gradient(low="white", high="steelblue4") + ggtitle("State Transition Heatmaps") + geom_text(data=counts, mapping=aes(label=count, x=fake_x)) +
-    theme(panel.background=element_blank(), panel.grid.minor=element_blank(), panel.grid.major=element_blank()) + facet_wrap(~ prev_label, ncol = 3, scales = "free") + labs(x = "Target State", y="Source State Length (minutes)")
+    theme(panel.background=element_blank(), panel.grid.minor=element_blank(), panel.grid.major=element_blank()) + facet_grid(phase_label ~ prev_label, scales = "free") + labs(x = "Target State", y="Source State Length (minutes)")
     #labs(y=paste("Length of Inter-", d$type, "wake"), x=paste("length of Inter-", d$type, "non-wake")) +
     #scale_x_discrete(breaks=levels(d$heatmap_data$x_bin), labels=d$x_labs) +
     #scale_y_discrete(breaks=levels(d$heatmap_data$y_bin), labels=d$y_labs)
@@ -201,3 +206,13 @@ plot_isi_heatmap <- function(d) {
 }
 
 plot_isi_heatmap(heatmap_data_list$REM)
+
+
+## Phase Distributions
+
+ggplot(data=sequences[tag=="normal" & protocol_section == 'fd' & label!="UNDEF"]) + geom_density(binwidth=30, mapping=aes(x=abs(phase_angle), color=length_class)) + facet_grid(label ~ ., scales = "free")
+ggplot(data=sequences[tag=="high_res" & protocol_section == 'fd']) + geom_histogram(binwidth=5, mapping=aes(x=abs(phase_angle))) + facet_grid(length_class ~ label, scales = "free")
+
+qplot(abs(time_in_bed), data=sequences[tag=="high_res" & label=='REM' & protocol_section == 'fd'], geom='density', color=length_class)
+subjects
+

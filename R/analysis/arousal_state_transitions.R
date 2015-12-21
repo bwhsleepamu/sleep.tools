@@ -151,9 +151,14 @@ function() {
   sequences[,length:=length_in_epochs*length_coefficient]
   
   # Phase
-  sequences[,phase_label:=sleep_episodes[list(sequences$subject_code, sequences$activity_or_bedrest_episode)]$phase_label]
-  
-  
+  sequences[,old_phase_label:=sleep_episodes[list(sequences$subject_code, sequences$activity_or_bedrest_episode)]$phase_label]
+  sequences[,mid_labtime:=(start_labtime+end_labtime)/2]
+  sequences[,`:=`(tau=melatonin_reference[subject_code]$tau, phase_reference=melatonin_reference[subject_code]$labtime),by='subject_code']
+  sequences[,phase_angle:=(mid_labtime-phase_reference)%%tau * 360/tau]
+  sequences[!is.na(phase_angle),phase_label:='neither']
+  sequences[abs(phase_angle) < 20, phase_label:='in_phase']
+  sequences[abs(phase_angle) > 160, phase_label:='out_of_phase']
+  sequences[is.na(phase_angle), phase_label:=NA]
   
   
   # Inter-State Intervals
@@ -184,8 +189,21 @@ function() {
   
   # Add phase information
   setkey(sleep_episodes, subject_code, activity_or_bedrest_episode)
-  inter_state_intervals[,phase_label:=sleep_episodes[list(inter_state_intervals$subject_code, inter_state_intervals$activity_or_bedrest_episode)]$phase_label]
+  inter_state_intervals[,old_phase_label:=sleep_episodes[list(inter_state_intervals$subject_code, inter_state_intervals$activity_or_bedrest_episode)]$phase_label]
   inter_state_intervals[,pik:=.I]
+  
+  inter_state_intervals[,mid_labtime:=(start_labtime+end_labtime)/2]
+  inter_state_intervals[,`:=`(tau=melatonin_reference[subject_code]$tau, phase_reference=melatonin_reference[subject_code]$labtime),by='subject_code']
+  inter_state_intervals[,phase_angle:=(mid_labtime-phase_reference)%%tau * 360/tau]
+  inter_state_intervals[!is.na(phase_angle),phase_label:='neither']
+  inter_state_intervals[abs(phase_angle) < 30, phase_label:='in_phase']
+  inter_state_intervals[abs(phase_angle) > 150, phase_label:='out_of_phase']
+  inter_state_intervals[is.na(phase_angle), phase_label:=NA]
+  
+  
+  
+  
+  
   #inter_state_intervals[,cycle_number:=cs[(start_position + interval_length/2) >= start_position & (start_position + interval_length/2) <= end_position]$cycle_number, by='pik']
   
   inter_state_intervals[,c("N1", "N2", "REM", "SWS", "UNDEF", "WAKE"):=isi_stats(start_position,end_position,sleep_data),by='pik']

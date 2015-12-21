@@ -1,6 +1,9 @@
 setup_melatonin_phase <- function(subjects, sleep_episodes) {
-  melatonin_phase <- subjects[,list(subject_code, labtime=Mel.Comp.Max, tau=Mel.Tau, start_analysis=Start.analysis, end_analysis=End.Analysis)]
-  melatonin_phase <<- melatonin_phase[,list(labtime=predict_phase(labtime, tau, end_analysis)),by='subject_code']
+  melatonin_reference <<- subjects[,list(subject_code, labtime=Mel.Comp.Max, tau=Mel.Tau, start_analysis=Start.analysis, end_analysis=End.Analysis)]
+  
+  
+  
+  melatonin_phase <<- melatonin_reference[,list(labtime=predict_phase(labtime, tau, end_analysis)),by='subject_code']
   
   # For each sleep episode of a subject, find closest melatonin maximum
   sleep_episodes[,midpoint:=((end_labtime-start_labtime)/2.0)+start_labtime]
