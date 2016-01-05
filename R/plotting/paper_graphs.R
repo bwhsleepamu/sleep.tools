@@ -31,12 +31,20 @@ seq_len_p + geom_histogram(binwidth=2) + facet_grid(label ~ protocol_section, sc
 # ALL LATENCIES
 ###
 
+# REM Latency post-wake
+ggplot(data=sequences[tag=='high_res' & label == "WAKE"]) + geom_histogram(aes(x=REM_latency), binwidth=5) + facet_grid(. ~ phase_bin) + xlim(0,250)
+
+ggplot(data=sequences[tag=='high_res' & label == "WAKE" & REM_latency < 50 & length > 10 & protocol_section=='fd']) + geom_density(aes(x=phase_angle)) + ggtitle("Distribution of SOREM Latencies vs. Phase Angle of Sleep Interruptions (> 5 min)")
+ggplot(data=sequences[tag=='high_res' & label == "WAKE" & REM_latency > 50 & length > 10 & protocol_section=='fd']) + geom_density(aes(x=phase_angle)) + ggtitle("Distribution of non-SOREM Latencies vs. Phase Angle of Sleep Interruptions (> 5 min)")
+
+
++ geom_point(aes(x=abs(phase_angle), y=REM_latency))
 # Post-WAKE
 #wake_lat_p <- ggplot(data=sequences_with_latency[label=="WAKE"])
 label_list <- c('WAKE', 'REM', 'NREM')
 
-l <- 'REM'
-name_x_val <- c("WAKE_latency", 100)
+l <- 'WAKE'
+name_x_val <- c("REM_latency", 100)
 draw_latency <- function(l) {
   lat_p <- ggplot(data=sequences[tag=="high_res" & label==l & phase_label %in% c('in_phase', 'out_of_phase', 'neither')])
   latency_types <- list(c("REM_latency", 250), c("NREM_latency", 50), c("WAKE_latency", 100), c("N2_latency", 100), c("SWS_latency", 400))
@@ -193,8 +201,6 @@ transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "f
 
 
 ## ISI heatmaps
-
-
 plot_isi_heatmap <- function(d) {
   ggplot(d$heatmap_data, aes(x_bin,y_bin)) +
     geom_tile(aes(fill=val), color="white") + 
@@ -215,4 +221,56 @@ ggplot(data=sequences[tag=="high_res" & protocol_section == 'fd']) + geom_histog
 
 qplot(abs(time_in_bed), data=sequences[tag=="high_res" & label=='REM' & protocol_section == 'fd'], geom='density', color=length_class)
 subjects
+
+
+# Phase and Time in Bed
+
+by_phase <- sequences[!is.na(phase_bin),list(label_length=sum(length)),by='tag,protocol_section,label,phase_bin']
+by_phase[,total_length:=sum(label_length), by='tag,protocol_section,phase_bin']
+by_phase[,p:=label_length/total_length]
+
+ggplot(data=by_phase[tag=='high_res' & protocol_section=='fd']) + geom_line(aes(x=phase_bin, y=p, color=label, group=label))
+
+
+by_tib <- sequences[!is.na(phase_bin),list(label_length=sum(length)),by='tag,protocol_section,label,time_in_bed_bin']
+by_tib[,total_length:=sum(label_length), by='tag,protocol_section,time_in_bed_bin']
+by_tib[,p:=label_length/total_length]
+
+ggplot(data=by_tib[tag=='high_res' & protocol_section=='fd' & time_in_bed_bin != "NA"]) + geom_line(aes(x=time_in_bed_bin, y=p, color=label, group=label))
+
+
+## 
+
+ggplot(data=sequences[tag=='high_res' & label=="WAKE" & protocol_section=="fd" & !is.na(phase_angle) ]) + geom_boxplot(aes(x=phase_bin, y=REM_latency)) #+ facet_grid(. ~ ., scales = 'free')
+ggplot(data=sequences[tag=='high_res' & label=="WAKE" & protocol_section=="fd" & !is.na(phase_angle)]) + geom_boxplot(aes(x=time_in_bed_bin, y=REM_latency)) #+ facet_grid(length_class ~ prev_label, scales='free')
+& prev_label %in% c("N1", "N2", "SWS", "REM", "WAKE")
+
+
+
+##
+
+
+
+
+isi_by_phase <- inter_state_intervals[!is.na(phase_angle) & protocol_section == 'fd', list(n1_sum=sum(N1), n2_sum=sum(N2), sws_sum=sum(SWS), wake_sum=sum(WAKE), undef_sum=sum(UNDEF), rem_sum=sum(REM)) ,by='type,interval_length_label,phase_bin']
+isi_by_phase[,total_sum:=n1_sum+n2_sum+sws_sum+wake_sum+undef_sum+rem_sum]
+isi_by_phase <- melt(isi_by_phase, measure.vars = c('rem_sum', 'sws_sum', 'undef_sum', 'n1_sum', 'n2_sum', 'wake_sum'), value.name='sum', variable.name = 'label')
+
+
+ggplot(data=isi_by_phase) + 
+  geom_line(aes(x=phase_bin, y=(sum/total_sum), group=label, color=label)) + 
+  facet_grid(interval_length_label ~ type)
+
+isi_by_tib <- inter_state_intervals[!is.na(time_in_bed_bin) & protocol_section == 'fd', list(n1_sum=sum(N1), n2_sum=sum(N2), sws_sum=sum(SWS), wake_sum=sum(WAKE), undef_sum=sum(UNDEF), rem_sum=sum(REM)) ,by='type,interval_length_label,time_in_bed_bin']
+isi_by_tib[,number_of_intervals:=.N,by='type,interval_length_label']
+isi_by_tib[,total_sum:=n1_sum+n2_sum+sws_sum+wake_sum+undef_sum+rem_sum]
+isi_by_tib <- melt(isi_by_tib, measure.vars = c('rem_sum', 'sws_sum', 'undef_sum', 'n1_sum', 'n2_sum', 'wake_sum'), value.name='sum', variable.name = 'label')
+
+setkey(isi_by_tib,type,interval_length_label,time_in_bed_bin)
+isi_by_tib
+
+ggplot(data=isi_by_tib[type=="REM"]) + 
+  geom_line(aes(x=time_in_bed_bin, y=(sum/total_sum), group=label, color=label)) + 
+  geom_text(aes(label=number_of_intervals,x=time_in_bed_bin), y=1) +
+  facet_grid(interval_length_label ~ type)
 

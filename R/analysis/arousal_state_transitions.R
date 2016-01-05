@@ -155,10 +155,24 @@ function() {
   sequences[,mid_labtime:=(start_labtime+end_labtime)/2]
   sequences[,`:=`(tau=melatonin_reference[subject_code]$tau, phase_reference=melatonin_reference[subject_code]$labtime),by='subject_code']
   sequences[,phase_angle:=(mid_labtime-phase_reference)%%tau * 360/tau]
+  sequences[phase_angle >= 180, phase_angle:=phase_angle-360.0]
   sequences[!is.na(phase_angle),phase_label:='neither']
-  sequences[abs(phase_angle) < 20, phase_label:='in_phase']
-  sequences[abs(phase_angle) > 160, phase_label:='out_of_phase']
+  sequences[abs(phase_angle) < 30, phase_label:='in_phase']
+  sequences[abs(phase_angle) > 150, phase_label:='out_of_phase']
   sequences[is.na(phase_angle), phase_label:=NA]
+  
+  phase_bin_width <- 15
+  sequences[,phase_bin:=cut(phase_angle, breaks=seq(from=-180, to=180, by=phase_bin_width), labels=seq(from=-180, to=180, by=phase_bin_width)[-1L])]
+
+  # Time in Bed
+  sequences <- merge(sequences, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
+  setnames(sequences, 'start_labtime.y', 'bed_time')
+  sequences[,time_in_bed:=mid_labtime-bed_time]
+  
+  in_bed_time_bin_width <- .5
+  breaks <- seq(from=0, to=ceiling(max(sequences$time_in_bed)), by=in_bed_time_bin_width)
+  sequences[,time_in_bed_bin:=cut(time_in_bed, breaks=breaks, labels=breaks[-1L])]
+  
   
   
   # Inter-State Intervals
@@ -166,7 +180,7 @@ function() {
     sequences[label==e & tag == "high_res", inter_intervals(start_position,end_position,e),by='subject_code,activity_or_bedrest_episode']
   })
     
-  ini <-   sequences[label=="NREM" & tag == "normal", inter_intervals(start_position,end_position,"NREM"),by='subject_code,activity_or_bedrest_episode']
+  ini <- sequences[label=="NREM" & tag == "normal", inter_intervals(start_position,end_position,"NREM"),by='subject_code,activity_or_bedrest_episode']
   
   inter_state_intervals <- rbindlist(inter_state_interval_list)
   inter_state_intervals <- rbindlist(list(inter_state_intervals, ini))
@@ -195,6 +209,7 @@ function() {
   inter_state_intervals[,mid_labtime:=(start_labtime+end_labtime)/2]
   inter_state_intervals[,`:=`(tau=melatonin_reference[subject_code]$tau, phase_reference=melatonin_reference[subject_code]$labtime),by='subject_code']
   inter_state_intervals[,phase_angle:=(mid_labtime-phase_reference)%%tau * 360/tau]
+  inter_state_intervals[phase_angle >= 180, phase_angle:=phase_angle-360.0]
   inter_state_intervals[!is.na(phase_angle),phase_label:='neither']
   inter_state_intervals[abs(phase_angle) < 30, phase_label:='in_phase']
   inter_state_intervals[abs(phase_angle) > 150, phase_label:='out_of_phase']
@@ -228,6 +243,31 @@ function() {
   labels <- paste(breaks[-length(breaks)], breaks[-1L], sep=' to ')
   
   inter_state_intervals[,interval_length_wake_label:=cut(interval_length_wake, breaks = breaks, labels = labels, ordered_result = TRUE, right=FALSE)]
+  
+  # Phase bins
+  
+  phase_bin_width <- 15
+  inter_state_intervals[,phase_bin:=cut(phase_angle, breaks=seq(from=-180, to=180, by=phase_bin_width), labels=seq(from=-180, to=180, by=phase_bin_width)[-1L])]
+  
+  # Time in bed bins
+  
+  inter_state_intervals <- merge(inter_state_intervals, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
+  setnames(inter_state_intervals, 'start_labtime.y', 'bed_time')
+  setnames(inter_state_intervals, 'start_labtime.x', 'start_labtime')
+  inter_state_intervals[,time_in_bed:=mid_labtime-bed_time]
+  
+  in_bed_time_bin_width <- .5
+  breaks <- seq(from=0, to=ceiling(max(inter_state_intervals$time_in_bed)), by=in_bed_time_bin_width)
+  inter_state_intervals[,time_in_bed_bin:=cut(time_in_bed, breaks=breaks, labels=breaks[-1L])]
+  
+  # Length Bins
+  length_breaks <- c(0,2,5,15,30,90)
+  max_l <- max(inter_state_intervals$interval_length, na.rm=TRUE)+1
+  length_breaks <- c(length_breaks[length_breaks < max_l], max_l)
+  labels <- paste(length_breaks[-length(length_breaks)], length_breaks[-1L], sep=' to ')
+  
+  
+  inter_state_intervals[,interval_length_label:=cut(interval_length, breaks=length_breaks, labels=labels,ordered_result = TRUE, right=FALSE)]
   
   # inter_state_intervals[interval_length_wake <= 2.0, interval_length_wake_label:="0 - 2"]
   # inter_state_intervals[interval_length_wake > 2.0 & interval_length_wake <= 10.0, interval_length_wake_label:="2 - 10"]
