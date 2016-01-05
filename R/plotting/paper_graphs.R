@@ -210,7 +210,7 @@ plot_isi_heatmap(heatmap_data_list$REM)
 
 ## Phase Distributions
 
-ggplot(data=sequences[tag=="normal" & protocol_section == 'fd' & label!="UNDEF"]) + geom_density(binwidth=30, mapping=aes(x=abs(phase_angle), color=length_class)) + facet_grid(label ~ ., scales = "free")
+ggplot(data=sequences[tag=="high_res" & protocol_section == 'fd' & label!="UNDEF"]) + geom_density(binwidth=30, mapping=aes(x=time_in_bed, color=length_class)) + facet_grid(label ~ ., scales = "free")
 ggplot(data=sequences[tag=="high_res" & protocol_section == 'fd']) + geom_histogram(binwidth=5, mapping=aes(x=abs(phase_angle))) + facet_grid(length_class ~ label, scales = "free")
 
 qplot(abs(time_in_bed), data=sequences[tag=="high_res" & label=='REM' & protocol_section == 'fd'], geom='density', color=length_class)
