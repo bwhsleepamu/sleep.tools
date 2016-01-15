@@ -11,28 +11,29 @@ source("R/plotting/rasters/swa_raster_plot.R")
 function(){
   # Location of input files
   data_location <- list()
-  data_location$disrupt <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Disrupt/"
-  data_location$precoc_pub <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Precoc Pub/"
+  #data_location$disrupt <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Disrupt/"
+  data_location$precoc_pub <- "/X/Studies/Analyses/McHill-Shaw Prec Puberty SWA/Subjects/"
   
   # Set up subject table
-  subjects <- data.table(study="precocious_puberty", file_path=list.files(path=data_location$precoc_pub, pattern='.detail.spectral.xls', recursive=FALSE, full.names=TRUE))
-  subjects <- rbind(subjects, data.table(study="disrupt", file_path=list.files(path=data_location$disrupt, pattern='.detail.spectral.xls', recursive=FALSE, full.names=TRUE)))
+  subjects <- data.table(study="precocious_puberty", file_path=list.files(path=data_location$precoc_pub, pattern='.detail.spectral.xls', recursive=TRUE, full.names=TRUE))
+  # subjects <- rbind(subjects, data.table(study="disrupt", file_path=list.files(path=data_location$disrupt, pattern='.detail.spectral.xls', recursive=FALSE, full.names=TRUE)))
   subjects[,subject_code:=str_match(basename(file_path), "^([[:alnum:]]*)[[:punct:][:space:]]")[,2]]
+  subjects[,activity_or_bedrest_episode:=as.numeric(str_match(basename(file_path), "SP([[:digit:]])")[,2])]
   setkey(subjects, subject_code)
   
   # Load and merge data from input files
   data_list <- list()
   t <- subjects[,{
     dt <- as.data.table(read.xlsx(file_path,startRow=2));
-    dt[,`:=`(subject_code=subject_code, study=study, file_path=file_path)];
-    data_list[[paste(subject_code,file_path)]] <<- dt;
+    dt[,`:=`(subject_code=subject_code, study=study, file_path=file_path, activity_or_bedrest_episode=activity_or_bedrest_episode)];
+    data_list[[paste(subject_code,file_path,activity_or_bedrest_episode)]] <<- dt;
     0
   },by='subject_code,study,file_path']
   full_sleep_data <- rbindlist(data_list)
   
   # Clean up and add columns
-  full_sleep_data <- full_sleep_data[,c(112:114,1:54,106:111), with=FALSE]
-  full_sleep_data[, activity_or_bedrest_episode:=as.numeric(as.factor(file_path)),by='subject_code']
+  full_sleep_data <- full_sleep_data[,c(112:115,1:54,106:111), with=FALSE]
+  #full_sleep_data[, activity_or_bedrest_episode:=as.numeric(as.factor(file_path)),by='subject_code']
   full_sleep_data[, subject_code:=paste(subject_code, activity_or_bedrest_episode, sep="_")]
   full_sleep_data[, activity_or_bedrest_episode:=1]
   full_sleep_data[,labtime:=(24*(activity_or_bedrest_episode-1))+(0:(.N-1))*30/3600,by='subject_code,file_path']
@@ -48,7 +49,7 @@ function(){
   setcolorder(full_sleep_data,c(1:3, 65, 64, 67:68, 69, 66, 4:63))
   
   # Insert simulated REM episodes
-  insert_skipped_first_rem(full_sleep_data)
+  # insert_skipped_first_rem(full_sleep_data)
   
   # Grab subset of columns
   #sleep_data <- full_sleep_data[,1:9,with=FALSE]
@@ -98,13 +99,14 @@ function(){
 
   for(s in plot_list) {
     for(p in s) {
+      cat(paste("/home/pwm4/Desktop/swa_rasters/", p$data$study[[1]], "/", p$data$subject_code[[1]], ".svg\n", sep=''))
       ggsave(plot=p, file=paste("/home/pwm4/Desktop/swa_rasters/", p$data$study[[1]], "/", p$data$subject_code[[1]], ".svg", sep=''), height=3, width=8, scale=2, limitsize=FALSE)
     }
   }
   
   # Create single file with rasters
-  marrangeGrob(plot_list[[1]], ncol=1, nrow=length(plot_list[[1]]))
-  marrangeGrob(plot_list[[2]], ncol=1, nrow=length(plot_list[[2]]))
+  grid.arrange(arrangeGrob(grobs=plot_list[[1]], nrow=length(plot_list[[1]]), ncol=1))
+  #marrangeGrob(plot_list[[2]], ncol=1, nrow=length(plot_list[[2]]))
   
   
   # Output NREM episodes
@@ -114,7 +116,7 @@ function(){
   nrem_episodes.out[,midpoint:=start_labtime+(end_labtime-start_labtime)/2]
   setkey(nrem_episodes.out,subject_code,activity_or_bedrest_episode)
   
-  write.csv(nrem_episodes.out, file='/home/pwm4/Desktop/nrem_episodes_20151103.csv', row.names=FALSE, na="")
+  write.csv(nrem_episodes.out, file='/home/pwm4/Desktop/nrem_episodes_20160115.csv', row.names=FALSE, na="")
   
   # Output Sleep Data
   
@@ -126,7 +128,7 @@ function(){
   full_sleep_data.out[,file_path:=str_replace(file_path, "/home/pwm4/Desktop/SWA", "")]
   setkey(full_sleep_data.out,study,subject_code,activity_or_bedrest_episode)
   
-  write.csv(full_sleep_data.out, file='/home/pwm4/Desktop/merged_full_sleep_data_20151103.csv', row.names=FALSE, na="")
+  write.csv(full_sleep_data.out, file='/home/pwm4/Desktop/merged_full_sleep_data_20160116.csv', row.names=FALSE, na="")
   
 #   sleep_data.out <- copy(sleep_data)
 #   sleep_data.out[,pk:=NULL]  
@@ -138,7 +140,7 @@ function(){
   total_delta_powers.out[,`:=`(start_position=NULL, end_position=NULL, complete=NULL, method=NULL, label=NULL,length=NULL,labtime=NULL)]
   total_delta_powers.out[,end_labtime:=end_labtime+EPOCH_LENGTH]
   setkey(total_delta_powers.out,study,subject_code,activity_or_bedrest_episode)
-  write.csv(total_delta_powers.out, file='/home/pwm4/Desktop/total_delta_power_20151103.csv', row.names=FALSE, na="")
+  write.csv(total_delta_powers.out, file='/home/pwm4/Desktop/total_delta_power_20160116.csv', row.names=FALSE, na="")
 }
 
 ## Insertion of Skipped First REM
