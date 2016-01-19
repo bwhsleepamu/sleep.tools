@@ -36,7 +36,7 @@ setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data,types=c("raw"))
 setup_cycles(sleep_data, episodes)
 setup_melatonin_phase(subjects, sleep_episodes)
 
-reoofsetup_raster_data(sleep_data, episodes, cycles, melatonin_phase, normalize_labtime=TRUE, plot_double=FALSE)
+setup_raster_data(sleep_data, episodes, cycles, melatonin_phase, normalize_labtime=TRUE, plot_double=FALSE)
 plot_raster("3450GX", plot_double=FALSE, labels = FALSE)
 
 subjects[subject_code %in% unique(sleep_data$subject_code),{ plot_raster(subject_code, plot_double=FALSE, labels=FALSE) },by='study,subject_code']

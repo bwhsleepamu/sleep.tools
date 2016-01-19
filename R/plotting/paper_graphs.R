@@ -128,16 +128,21 @@ pl <- 'in_phase'
 peak_lengths <- list()
 avg_wakes <- list()
 
+t <- "REM"
+to_graph <- "interval_length"
+bw=1
+
 plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_phase", "out_of_phase", NA, "neither"), bw=1, to_graph='interval_length') {
   # narrow down data set
-  d <- copy(inter_state_intervals[type==t & protocol_section%in% ps & phase_label %in% pl])
+  d <- copy(inter_state_intervals[type==t & protocol_section == 'fd' & !is.na(phase_angle)])
   
   # Get list of labels
   labs <- levels(d$interval_length_wake_label)
+  dist_dt <- as.data.table(expand.grid(l=labs, p=c("day", "night"), stringsAsFactors=FALSE))
   
   # Compute Distributions
-  dists <- sapply(labs, function(l) {
-    s_d <- d[interval_length_wake_label==l]
+  dist_calc_fn <- function(d, l, p) {
+    s_d <- d[interval_length_wake_label == l & cohen_phase == p]
     min_bin <- min(s_d[[to_graph]], na.rm = TRUE)
     
     s_d <- s_d[get(to_graph) >= (15 + min_bin) & get(to_graph) <= (120 + min_bin)]
@@ -146,9 +151,44 @@ plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_p
     peak_lengths[[l]] <<- r$estimate[1]
     avg_wakes[[l]] <<- mean(s_d$interval_length_wake)
     
-    r$estimate
-  }, USE.NAMES=TRUE, simplify=FALSE)
+    as.list(r$estimate)
+  }
+  
+  dist_dt[,c("mean", "sd") := dist_calc_fn(d, l, p),by='l,p']
+  
+  # dists <- sapply(labs, function(l) {
+  #   s_d <- d[interval_length_wake_label==l]
+  #   min_bin <- min(s_d[[to_graph]], na.rm = TRUE)
+  #   
+  #   s_d <- s_d[get(to_graph) >= (15 + min_bin) & get(to_graph) <= (120 + min_bin)]
+  #   r <- fitdist(s_d[[to_graph]], 'norm')
+  #   
+  #   peak_lengths[[l]] <<- r$estimate[1]
+  #   avg_wakes[[l]] <<- mean(s_d$interval_length_wake)
+  #   
+  #   r$estimate
+  # }, USE.NAMES=TRUE, simplify=FALSE)
+  
+  ps <- list()
+  plot_dists <- function(d, l, p, ex, oh) {
+    plot <- ggplot(data=d[interval_length_wake_label==l & cohen_phase == p], aes_string(to_graph)) + 
+      geom_histogram(binwidth=bw, aes(y=..density.., fill=..count..))  + 
+      coord_cartesian(xlim=c(0,180)) + 
+      ggtitle(paste(l, "| P: ", p, "  N:", nrow(d[interval_length_wake_label==l & cohen_phase == p]), "| Mean:", round(ex), "| SD:", round(oh) )) + 
+      stat_function(fun=dnorm, colour="red", arg=list(mean=as.numeric(ex), sd=as.numeric(oh))
+                    
+    )
     
+    cat(paste(l,p,ex,oh,sep=" "))
+    cat('\n')
+    
+    ps[[paste(l,p,sep=" ")]] <<- plot
+    NULL
+  }   
+  dist_dt[,plot_dists(d, l, p, mean, sd),by='p,l']
+  
+  
+  
   ps <- lapply(labs, function(l) {
     dis <- dists[[l]]
     ggplot(data=d[interval_length_wake_label==l], aes_string(to_graph)) + 
@@ -158,7 +198,7 @@ plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_p
       stat_function(fun=dnorm, colour="red", arg=list(dis[1], dis[2]))
   })
   
-  grid.arrange(grobs=ps, ncol=1)
+  grid.arrange(grobs=ps, ncol=2)
 }
 
 # Peak Vs. Avg Wake
