@@ -23,6 +23,7 @@ function(){
   
   # Load and merge data from input files
   data_list <- list()
+  
   t <- subjects[,{
     dt <- as.data.table(read.xlsx(file_path,startRow=2));
     dt[,`:=`(subject_code=subject_code, study=study, file_path=file_path, activity_or_bedrest_episode=activity_or_bedrest_episode)];
@@ -49,13 +50,11 @@ function(){
   setcolorder(full_sleep_data,c(1:3, 65, 64, 67:68, 69, 66, 4:63))
   
   # Insert simulated REM episodes
-  # insert_skipped_first_rem(full_sleep_data)
-  
-  # Grab subset of columns
-  #sleep_data <- full_sleep_data[,1:9,with=FALSE]
+  insert_skipped_first_rem(full_sleep_data)
   
   # Setup sleep episodes
   setup_episodes(full_sleep_data, full_sleep_data)
+  episodes[subject_code=="K11022003_1" & method == 'iterative' & label=="NREM" & start_position==17233, label:="WAKE"]
   
   # Merge nrem episodes with sleep data
   nrem_episode_output <- copy(episodes[method=='iterative' & label=='NREM'])
@@ -116,7 +115,7 @@ function(){
   nrem_episodes.out[,midpoint:=start_labtime+(end_labtime-start_labtime)/2]
   setkey(nrem_episodes.out,subject_code,activity_or_bedrest_episode)
   
-  write.csv(nrem_episodes.out, file='/home/pwm4/Desktop/nrem_episodes_20160115.csv', row.names=FALSE, na="")
+  write.csv(nrem_episodes.out, file='/home/pwm4/Desktop/nrem_episodes_20160119.csv', row.names=FALSE, na="")
   
   # Output Sleep Data
   
@@ -128,7 +127,7 @@ function(){
   full_sleep_data.out[,file_path:=str_replace(file_path, "/home/pwm4/Desktop/SWA", "")]
   setkey(full_sleep_data.out,study,subject_code,activity_or_bedrest_episode)
   
-  write.csv(full_sleep_data.out, file='/home/pwm4/Desktop/merged_full_sleep_data_20160116.csv', row.names=FALSE, na="")
+  write.csv(full_sleep_data.out, file='/home/pwm4/Desktop/merged_full_sleep_data_20160119.csv', row.names=FALSE, na="")
   
 #   sleep_data.out <- copy(sleep_data)
 #   sleep_data.out[,pk:=NULL]  
@@ -140,7 +139,7 @@ function(){
   total_delta_powers.out[,`:=`(start_position=NULL, end_position=NULL, complete=NULL, method=NULL, label=NULL,length=NULL,labtime=NULL)]
   total_delta_powers.out[,end_labtime:=end_labtime+EPOCH_LENGTH]
   setkey(total_delta_powers.out,study,subject_code,activity_or_bedrest_episode)
-  write.csv(total_delta_powers.out, file='/home/pwm4/Desktop/total_delta_power_20160116.csv', row.names=FALSE, na="")
+  write.csv(total_delta_powers.out, file='/home/pwm4/Desktop/total_delta_power_20160119.csv', row.names=FALSE, na="")
 }
 
 ## Insertion of Skipped First REM
@@ -149,150 +148,244 @@ insert_skipped_first_rem <- function(sleep_data) {
   
   # 33_1: 2nd WAKE around 2.00 
   # 6336: 2.0083333
-  sleep_data[pk==6336, `:=`(stage=16, epoch_type="SREM")]
+  # sleep_data[pk==6336, `:=`(stage=16, epoch_type="SREM")]
   
   # 33_2: min Delta in NREM2 section
-  # 7487: 1.4https://www.facebook.com/joeschwarcz/posts/10154263960630744?fref=nf
+  # 7487: 1.4
   #min_delta <- min(sleep_data[subject_code == "33_2" & nrem_episode_number == 1 & labtime > 1.1 & labtime < 1.7]$delta_power)
   #sleep_data[subject_code == "33_2" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==7487, `:=`(stage=16, epoch_type="SREM")]
-
+  #sleep_data[pk==7487, `:=`(stage=16, epoch_type="SREM")]
+ 
   # 103_1: 1st WAKE around 2.0
   # 276: 2.291667
   #sleep_data[subject_code == "103_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==276, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==276, `:=`(stage=16, epoch_type="SREM")]
   
   # 131_1: 1st WAKE around 2.0
   # 1369: 1.9000000
   #sleep_data[subject_code == "131_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==1388, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==1388, `:=`(stage=16, epoch_type="SREM")]
   
   # 310_1: 1st Wake around 1.5
   # 5167: 1.583333
   #sleep_data[subject_code == "310_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==5167, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==5167, `:=`(stage=16, epoch_type="SREM")]
 
   # 912_1: 1st Wake around 2.5
   # 8782: 2.433333333
   #sleep_data[subject_code == "912_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==8782, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==8782, `:=`(stage=16, epoch_type="SREM")]
   
   # ** UNCLEAR PLACEMENT 
   # 1516_1: 1st Wake around 2
   # 2454: 2.108333
   #sleep_data[subject_code == "1516_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==2454, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==2454, `:=`(stage=16, epoch_type="SREM")]
   
   # B05271999_2: min Delta in NREM2 section around 3.0
   # 12183: 3.2
   #min_delta <- min(sleep_data[subject_code == "B05271999_2" & nrem_episode_number == 1 & labtime > 3 & labtime < 4]$delta_power)
   #sleep_data[subject_code == "B05271999_2" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==12183, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==12183, `:=`(stage=16, epoch_type="SREM")]
 
   # B11092004_1: min Delta in NREM2 section around 2.0
   # 13859: 2.183333
   #min_delta <- min(sleep_data[subject_code == "B11092004_1" & nrem_episode_number == 1 & labtime > 2 & labtime < 2.7]$delta_power)
   #sleep_data[subject_code == "B11092004_1" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==13859, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==13859, `:=`(stage=16, epoch_type="SREM")]
   
   # D04072006_1: min Delta in NREM2 section around 1.8
   # 17277: 1.7
   #min_delta <- min(sleep_data[subject_code == "D04072006_1" & nrem_episode_number == 1 & labtime > 1.5 & labtime < 1.9]$delta_power)
   #sleep_data[subject_code == "D04072006_1" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==17277, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==17277, `:=`(stage=16, epoch_type="SREM")]
   
   # ** UNCLEAR PLACEMENT
   # D07252001_2: DISRUPTION? no clear division...
   #sleep_data[subject_code == "D07252001_2" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==21381, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==21381, `:=`(stage=16, epoch_type="SREM")]
   
   # ** UNCLEAR PLACEMENT 
   # D10012007_1: min Delta in NREM2 section around 3
   # 22626: 2.825
   #min_delta <- min(sleep_data[subject_code == "D10012007_1" & nrem_episode_number == 1 & labtime > 2.8 & labtime < 3.5]$delta_power)
   #sleep_data[subject_code == "D10012007_1" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==22626, `:=`(stage=16, epoch_type="SREM")]  
-  
+  #sleep_data[pk==22626, `:=`(stage=16, epoch_type="SREM")]  
+  #
   # F03102000_2: 1st Wake around 1.8
   # 25017: 1.833333
   #sleep_data[subject_code == "F03102000_2" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==25017, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==25017, `:=`(stage=16, epoch_type="SREM")]
   
   # K01062006_1: 1st Wake around 2
   # 32498: 2.233333data_location <- list()
-  data_location$disrupt <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Disrupt/"
-  data_location$precoc_pub <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Precoc Pub/"
-  data_location <- list()
-  data_location$disrupt <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Disrupt/"
-  data_location$precoc_pub <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Precoc Pub/"
+  #data_location$disrupt <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Disrupt/"
+  #data_location$precoc_pub <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Precoc Pub/"
+  #data_location <- list()
+  #data_location$disrupt <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Disrupt/"
+  #data_location$precoc_pub <- "/X/Studies/Analyses/McHill-Shaw SWA/For PM_15-10-20/For PM_Precoc Pub/"
   
   #sleep_data[subject_code == "K01062006_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==32498, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==32498, `:=`(stage=16, epoch_type="SREM")]
  
   # ** UNCLEAR PLACEMENT - two?
   # M02011998_2: min Delta in NREM3 section around 1
   # 37472: 0.9583333
   #min_delta <- min(sleep_data[subject_code == "M02011998_2" & nrem_episode_number == 1 & labtime > 0.8 & labtime < 1.3]$delta_power)
   #sleep_data[subject_code == "M02011998_2" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==37472, `:=`(stage=16, epoch_type="SREM")]  
+  #sleep_data[pk==37472, `:=`(stage=16, epoch_type="SREM")]  
   
   # ** UNCLEAR PLACEMENT 
   # M10202005_1: 1st Wake around 2
   # 38582: 1.791666667
   #sleep_data[subject_code == "M10202005_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==38582, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==38582, `:=`(stage=16, epoch_type="SREM")]
   
   # N10062000_2: min Delta in NREM2 section around 2
   # 40741: 2.008333
   #min_delta <- min(sleep_data[subject_code == "N10062000_2" & nrem_episode_number == 1 & labtime > 1 & labtime < 2.5]$delta_power)
   #sleep_data[subject_code == "N10062000_2" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==40741, `:=`(stage=16, epoch_type="SREM")]  
+  #sleep_data[pk==40741, `:=`(stage=16, epoch_type="SREM")]  
   
   # ** UNCLEAR PLACEMENT 
   # O06142000_2: min Delta in first trough
   # 42739: 1.808333
   #min_delta <- min(sleep_data[subject_code == "O06142000_2" & nrem_episode_number == 1 & labtime > 1.5 & labtime < 2]$delta_power)
   #sleep_data[subject_code == "O06142000_2" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==42739, `:=`(stage=16, epoch_type="SREM")]  
+  #sleep_data[pk==42739, `:=`(stage=16, epoch_type="SREM")]  
   
   
   # ** UNCLEAR PLACEMENT 
   # P07232001_2: 1st Wake around 1.7
   # 45897: 1.8166667
   #sleep_data[subject_code == "P07232001_2" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==45897, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==45897, `:=`(stage=16, epoch_type="SREM")]
   
   # ** NO PLACEMENT 
   # R11032005_1: DISRUPTION? no clear div
   #sleep_data[subject_code == "R11032005_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==47022, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==47022, `:=`(stage=16, epoch_type="SREM")]
   
   # S05161999_2: 1st Wake around 1.5
   # 49193: 1.508333
   #sleep_data[subject_code == "S05161999_2" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==49193, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==49193, `:=`(stage=16, epoch_type="SREM")]
   
   # S06101999_2: 2nd Wake around 1.5
   # 51234: 1.7
   #sleep_data[subject_code == "S06101999_2" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==51234, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==51234, `:=`(stage=16, epoch_type="SREM")]
   
   # ** UNCLEAR PLACEMENT 
   # W06031999_2: Wake around 1.5
   # 57661: 1.3750000
   #sleep_data[subject_code == "W06031999_2" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==57661, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==57661, `:=`(stage=16, epoch_type="SREM")]
   
   # L11182005v1_1: trough around 3.0
   # 35590: 2.766667
   # min_delta <- min(sleep_data[subject_code == "L11182005v1_1" & nrem_episode_number == 1 & labtime > 2.5 & labtime < 3.5]$delta_power)
   # sleep_data[subject_code == "L11182005v1_1" & nrem_episode_number == 1 & delta_power == min_delta]
-  sleep_data[pk==35590, `:=`(stage=16, epoch_type="SREM")]  
+  #sleep_data[pk==35590, `:=`(stage=16, epoch_type="SREM")]  
   
   # J06042000_2: Wake around 1.8
   # 30705: 1.7833333
   #sleep_data[subject_code == "J06042000_2" & nrem_episode_number == 1 & epoch_type=="WAKE"]
-  sleep_data[pk==30705, `:=`(stage=16, epoch_type="SREM")]
+  #sleep_data[pk==30705, `:=`(stage=16, epoch_type="SREM")]
+  
+  
+  ## Second Pass at SWA Data
+  # full_sleep_data[subject_code == "" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  # full_sleep_data[pk==0, `:=`(stage=16, epoch_type="SREM")]  
+  # 
+  # min_delta <- min(full_sleep_data[subject_code == "" & nrem_episode_number == 1 & labtime > 0 & labtime < 0]$delta_power, na.rm=TRUE)
+  # full_sleep_data[subject_code == "" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  # full_sleep_data[pk==0, `:=`(stage=16, epoch_type="SREM")]  
+  
+    
+  # A12092002_1 - first wake after persistent sleep
+  #min_delta <- min(sleep_data[subject_code == "A12092002_1" & nrem_episode_number == 1 & labtime > 1.1 & labtime < 1.7]$delta_power)
+  #full_sleep_data[subject_code == "33_2" & nrem_episode_number == 1 & delta_power == min_delta]
+  #full_sleep_data[subject_code == "A12092002_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==1327, `:=`(stage=16, epoch_type="SREM")]  
+  
+  
+  # B11092004_1 - min after first delta peak (2 hours)
+  #min_delta <- min(full_sleep_data[subject_code == "B11092004_1" & nrem_episode_number == 1 & labtime > 2 & labtime < 2.5]$delta_power, na.rm = TRUE)
+  #full_sleep_data[subject_code == "B11092004_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==2421, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # C07252005_1 - First wake
+  #full_sleep_data[subject_code == "C07252005_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==3718, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # C09092004_1 - First wake after persistent sleep
+  #full_sleep_data[subject_code == "C09092004_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==4824, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # C09092004_2 - Min after first delta peak (1.5 h)
+  #min_delta <- min(full_sleep_data[subject_code == "C09092004_2" & nrem_episode_number == 1 & labtime > 1.3 & labtime < 1.8]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "C09092004_2" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==5973, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # D04072006_1 - Min after first delta peak (1.8 h)
+  #min_delta <- min(full_sleep_data[subject_code == "D04072006_1" & nrem_episode_number == 1 & labtime > 1.5 & labtime < 2]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "D04072006_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==7185, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # D08012006_1 - Min after first delta peak (5.5 h)
+  #min_delta <- min(full_sleep_data[subject_code == "D08012006_1" & nrem_episode_number == 1 & labtime > 4.5 & labtime < 5.6]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "D08012006_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==8784, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # D10012007_1 - Min after first delta peak (2.8 h)
+  #min_delta <- min(full_sleep_data[subject_code == "D10012007_1" & nrem_episode_number == 1 & labtime > 2.5 & labtime < 3.2]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "D10012007_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==9942, `:=`(stage=16, epoch_type="SREM")]
+  
+  # E03132007_1 - Min after first delta peak (1.9 h)
+  #min_delta <- min(full_sleep_data[subject_code == "E03132007_1" & nrem_episode_number == 1 & labtime > 1.6 & labtime < 2.3]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "E03132007_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==11281, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # H09282005_1 - First wake
+  #full_sleep_data[subject_code == "H09282005_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==12429, `:=`(stage=16, epoch_type="SREM")] 
+  
+  # J12142004_1 - First Wake
+  #full_sleep_data[subject_code == "J12142004_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==13560, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # K01062006_1 - First Wake
+  #full_sleep_data[subject_code == "K01062006_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==14756, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # K01062006_2 - First Wake
+  #full_sleep_data[subject_code == "K01062006_2" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==15986, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # K11022003_1 - Modify sleep start to around 2 h, then split the first NREM at min after first delta peak
+  #min_delta <- min(full_sleep_data[subject_code == "K11022003_1" & nrem_episode_number == 2 & labtime > 3 & labtime < 4]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "K11022003_1" & nrem_episode_number == 2 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==17544, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # L11182005_1 - Minimum in the NREM episode
+  #min_delta <- min(full_sleep_data[subject_code == "L11182005_1" & nrem_episode_number == 1 & labtime > 2.5 & labtime < 3.2]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "L11182005_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==19141, `:=`(stage=16, epoch_type="SREM")] 
+  
+  # L11182005_2 - Minimum after first delta peak
+  #min_delta <- min(full_sleep_data[subject_code == "L11182005_2" & nrem_episode_number == 1 & labtime > 1.6 & labtime < 2.2]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "L11182005_2" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==20137, `:=`(stage=16, epoch_type="SREM")] 
+  
+  # M10202005_1 - First Wake
+  #full_sleep_data[subject_code == "M10202005_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==21363, `:=`(stage=16, epoch_type="SREM")]
+  
+  # P07222002_1 - First Wake
+  #full_sleep_data[subject_code == "P07222002_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
+  full_sleep_data[pk==24966, `:=`(stage=16, epoch_type="SREM")]  
 }
 
 map_numHypno_to_stage <- function(numHypno) {
