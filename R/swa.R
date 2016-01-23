@@ -66,9 +66,9 @@ function(){
   # Sum delta power in each episode
   full_sleep_data[,delta_cutoff:=5*mean(.SD[stage %in% c(2,3)]$delta_power),by='subject_code,activity_or_bedrest_episode']
   full_sleep_data[stage %in% c(2,3), delta_power_in_stage_2_3:=delta_power]
-  full_sleep_data[delta_power_in_stage_2_3 <= delta_cutoff, delta_power_above_cutoff:=delta_power_in_stage_2_3]
+  full_sleep_data[delta_power_in_stage_2_3 <= delta_cutoff, delta_power_under_cutoff:=delta_power_in_stage_2_3]
   
-  total_delta_powers <- full_sleep_data[!is.na(nrem_episode_number),list(delta_power_sum_full=sum(delta_power), delta_power_sum_2_3=sum(delta_power_in_stage_2_3,na.rm=TRUE), delta_power_sum_filtered=sum(delta_power_above_cutoff,na.rm=TRUE)),by='subject_code,study,activity_or_bedrest_episode,nrem_episode_number']
+  total_delta_powers <- full_sleep_data[!is.na(nrem_episode_number),list(delta_power_sum_full=sum(delta_power), delta_power_sum_2_3=sum(delta_power_in_stage_2_3,na.rm=TRUE), delta_power_sum_filtered=sum(delta_power_under_cutoff,na.rm=TRUE)),by='subject_code,study,activity_or_bedrest_episode,nrem_episode_number']
   total_delta_powers <- merge(total_delta_powers,nrem_episode_output,by=c('subject_code','activity_or_bedrest_episode','nrem_episode_number'),all.x=TRUE,all.y=FALSE)
   total_delta_powers[,labtime:=start_labtime+((end_labtime-start_labtime)/2)]
   
