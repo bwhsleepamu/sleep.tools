@@ -105,7 +105,7 @@ ps <- lapply(l, function(t){
     scale_colour_manual(values=cbbbPalette) + 
     theme(axis.text.y = element_blank(), axis.ticks.y=element_blank()) + 
     scale_x_continuous(limits=c(0,ll), breaks=function(x){seq(x[1],x[2],by=30)}) 
-  p <- p + geom_line(aes_string(x=paste(t[1],"latency", sep="_"), color=prev_label), stat='density') + 
+  p <- p + geom_line(aes_string(x=paste(t[1],"latency", sep="_")), stat='density') + 
     facet_grid(length_class ~ ., scales = 'free') + 
     coord_cartesian(xlim=c(0,ll)) + ggtitle(paste(t, "Latency after WAKE by Preceding State",sep=" "))
   p  
