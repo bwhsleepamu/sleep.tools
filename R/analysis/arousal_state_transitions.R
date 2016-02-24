@@ -140,15 +140,16 @@ function() {
     setnames(sequences, c("new_next_col", "new_latency_col"), c(col_name, paste(e,'latency',sep="_")))
   })
   
-  
-  length_breaks <- c(0, 2, 5, 15, 60, 3000)
-  length_labels <- c("< 2 minutes", "2 - 5 minutes", "5-15 minutes", "15 - 60 minutes", "60+ minutes")
-  sequences[,length_class:=cut(length * length_coefficient, length_breaks, include.lowest=TRUE, right=TRUE, labels = length_labels)]
-  
+
   # Convert lengths to minutes
   sequences[,`:=`(start_labtime=sleep_data[start_position]$labtime, end_labtime=sleep_data[end_position]$labtime)]
   sequences[,length_in_epochs:=length]
   sequences[,length:=length_in_epochs*length_coefficient]
+    
+  # Label by Length Bins
+  length_breaks <- c(0, 2, 5, 15, 60, 3000)
+  length_labels <- c("< 2 minutes", "2 - 5 minutes", "5-15 minutes", "15 - 60 minutes", "60+ minutes")
+  sequences[,length_class:=cut(length * length_coefficient, length_breaks, include.lowest=TRUE, right=TRUE, labels = length_labels)]
   
   # Phase
   sequences[,old_phase_label:=sleep_episodes[list(sequences$subject_code, sequences$activity_or_bedrest_episode)]$phase_label]
@@ -164,15 +165,21 @@ function() {
   phase_bin_width <- 15
   sequences[,phase_bin:=cut(phase_angle, breaks=seq(from=-180, to=180, by=phase_bin_width), labels=seq(from=-180, to=180, by=phase_bin_width)[-1L])]
 
-  # Time in Bed
-  sequences <- merge(sequences, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
-  setnames(sequences, 'start_labtime.y', 'bed_time')
-  sequences[,time_in_bed:=mid_labtime-bed_time]
-  
+  # Time since bedrest onset
+  sequences <- merge(sequences, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime, sleep_onset_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
+  setnames(sequences, 'start_labtime', 'bedrest_episode_start_labtime')
+  setnames(sequences, 'start_labtime.x', 'start_labtime')
+  sequences[,time_since_bedrest_onset:=mid_labtime-bedrest_episode_start_labtime]
+  sequences[,time_since_sleep_onset:=mid_labtime-sleep_onset_labtime]
+
   in_bed_time_bin_width <- .5
-  breaks <- seq(from=0, to=ceiling(max(sequences$time_in_bed)), by=in_bed_time_bin_width)
-  sequences[,time_in_bed_bin:=cut(time_in_bed, breaks=breaks, labels=breaks[-1L])]
+  breaks <- seq(from=0, to=ceiling(max(sequences$time_since_bedrest_onset)), by=in_bed_time_bin_width)
+  sequences[,time_since_bedrest_onset_bin:=cut(time_since_bedrest_onset, breaks=breaks, labels=breaks[-1L])]
   
+  breaks <- seq(from=0, to=ceiling(max(sequences$time_since_sleep_onset, na.rm = TRUE)), by=in_bed_time_bin_width)
+  sequences[,time_since_sleep_onset_bin:=cut(time_since_sleep_onset, breaks=breaks, labels=breaks[-1L])]
+  
+  #
   
   
   # Inter-State Intervals

@@ -9,7 +9,7 @@ sequences$label_f <- as.factor(sequences$label)
 # Distribution of sequence lengths - whole night and 1,2,3,4+
 # - NREM
 # - REM
-# - WAKE
+# - WAKE 
   
   
 seq_len_p <- ggplot(data=sequences[(label!="UNDEF" & tag=="high_res") | (tag=="normal" & label=="NREM")], aes(x=length)) + labs(x="Length (minutes)", y="") + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
@@ -51,7 +51,7 @@ draw_latency <- function(l) {
   
   lat_graphs <- lapply(latency_types, function(name_x_val){
     print(name_x_val)
-    lat_p + geom_density(aes_string(x=name_x_val[1], color="length_class")) + coord_cartesian(xlim=c(0,as.numeric(name_x_val[2]))) + ggtitle(paste(name_x_val[1], "after", l)) + facet_grid(. ~ phase_label)
+    lat_p + geom_density(aes_string(x=name_x_val[1], color="length_class")) + coord_cartesian(xlim=c(0,as.numeric(name_x_val[2]))) + ggtitle(paste(name_x_val[1], "after", l)) #+ facet_grid(. ~ phase_label)
   });
   
   grid.arrange(arrangeGrob(grobs=lat_graphs, nrow=5, ncol=1))
@@ -94,34 +94,55 @@ myleg <- g_legend(ps[[1]])
 
 
 
-l <- c("NREM", "REM", "WAKE", "SWS", "N2")
+l <- list(c("NREM", 60), c("REM", 240), c("WAKE", 120), c("SWS", 240), c("N2", 60))
 t <- "REM"
 t <- "SWS"
 
 ps <- lapply(l, function(t){
-  p <- ggplot(data=sequences[tag == "high_res" & label=="WAKE" & prev_label %in% c("REM", "N1", "N2", "SWS")]) + scale_colour_manual(values=cbbbPalette) + theme(axis.text.y = element_blank(), axis.ticks.y=element_blank()) + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
-  p <- p + geom_line(aes_string(x=paste(t,"latency", sep="_"), color="length_class"), stat='density') + facet_grid(prev_label ~ protocol_section, scales = 'free') + coord_cartesian(xlim=c(0,240)) + ggtitle(paste(t, "latency after WAKE by preceding state",sep=" "))
+#  cat(paste(typeof(t[2], '\n'))
+  ll <- as.numeric(t[2])
+  p <- ggplot(data=sequences[protocol_section == 'fd' & tag == "high_res" & label=="WAKE" & prev_label %in% c("REM", "N1", "N2", "SWS")]) + 
+    scale_colour_manual(values=cbbbPalette) + 
+    theme(axis.text.y = element_blank(), axis.ticks.y=element_blank()) + 
+    scale_x_continuous(limits=c(0,ll), breaks=function(x){seq(x[1],x[2],by=30)}) 
+  p <- p + geom_line(aes_string(x=paste(t[1],"latency", sep="_")), stat='density') + 
+    facet_grid(length_class ~ ., scales = 'free') + 
+    coord_cartesian(xlim=c(0,ll)) + ggtitle(paste(t, "Latency after WAKE by Preceding State",sep=" "))
   p  
 })
 
-grid.arrange(arrangeGrob(grobs=lapply(ps, function(x){x + theme(legend.position="none")})), myleg, ncol=2, widths=c(10,1))
-
+grid.arrange(arrangeGrob(grobs=lapply(ps, function(x){x + theme(legend.position="none")}), ncol=1), myleg, ncol=2, widths=c(10,1))
+#grid.arrange(arrangeGrob(grobs=lapply(ps, function(x){x + theme(legend.position="none")}), ncol=3), myleg, ncol=2, widths=c(10,1))
+grid.arrange(arrangeGrob(grobs=lapply(ps, function(x){x + theme(legend.position="none")}), ncol=3))
 ####
 # INTER-state Intervals
 ####
 p <- ggplot(data=inter_state_intervals[type=="REM" & !is.na(phase_label)], aes(x=interval_length_in_epochs)) + geom_density(aes(color=phase_label)) + coord_cartesian(xlim=c(0,300))
 p
 
+p <- ggplot(data=inter_state_intervals, aes(x=interval_length)) + 
+  geom_histogram(binwidth=1, aes(y=..count..+1, fill=..count..))  + 
+  facet_grid('type ~ .') + 
+  scale_y_log10() + 
+  coord_cartesian(xlim=c(0,240)) +
+  scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=30)})
+p
+
+
+
+
 # REM
+
 l <- c("REM", "WAKE", "NREM", "N1", "N2", "SWS")
 e <- "REM"
 
 ps <- lapply(l, function(e){
   p <- ggplot(data=inter_state_intervals[protocol_section == 'fd' & phase_label %in% c("in_phase", "neither", "out_of_phase")], aes(interval_length))
-  p <- p + geom_histogram(binwidth=1) + coord_cartesian(xlim=c(0,200), ylim=c(0,500)) + ggtitle(paste("Inter-", e, " Interval Histogram", sep="")) + facet_grid(phase_label ~ type, scales = "free")
+  p <- p + geom_histogram(binwidth=1) + coord_cartesian(xlim=c(0,200), ylim=c(0,500)) + ggtitle(paste("Inter-", e, " Interval Histogram", sep="")) + facet_grid(. ~ type, scales = "free")
   p
 })
 
+ps
 ps <- 'baseline'
 pl <- 'in_phase'
 
@@ -224,21 +245,21 @@ n == ps & tag=='high_res' & label != "UNDEF"])
   
   d[,prev_length_label:=cut(prev_length, breaks = breaks, labels = labels, ordered_result = TRUE)]
   
-  counts <- d[!is.na(prev_label) & prev_label!="UNDEF",list(count=.N),by='phase_label,prev_label,prev_length_label']
+  counts <- d[!is.na(prev_label) & prev_label!="UNDEF",list(count=.N),by='prev_label,prev_length_label']
   counts[,fake_x:="--"]
   
   # trans_d <- d[,list(prev_length, label, length, total=.N),by='prev_label,prev_length_label']
   # trans_d <- trans_d[,list(count=.N,total=max(total)),by='prev_label,prev_length_label,label']
 
-  trans_d <- d[,list(prev_length, prev_length_label, label, length, total=.N), by='phase_label,prev_label,prev_length_label']
-  trans_d <- trans_d[,list(count=.N,total=max(total)),by='phase_label,prev_label,prev_length_label,label']
+  trans_d <- d[,list(prev_length, prev_length_label, label, length, total=.N), by='prev_label,prev_length_label']
+  trans_d <- trans_d[,list(count=.N,total=max(total)),by='prev_label,prev_length_label,label']
   
   trans_d[,prob:=count/total]
   
-  ggplot(trans_d[!is.na(prev_label) & prev_label != "UNDEF"], aes(label,revFactor(prev_length_label))) +
+  ggplot(trans_d[!is.na(prev_label) & prev_label != "UNDEF" & total > 50], aes(label,revFactor(prev_length_label))) +
     geom_tile(aes(fill=prob), color="white") + 
-    scale_fill_gradient(low="white", high="steelblue4") + ggtitle("State Transition Heatmaps") + geom_text(data=counts, mapping=aes(label=count, x=fake_x)) +
-    theme(panel.background=element_blank(), panel.grid.minor=element_blank(), panel.grid.major=element_blank()) + facet_grid(phase_label ~ prev_label, scales = "free") + labs(x = "Target State", y="Source State Length (minutes)")
+    scale_fill_gradient(low="white", high="steelblue4") + ggtitle("State Transition Heatmaps") + geom_text(data=counts[count > 50], mapping=aes(label=count, x=fake_x)) +
+    theme(panel.background=element_blank(), panel.grid.minor=element_blank(), panel.grid.major=element_blank()) + facet_wrap(~ prev_label, scales = "free", nrow=2) + labs(x = "Target State", y="Source State Length (minutes)")
     #labs(y=paste("Length of Inter-", d$type, "wake"), x=paste("length of Inter-", d$type, "non-wake")) +
     #scale_x_discrete(breaks=levels(d$heatmap_data$x_bin), labels=d$x_labs) +
     #scale_y_discrete(breaks=levels(d$heatmap_data$y_bin), labels=d$y_labs)
