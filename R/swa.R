@@ -46,8 +46,13 @@ function(){
   cols_to_sum <- c("0.50.Hz", "1.00.Hz", "1.50.Hz", "2.00.Hz","2.50.Hz", "3.00.Hz", "3.50.Hz","4.00.Hz")
   full_sleep_data[, delta_power:=sum(.SD), .SDcols=cols_to_sum, by='pk']
   
+  # Add per-subject and per-abepisode pk
+  full_sleep_data[, se_pk:=1:.N, by='subject_code,activity_or_bedrest_episode']
+  
   # Fix column order
-  setcolorder(full_sleep_data,c(1:3, 65, 64, 67:68, 69, 66, 4:63))
+  setcolorder(full_sleep_data,c(1:3, 65, 64, 67:68, 69, 70, 66, 4:63))
+  
+  
   
   # Insert simulated REM episodes
   insert_skipped_first_rem(full_sleep_data)
@@ -66,9 +71,9 @@ function(){
   # Sum delta power in each episode
   full_sleep_data[,delta_cutoff:=5*mean(.SD[stage %in% c(2,3)]$delta_power),by='subject_code,activity_or_bedrest_episode']
   full_sleep_data[stage %in% c(2,3), delta_power_in_stage_2_3:=delta_power]
-  full_sleep_data[delta_power_in_stage_2_3 <= delta_cutoff, delta_power_under_cutoff:=delta_power_in_stage_2_3]
+  full_sleep_data[delta_power_in_stage_2_3 <= delta_cutoff, delta_power_above_cutoff:=delta_power_in_stage_2_3]
   
-  total_delta_powers <- full_sleep_data[!is.na(nrem_episode_number),list(delta_power_sum_full=sum(delta_power), delta_power_sum_2_3=sum(delta_power_in_stage_2_3,na.rm=TRUE), delta_power_sum_filtered=sum(delta_power_under_cutoff,na.rm=TRUE)),by='subject_code,study,activity_or_bedrest_episode,nrem_episode_number']
+  total_delta_powers <- full_sleep_data[!is.na(nrem_episode_number),list(delta_power_sum_full=sum(delta_power), delta_power_sum_2_3=sum(delta_power_in_stage_2_3,na.rm=TRUE), delta_power_sum_filtered=sum(delta_power_above_cutoff,na.rm=TRUE)),by='subject_code,study,activity_or_bedrest_episode,nrem_episode_number']
   total_delta_powers <- merge(total_delta_powers,nrem_episode_output,by=c('subject_code','activity_or_bedrest_episode','nrem_episode_number'),all.x=TRUE,all.y=FALSE)
   total_delta_powers[,labtime:=start_labtime+((end_labtime-start_labtime)/2)]
   
@@ -115,15 +120,17 @@ function(){
   nrem_episodes.out[,midpoint:=start_labtime+(end_labtime-start_labtime)/2]
   setkey(nrem_episodes.out,subject_code,activity_or_bedrest_episode)
   
-  write.csv(nrem_episodes.out, file='/home/pwm4/Desktop/nrem_episodes_20160119.csv', row.names=FALSE, na="")
+  write.csv(nrem_episodes.out[subject_code %in% c("R11032005_1", "R11032005_2", "W02282008_1")], file='/home/pwm4/Desktop/nrem_episodes_20160205.csv', row.names=FALSE, na="")
   
   # Output Sleep Data
   
   
   full_sleep_data.out <- copy(full_sleep_data)
-  setcolorder(full_sleep_data.out,c(1:7, 70, 71, 8, 72, 73, 9:69))
+  setcolorder(full_sleep_data.out,c(1:7, 71, 72, 8, 9, 73, 74, 10:70))
   
   full_sleep_data.out[,pk:=NULL]
+  full_sleep_data.out[,se_pk:=NULL]
+  
   full_sleep_data.out[,file_path:=str_replace(file_path, "/home/pwm4/Desktop/SWA", "")]
   setkey(full_sleep_data.out,study,subject_code,activity_or_bedrest_episode)
   
@@ -182,7 +189,7 @@ insert_skipped_first_rem <- function(sleep_data) {
   #sleep_data[subject_code == "1516_1" & nrem_episode_number == 1 & epoch_type=="WAKE"]
   #sleep_data[pk==2454, `:=`(stage=16, epoch_type="SREM")]
   
-  # B05271999_2: min Delta in NREM2 section around 3.0
+  # B05271999_2: min DeltR11032005_1a in NREM2 section around 3.0
   # 12183: 3.2
   #min_delta <- min(sleep_data[subject_code == "B05271999_2" & nrem_episode_number == 1 & labtime > 3 & labtime < 4]$delta_power)
   #sleep_data[subject_code == "B05271999_2" & nrem_episode_number == 1 & delta_power == min_delta]
@@ -386,6 +393,22 @@ insert_skipped_first_rem <- function(sleep_data) {
   # P07222002_1 - First Wake
   #full_sleep_data[subject_code == "P07222002_1" & nrem_episode_number == 1 & epoch_type=="WAKE", list(subject_code, nrem_episode_number, epoch_type, pk, labtime)]
   full_sleep_data[pk==24966, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # R11032005_1 - Minimum around 2.5 h
+  #min_delta <- min(full_sleep_data[subject_code == "R11032005_1" & nrem_episode_number == 1 & labtime > 2 & labtime < 3]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "R11032005_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, se_pk, labtime)]
+  full_sleep_data[subject_code == 'R11032005_1' & se_pk == 318, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # R11032005_2 - Minimum around 2 h
+  #min_delta <- min(full_sleep_data[subject_code == "R11032005_2" & nrem_episode_number == 1 & labtime > 1.5 & labtime < 2.5]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "R11032005_2" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, se_pk, labtime)]
+  full_sleep_data[subject_code == 'R11032005_2' & se_pk == 239, `:=`(stage=16, epoch_type="SREM")]  
+  
+  # W02282008_1 - minimum around 2 h
+  #min_delta <- min(full_sleep_data[subject_code == "W02282008_1" & nrem_episode_number == 1 & labtime > 1.5 & labtime < 2.5]$delta_power, na.rm=TRUE)
+  #full_sleep_data[subject_code == "W02282008_1" & nrem_episode_number == 1 & delta_power == min_delta, list(subject_code, nrem_episode_number, epoch_type, pk, se_pk, labtime)]
+  full_sleep_data[subject_code == 'W02282008_1' & se_pk == 246, `:=`(stage=16, epoch_type="SREM")]  
+  
 }
 
 map_numHypno_to_stage <- function(numHypno) {
