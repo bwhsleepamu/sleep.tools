@@ -1,12 +1,14 @@
-## HELPERS
+#`# HELPERS
 
 # Maps numerical values to types of epochs
 ## USED IN LOAD_DATA
 map_epoch_type <- function(x) {
   ## Possibly speed up if x is a factor??
+  x <- as.numeric(x)
   if (x >= 1 & x <=4) { res <- "NREM" }
   else if (x == 5) { res <- "WAKE" }
   else if (x == 6) { res <- "REM" }
+  else if (x == 16) { res <- "SREM" }
   else { res <- "UNDEF" }
   
   res
@@ -99,7 +101,7 @@ load_fd_times <- function() {
   fd_times
 }
 
-load_data <- function(local=TRUE, subject_list=NULL) {
+load_data <- function(subject_fp=subject_fp.all, subject_list=NULL, subjects=NULL) {
   ## Environment Setup
   # Load Subject Groups
   
@@ -107,23 +109,23 @@ load_data <- function(local=TRUE, subject_list=NULL) {
   #subjects.subset <- subjects.all#[study %in% c('T20CSR-Control', 'T20CSR-CSR')]
   
   # Select main subject group
+  if(is.null(subjects))
+    subjects <- read_subject_info(subject_fp)
   
-  if(local) {
-    subjects.local <- read_subject_info(subject_fp.local)
-    subjects <<- subjects.local
-  } else {
-    subjects.all <- read_subject_info(subject_fp.all)
-    subjects <<- subjects.all
-  }
-  
-  if(!is.null(subject_list))
-    subjects <<- subjects[subject_code %in% subject_list]
+  if(!is.null(subject_list)) {
+    print(subject_list)
+    print(subjects)
+    subjects <- subjects[subject_code %in% subject_list]
     
+  }
+    
+  subjects <<- subjects
   
   # Load and set up data for subject group
   sleep_data <<- load_sleep_data(subjects)
   
-  fd_times <<- load_fd_times()
-  sleep_efficiency <<- load_sleep_statistics()
+  #if("start_analysis" %in% colnames(subjects))
+    #fd_times <<- load_fd_times()
+  #sleep_efficiency <<- load_sleep_statistics()
  
 }

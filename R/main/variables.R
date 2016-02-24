@@ -27,7 +27,7 @@ sleep_stats_fp <- "data/sleep_stats.csv"
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 # The palette with black:
-cbbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#888888", "#000000", "#D55E00",  "#CC79A7", "#555555")
+cbbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#0072B2", "#F0E442", "#888888", "#000000", "#D55E00",  "#CC79A7", "#555555")
 
 # Custom Theme
 theme_mine <- function (base_size = 12, base_family = "") 

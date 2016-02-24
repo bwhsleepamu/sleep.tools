@@ -1,21 +1,16 @@
 ## Entering here is: sleep_data, subjects, periods, and nrem_cycles
 
 ## Set up for plotting
-setup_raster_data <- function(sleep_data, episodes, cycles, nrem_auc_fitted_data, doubleplot = TRUE) {
+setup_raster_data <- function(sleep_data, episodes, total_delta_powers) {
   # Sleep Data Setup
   sleep_data.v <<- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
-  sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
+  sleep_data.v[,delta_power:=normalize_j(delta_power),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,delta_power_in_stage_2_3:=normalize_j(delta_power_in_stage_2_3),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,delta_power_above_cutoff:=normalize_j(delta_power_above_cutoff),by='subject_code,activity_or_bedrest_episode']
   
-  # Sleep Episodes
-  sleep_episodes.v <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
-  sleep_episodes.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-  sleep_episodes.v <<- data.table(rbindlist(list(sleep_episodes.v[start_day_number==end_day_number], split_day_spanning_blocks(sleep_episodes.v[start_day_number!=end_day_number]))))
-  sleep_episodes.v[,length:=end_day_labtime-start_day_labtime]
-  sleep_episodes.v <<- sleep_episodes.v[,select_longer_split(.SD),by='subject_code,activity_or_bedrest_episode']
-  sleep_episodes.v[,day_number:=start_day_number]
-  sleep_episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-  sleep_episodes.v <<- double_plot(sleep_episodes.v,TRUE)
+  sleep_data.v[!is.na(delta_power_above_cutoff), delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
   # Episodes
   episodes.v <<- copy(episodes)
@@ -25,34 +20,12 @@ setup_raster_data <- function(sleep_data, episodes, cycles, nrem_auc_fitted_data
   episodes.v[,day_number:=start_day_number]
   episodes.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
   
-  
-  # Cycles
-  cycles.v <<- copy(cycles)
-  cycles.v[,`:=`(length=convert_length_to_minutes(length))]
-  cycles.v[,c('start_day_number', 'start_day_labtime', 'end_day_number', 'end_day_labtime'):=c(set_days(start_labtime),set_days(end_labtime))]
-  cycles.v <<- data.table(rbindlist(list(cycles.v[start_day_number==end_day_number], split_day_spanning_blocks(cycles.v[start_day_number!=end_day_number]))))
-  cycles.v[,day_number:=start_day_number]
-  cycles.v[,`:=`(start_day_number=NULL, end_day_number=NULL)]
-  
-  # Jonathan Data
-  nrem_auc_fitted_data.v <<- copy(nrem_auc_fitted_data)
-  nrem_auc_fitted_data.v <<- nrem_auc_fitted_data.v[!is.na(value)]
-  nrem_auc_fitted_data.v[data_type=='DELTA_POWER',delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
-  nrem_auc_fitted_data.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
-  #nrem_auc_fitted_data.v[,value:=normailize_a(value,activity_or_bedrest_episode,cutoff=.975,target_sleep_episode=2),by='subject_code,data_type']
-  nrem_auc_fitted_data.v[data_type=="DELTA_POWER",value:=normalize_a(value,activity_or_bedrest_episode,cutoff=.975,target_sleep_episode=2),by='subject_code']
-  nrem_auc_fitted_data.v[data_type!="DELTA_POWER",value:=normalize_a(value,activity_or_bedrest_episode,cutoff=1,target_sleep_episode = 2),by='subject_code,data_type']
-  nrem_auc_fitted_data.v <<- rbindlist(list(nrem_auc_fitted_data.v, nrem_auc_fitted_data.v[data_type!='DELTA_POWER',fix_gaps_j(.SD),by='subject_code,activity_or_bedrest_episode,data_type']), use.names=TRUE, fill=TRUE)
-  
-  if(doubleplot) {
-    sleep_data.v <<- double_plot(sleep_data.v,TRUE)
-    episodes.v <<- double_plot(episodes.v,TRUE)
-    cycles.v <<- double_plot(cycles.v,TRUE)
-    nrem_auc_fitted_data.v <<- double_plot(nrem_auc_fitted_data.v,TRUE)
-    
-  }
-  
-  
+  # Delta Power
+  total_delta_powers.v <<- copy(total_delta_powers)
+  total_delta_powers.v[,c('day_number', 'day_labtime'):=set_days(labtime)]
+  total_delta_powers.v[,delta_power_sum_full:=normalize_j(delta_power_sum_full),by='subject_code,activity_or_bedrest_episode']
+  total_delta_powers.v[,delta_power_sum_2_3:=normalize_j(delta_power_sum_2_3),by='subject_code,activity_or_bedrest_episode']
+  total_delta_powers.v[,delta_power_sum_filtered:=normalize_j(delta_power_sum_filtered),by='subject_code,activity_or_bedrest_episode']
   NULL
 }
 
@@ -67,7 +40,7 @@ set_delta_power_groups <- function(labtimes) {
   r <- rep.int(labels,label_lengths)
 }
 
-fix_gaps_j <- function(d, epoch_length = EPOCH_LENGTH, t_cycle = T_CYCLE) {
+fix_gaps_swa <- function(d, epoch_length = EPOCH_LENGTH, t_cycle = T_CYCLE) {
   n <- length(d$day_number)
   
   # One new point should have the following time: t_cycle - epoch_length
@@ -86,15 +59,15 @@ fix_gaps_j <- function(d, epoch_length = EPOCH_LENGTH, t_cycle = T_CYCLE) {
     time_diff_1 <- (t_cycle - epoch_length) - d[position]$day_labtime
     time_diff_2 <- time_diff_1 + epoch_length
     
-    val_1 <- d[position]$value
-    val_2 <- d[position+1]$value
+    val_1 <- d[position]$total_delta_power
+    val_2 <- d[position+1]$total_delta_power
     
     slope <- (val_2 - val_1)/(time_2 - time_1)
     
     new_val_1 <- val_1 + slope*time_diff_1
     new_val_2 <- val_1 + slope*time_diff_2
     
-    data.table(labtime=c(time_1+time_diff_1, time_1+time_diff_2), value=c(new_val_1, new_val_2), day_number=c(d[position]$day_number, d[position+1]$day_number), day_labtime=c(t_cycle-epoch_length, 0.0),delta_power_group=c(d[position]$delta_power_group, d[position+1]$delta_power_group))
+    data.table(labtime=c(time_1+time_diff_1, time_1+time_diff_2), total_delta_power=c(new_val_1, new_val_2), day_number=c(d[position]$day_number, d[position+1]$day_number), day_labtime=c(t_cycle-epoch_length, 0.0))
   })
   
   rbindlist(new_rows)
@@ -111,19 +84,23 @@ normalize_a <- function(values, sleep_episode, cutoff=1, target_sleep_episode=1)
 normalize_j <- function(values, cutoff=1) {
   
   
-  max_v <- quantile(values,cutoff)
-  min_v <- min(values)
+  max_v <- quantile(values,cutoff,na.rm=TRUE)
+  min_v <- min(values,na.rm=TRUE)
   (values - min_v)*(10/(max_v-min_v))
 }
 
 ## Raster plots!
 # Plotting
-plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH, doubleplot=TRUE, hour_range=c(0,24), label_sleep_episode=TRUE) {  
+plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activity_or_bedrest_episodes = c(1), epoch_length = EPOCH_LENGTH, doubleplot=FALSE, hour_range=c(0,12), label_sleep_episode=FALSE) {  
   ## SETUPP
-#   subject_code = '18B2XX'
-#   number_of_days = 4
-#   first_day = 14
-
+#   subject_code = '103'
+#   number_of_days = NA
+#   first_day = 1
+#   epoch_length = EPOCH_LENGTH
+#   doubleplot = FALSE
+#   hour_range=c(0,10)
+#   label_sleep_episode = FALSE
+  
   # Limit by subject
   subject_list <- c(subject_code)
   
@@ -134,11 +111,13 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   print(days_to_graph)
   
   # Get data subset
-  graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
-  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
-  graph_jdata <<- copy(nrem_auc_fitted_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
-  graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode %in% activity_or_bedrest_episodes])
+  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & activity_or_bedrest_episode %in% activity_or_bedrest_episodes])
+  graph_delta <<- copy(total_delta_powers.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & activity_or_bedrest_episode %in% activity_or_bedrest_episodes])
   
+  #   graph_jdata <<- copy(nrem_auc_fitted_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+#   graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+#   
   # Draw
   .e <- environment()
 
@@ -157,22 +136,29 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
     plot <- plot + facet_grid(day_number ~ .)
   
   # Scaling and Margins
-  y_breaks <- c(-7,-6.5,-6,-4.5,-3, -2.5, -1.5,-.5, 0, 5, 10)
+  y_breaks <- c(-7,-6.5,-6,-5,-4.5,-3,-1.5, 0, 5, 10)
 
-  plot <- plot + scale_x_continuous(limits=c(hour_range[1] - epoch_length, hour_range[2] + epoch_length), expand=c(0,0), breaks=c(0,4,8,12,16,20)) 
-  plot <- plot + scale_y_continuous(limits=c(-8, 10.1), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
+  plot <- plot + scale_x_continuous(limits=c(hour_range[1] - epoch_length, hour_range[2] + epoch_length), expand=c(0,0), breaks=c(0,2,4,6,8,10,12,14,16,18,20)) 
+  plot <- plot + scale_y_continuous(limits=c(-7, 10.01), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter))
   
   plot <- plot + theme(panel.margin.x = unit(0.00, "npc"))
   
   # Colors
-  plot <- plot + scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  episode_color_palette <- cbbPalette[c(1:3, 6:7)]
+  names(episode_color_palette) <- c("NREM", "REM", "WAKE", "UNDEF", "SREM")
+  plot <- plot + scale_fill_manual(values=episode_color_palette) + scale_colour_manual(values=cbbPalette)
 
+  
   ## Episodes and Cycles
-  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -.95, ymax = -0.05, data = graph_episodes[method=='classic'])# & keep==TRUE])
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='iterative'])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
-  plot <- plot + geom_line(data=graph_jdata[data_type=="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode,delta_power_group), color=data_type, y=value))
-  plot <- plot + geom_line(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
+  plot <- plot + geom_line(data=graph_data, aes(y=delta_power_above_cutoff, group=interaction(nrem_episode_number,delta_power_group)), color="blue")
+  #plot <- plot + geom_line(data=graph_data, aes(y=delta_power), color="#009E73")
+  plot <- plot + geom_line(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=1.2)
+  plot <- plot + geom_point(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=3)
+  
+#   plot <- plot + geom_line(data=graph_jdata[data_type=="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode,delta_power_group), color=data_type, y=value))
+#   plot <- plot + geom_line(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
   #plot <- plot + geom_point(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
   
   # Sleep Episode Numbers
@@ -199,7 +185,6 @@ split_day_spanning_blocks <- function(dt, t_cycle=T_CYCLE, epoch_length=EPOCH_LE
   second_division <- copy(dt)
   
   new_end_day_labtime <- t_cycle-epoch_length
-  
   first_division[,`:=`(end_day_number=start_day_number, end_day_labtime=new_end_day_labtime)]
   second_division[,`:=`(start_day_number=end_day_number, start_day_labtime=0)]
   
@@ -228,6 +213,7 @@ convert_stage_for_raster <- function(d) {
   
   d[epoch_type!='UNDEF', stage_for_raster:=conv_map[stage]]
   d[epoch_type=='UNDEF', stage_for_raster:=-2.5]
+  d[epoch_type=="SREM", stage_for_raster:=-5]
 }
 
 y_axis_formatter <- function(x) {
@@ -236,10 +222,10 @@ y_axis_formatter <- function(x) {
   else if (x == -6) { res <- "" }
   else if (x == -6.5) { res <- "NREM" }
   else if (x == -7) { res <- "" }
-  #else if (x == 3.5) { res <- "" }
-  else if (x == -2.5) { res <- ""}
-  else if (x == -.5) { res <- "Traditional"}
-    else if (x == -1.5) { res <- "Extended"}
+  else if (x == -5) { res <- "SREM" }
+#   else if (x == -2.5) { res <- ""}
+#   else if (x == -.5) { res <- "Traditional"}
+    else if (x == -1.5) { res <- "NREM-REM Episodes"}
 #  else if (x == -4) { res <- "Changepoint"}
   else { res <- as.character(x) }
   
