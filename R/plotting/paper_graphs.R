@@ -138,11 +138,14 @@ plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_p
   
   # Get list of labels
   labs <- levels(d$interval_length_wake_label)
-  dist_dt <- as.data.table(expand.grid(l=labs, p=c("day", "night"), stringsAsFactors=FALSE))
+  dist_dt <- as.data.table(expand.grid(l=labs, p=c("day", "night", "neither"), stringsAsFactors=FALSE))
   
   # Compute Distributions
   dist_calc_fn <- function(d, l, p) {
+    cat(paste(l,p,sep=" | "))
+    
     s_d <- d[interval_length_wake_label == l & cohen_phase == p]
+    cat(paste(nrow(s_d),l,p,sep=" | "))
     min_bin <- min(s_d[[to_graph]], na.rm = TRUE)
     
     s_d <- s_d[get(to_graph) >= (15 + min_bin) & get(to_graph) <= (120 + min_bin)]
@@ -171,13 +174,17 @@ plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_p
   
   ps <- list()
   plot_dists <- function(d, l, p, ex, oh) {
+    #l <- dist_dt[$l
+    #p <- tddd$p
+    #ex <- tddd$mean
+    #oh <- tddd$sd
+    
     plot <- ggplot(data=d[interval_length_wake_label==l & cohen_phase == p], aes_string(to_graph)) + 
-      geom_histogram(binwidth=bw, aes(y=..density.., fill=..count..))  + 
+      geom_histogram(binwidth=bw, aes(y=..density..))  + 
       coord_cartesian(xlim=c(0,180)) + 
       ggtitle(paste(l, "| P: ", p, "  N:", nrow(d[interval_length_wake_label==l & cohen_phase == p]), "| Mean:", round(ex), "| SD:", round(oh) )) + 
-      stat_function(fun=dnorm, colour="red", arg=list(mean=as.numeric(ex), sd=as.numeric(oh))
-                    
-    )
+      stat_function(fun=dnorm, colour="red", arg=list(mean=as.numeric(copy(ex)), sd=as.numeric(copy(oh))))
+    plot
     
     cat(paste(l,p,ex,oh,sep=" "))
     cat('\n')
@@ -185,20 +192,13 @@ plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_p
     ps[[paste(l,p,sep=" ")]] <<- plot
     NULL
   }   
+  
   dist_dt[,plot_dists(d, l, p, mean, sd),by='p,l']
   
   
   
-  ps <- lapply(labs, function(l) {
-    dis <- dists[[l]]
-    ggplot(data=d[interval_length_wake_label==l], aes_string(to_graph)) + 
-      geom_histogram(binwidth=bw, aes(y=..density.., fill=..count..))  + 
-      coord_cartesian(xlim=c(0,180)) + 
-      ggtitle(paste(l, "|  N:", nrow(d[interval_length_wake_label==l]), "| Mean:", round(dis[1]), "| SD:", round(dis[2]) )) + 
-      stat_function(fun=dnorm, colour="red", arg=list(dis[1], dis[2]))
-  })
   
-  grid.arrange(grobs=ps, ncol=2)
+  grid.arrange(grobs=ps, ncol=3, as.table=FALSE)
 }
 
 # Peak Vs. Avg Wake
@@ -208,7 +208,15 @@ ggplot(peak_avg_wake, aes(average_wake,mean)) + geom_point()
 
 ## Transition heatmaps
 transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "fd") {
-  d <- copy(d[protocol_section == ps & tag=='high_res' & label != "UNDEF"])
+  d <- copy(d[protocol_sectio  ps <- lapply(labs, function(l) {
+    dis <- plot_dists[[l]]
+    ggplot(data=d[interval_length_wake_label==l], aes_string(to_graph)) + 
+      geom_histogram(binwidth=bw, aes(y=..density.., fill=..count..))  + 
+      coord_cartesian(xlim=c(0,180)) + 
+      ggtitle(paste(l, "|  N:", nrow(d[interval_length_wake_label==l]), "| Mean:", round(dis[1]), "| SD:", round(dis[2]) )) + 
+      stat_function(fun=dnorm, colour="red", arg=list(dis[1], dis[2]))
+  })
+n == ps & tag=='high_res' & label != "UNDEF"])
   
   max_l <- max(d$prev_length, na.rm=TRUE)+1
   breaks <- c(breaks[breaks < max_l], max_l)

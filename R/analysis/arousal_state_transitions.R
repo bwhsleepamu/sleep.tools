@@ -215,10 +215,13 @@ function() {
   inter_state_intervals[abs(phase_angle) > 150, phase_label:='out_of_phase']
   inter_state_intervals[is.na(phase_angle), phase_label:=NA]
   
-  inter_state_intervals[phase_angle >= -30 & phase_angle <= 90, cohen_phase:="night"]
-  inter_state_intervals[phase_angle >= 150 & phase_angle <= 270, cohen_phase:="day"]
-  inter_state_intervals[phase_angle >= -30 & phase_angle <= 90, cohen_phase:="night"]
+  inter_state_intervals[,cohen_phase:=NULL]
+  inter_state_intervals[!is.na(phase_angle), cohen_phase:="neither"]
   
+  inter_state_intervals[phase_angle >= -30 & phase_angle <= 90, cohen_phase:="night"]
+  inter_state_intervals[phase_angle >= 150 | phase_angle <= -90, cohen_phase:="day"]
+  #inter_state_intervals[phase_angle >= -30 & phase_angle <= 90, cohen_phase:="night"]
+
   
   
   
