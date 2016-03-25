@@ -3,21 +3,21 @@ source("R/plotting/rasters/jonathan_raster_plot.R")
 library(gtable)
 #source("R/analysis/analysis.R")
 
-jonathan_subject_codes <- fread("data/jonathan_subject_list.csv")$Subject
+jonathan_subject_codes <- as.data.table(read.csv("data/jonathan_subject_list.csv"))$Subject
 jonathan_dir <- '/X/People/Students/DeShields_J/Subject Files'
 
 jonathan_data <- lapply(jonathan_subject_codes, function(sc){
 
   fp <- paste(jonathan_dir, sc, paste(tolower(sc), 'NREM_AUC_Fitted.xls', sep='_'), sep='/')
   if(file.exists(fp)) {
-    print(paste("Loading", sc))
+    print(paste("Loading", sc, fp, sep=" | "))
     s_data <- as.data.table(read.xls(fp, header=FALSE))
     setnames(s_data, c("subject_code","activity_or_bedrest_episode", "data_type", "labtime", "value"))
     s_data[,subject_code:=sc]
     s_data
   }
   else {
-    print(paste("Could not load", sc))
+    print(paste("Could not load", sc, fp, sep=" | "))
     NULL
   }
 })
