@@ -1,0 +1,49 @@
+Title
+========================================================
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring web pages (click the **Help** toolbar button for more details on using R Markdown).
+
+When you click the **Knit HTML** button a web page will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r fig.width=7, fig.height=6}
+plot(cars)
+```
+
+## COMPARISONS
+1. Show distribution of consecutive bouts before transformation vs. after transformation
+2. --In the distribution graphs, color-code the type of epoch--
+
+
+# LIST
+## Cycle calculation
+1. For each subject, sleep period (sp)
+  - take start of NREM (full)
+  - cycle goes until the start of next NREM
+  - if our NREM definitions are right, then period outline is trivial
+  - Do same for REM
+  
+### Dealing with WaKe
+- classic method: merge wake into either rem or nrem
+- chanbepoint method: wake periods are existant
+- improved method: wake periods are existant
+
+1. Minimum length for "significant" wake period is 5 min
+2. Minimum length for "significant" 
+  
+# Improved Method (iterative)
+1. iteratively take the smallest consecutive bout (low to high)
+2. Merge into the largest neighbor
+3. 
+
+
+## Meeting Friday
+- Boxplot summaries for period lengths
+- Iterative method
+- Comparisions between different subject groups
+
