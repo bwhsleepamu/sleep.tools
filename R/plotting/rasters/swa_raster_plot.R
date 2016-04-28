@@ -5,11 +5,12 @@ setup_raster_data <- function(sleep_data, episodes, total_delta_powers) {
   # Sleep Data Setup
   sleep_data.v <<- copy(sleep_data)
   convert_stage_for_raster(sleep_data.v)
-  sleep_data.v[,delta_power:=normalize_j(delta_power),by='subject_code,activity_or_bedrest_episode']
-  sleep_data.v[,delta_power_in_stage_2_3:=normalize_j(delta_power_in_stage_2_3),by='subject_code,activity_or_bedrest_episode']
-  sleep_data.v[,delta_power_above_cutoff:=normalize_j(delta_power_above_cutoff),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[,delta_power:=normalize_j(delta_power),by='subject_code']
+  sleep_data.v[,delta_power_in_stage_2_3:=normalize_j(delta_power_in_stage_2_3),by='subject_code']
+  sleep_data.v[,delta_power_below_cutoff:=normalize_j(delta_power_above_cutoff, subject_code=subject_code),by='subject_code']
   
-  sleep_data.v[!is.na(delta_power_above_cutoff), delta_power_group:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[!is.na(delta_power_in_stage_2_3), delta_power_group_23:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']
+  sleep_data.v[!is.na(delta_power_below_cutoff), delta_power_group_cutoff:=set_delta_power_groups(labtime),by='subject_code,activity_or_bedrest_episode']  
   sleep_data.v[,c('day_number','day_labtime'):=set_days(labtime)]
   
   # Episodes
@@ -81,17 +82,19 @@ normalize_a <- function(values, sleep_episode, cutoff=1, target_sleep_episode=1)
   (values - min_v)*(10/(max_v-min_v))
 }
 
-normalize_j <- function(values, cutoff=1) {
-  
+normalize_j <- function(values, subject_code=NA, cutoff=1) {
   
   max_v <- quantile(values,cutoff,na.rm=TRUE)
   min_v <- min(values,na.rm=TRUE)
+  if(!is.na(subject_code))
+    print(paste(subject_code, min_v, max_v))
+
   (values - min_v)*(10/(max_v-min_v))
 }
 
 ## Raster plots!
 # Plotting
-plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activity_or_bedrest_episodes = c(1), epoch_length = EPOCH_LENGTH, doubleplot=FALSE, hour_range=c(0,12), label_sleep_episode=FALSE) {  
+plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH, doubleplot=FALSE, hour_range=c(0,12), label_sleep_episode=FALSE) {  
   ## SETUPP
 #   subject_code = '103'
 #   number_of_days = NA
@@ -111,9 +114,9 @@ plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activi
   print(days_to_graph)
   
   # Get data subset
-  graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode %in% activity_or_bedrest_episodes])
-  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & activity_or_bedrest_episode %in% activity_or_bedrest_episodes])
-  graph_delta <<- copy(total_delta_powers.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & activity_or_bedrest_episode %in% activity_or_bedrest_episodes])
+  graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
+  graph_delta <<- copy(total_delta_powers.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
   
   #   graph_jdata <<- copy(nrem_auc_fitted_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
 #   graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
@@ -152,10 +155,11 @@ plot_swa_raster <- function(subject_code, number_of_days=NA, first_day=1, activi
   ## Episodes and Cycles
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -1.05, data = graph_episodes[method=='iterative'])
   plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0],mapping=(aes(group=activity_or_bedrest_episode))) #aes(colour=epoch_type)
-  plot <- plot + geom_line(data=graph_data, aes(y=delta_power_above_cutoff, group=interaction(nrem_episode_number,delta_power_group)), color="blue")
+  plot <- plot + geom_line(data=graph_data, aes(y=delta_power_below_cutoff, group=interaction(nrem_episode_number,delta_power_group_cutoff)), color="blue")
+  #plot <- plot + geom_line(data=graph_data, aes(y=delta_power_in_stage_2_3, group=interaction(nrem_episode_number,delta_power_group_23)), color="blue")
   #plot <- plot + geom_line(data=graph_data, aes(y=delta_power), color="#009E73")
-  plot <- plot + geom_line(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=1.2)
-  plot <- plot + geom_point(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=3)
+  # plot <- plot + geom_line(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=1.2)
+  # plot <- plot + geom_point(data=graph_delta, aes(y=delta_power_sum_filtered), color='red', size=3)
   
 #   plot <- plot + geom_line(data=graph_jdata[data_type=="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode,delta_power_group), color=data_type, y=value))
 #   plot <- plot + geom_line(data=graph_jdata[data_type!="DELTA_POWER"], aes(group=interaction(data_type,activity_or_bedrest_episode), color=data_type, y=value))
