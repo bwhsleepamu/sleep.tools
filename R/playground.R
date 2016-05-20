@@ -2,7 +2,7 @@ source("R/sources.R")
 source("R/plotting/rasters/raster_plot.R")
 
 # Subject Info
-subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2015a.xls"))
+subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2016a.xls"))
 setnames(subjects, c("Subject", "Age.Group", "Study"), c("subject_code", "age_group", "study"))
 subjects[,file_path:=paste("/I/AMU Cleaned Data Sets/", subject_code, "/Sleep/", subject_code, "Slp.01.csv", sep="")]
 
@@ -32,7 +32,7 @@ load_data(subjects = subjects)
 
 sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
 
-setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data,types=c("raw"))
+setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data)
 setup_cycles(sleep_data, episodes)
 setup_melatonin_phase(subjects, sleep_episodes)
 

@@ -83,7 +83,7 @@ load_sleep_statistics <- function() {
   # Load and set up sleep stats
   ## LOAD FROM NETWORK DRIVE!
   ## PARAMETERIZE PATHS
-  sleep_stats_fp <- "/I/Projects/Forced Desynchrony data projects/Sleep/AllSlp/AllSlpstat6c-2015a.xlsx"
+  sleep_stats_fp <- "/I/Projects/Forced Desynchrony data projects/Sleep/AllSlp/AllSlpstat6c-2016a.xlsx"
   sleep_stats <- as.data.table(read.xlsx(sleep_stats_fp))
   sleep_stats[,Sleep.Efficiency:=as.numeric(as.character(Sleep.Efficiency))]
   setnames(sleep_stats, c("Subject", "SPn"), c("subject_code", "activity_or_bedrest_episode"))
