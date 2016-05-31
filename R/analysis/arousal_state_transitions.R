@@ -167,7 +167,7 @@ function() {
 
   # Time since bedrest onset
   sequences <- merge(sequences, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime, sleep_onset_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
-  setnames(sequences, 'start_labtime', 'bedrest_episode_start_labtime')
+  setnames(sequences, 'start_labtime.y', 'bedrest_episode_start_labtime')
   setnames(sequences, 'start_labtime.x', 'start_labtime')
   sequences[,time_since_bedrest_onset:=mid_labtime-bedrest_episode_start_labtime]
   sequences[,time_since_sleep_onset:=mid_labtime-sleep_onset_labtime]
