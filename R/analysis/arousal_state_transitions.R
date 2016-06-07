@@ -2,7 +2,6 @@ source("R/sources.R")
 source("R/plotting/rasters/sequence_raster_plot.R")
 library(fitdistrplus)
 library(gridExtra)
-library(Rcell)
 
 # Helper Methods
 
@@ -147,8 +146,8 @@ function() {
   sequences[,length:=length_in_epochs*length_coefficient]
     
   # Label by Length Bins
-  length_breaks <- c(0, 2, 5, 15, 60, 3000)
-  length_labels <- c("< 2 minutes", "2 - 5 minutes", "5-15 minutes", "15 - 60 minutes", "60+ minutes")
+  length_breaks <- c(0, 1, 3, 3000)
+  length_labels <- c("< 1 minutes", "1 - 2.5 minutes", "3+")
   sequences[,length_class:=cut(length * length_coefficient, length_breaks, include.lowest=TRUE, right=TRUE, labels = length_labels)]
   
   # Phase

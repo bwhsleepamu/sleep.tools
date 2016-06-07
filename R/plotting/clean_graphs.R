@@ -1,5 +1,5 @@
 library(ggthemes)
-
+source("R/plotting/plot_theme.R")
 ## Datasets
 
 # Name Changes etc.
@@ -153,7 +153,7 @@ latAfterWakeByPrev <- function() {
   
 }
 
-## Figure 6
+## Figure 6: Latencies by Length Class
 latAfterWakeByLength <- function() {
 
   lat_p <- ggplot(data=high_res_sequences[tag=="high_res" & label=="WAKE" & protocol_section=="fd"])
@@ -162,11 +162,15 @@ latAfterWakeByLength <- function() {
   lat_graphs <- lapply(latency_types, function(name_x_val){
     print(name_x_val)
     lat_p + 
-      geom_histogram(aes_string(x=name_x_val[1], fill="length_class"), binwidth = 1) + 
+      geom_histogram(aes_string(x=name_x_val[1], fill="length_class"), binwidth = 2) + 
       coord_cartesian(xlim=c(0,as.numeric(name_x_val[2]))) +
-      facet_grid(length_class ~ ., scales="free") + 
+      facet_grid(length_class ~ ., scales="free_x") + 
       theme_tufte(base_size = 24, base_family="helvetica") + scale_colour_few() + theme(axis.title.y=element_blank(), legend.position="none") +
-      scale_x_continuous(expand = c(0,0))
+      scale_x_continuous(expand = c(0,0)) #+ 
+      # scale_y_continuous(trans="log10p",
+      #   breaks = trans_breaks(log10p, log10p_inv), 
+      #   labels = trans_format("log10p", scales::math_format(10^.x))
+      # )
     
     #+ ggtitle(paste(name_x_val[1], "after", l)) #+ facet_grid(. ~ phase_label)
   });
@@ -191,71 +195,28 @@ isiByType <- function() {
 
 ## Figure 8
 isiRemHistogram <- function() {
-  peak_lengths <- list()
-  avg_wakes <- list()
+  source("R/plotting/graph_helper.R")
   
-  plot_isi_histogram <- function(t, ps=c("baseline", "fd", "recovery"), pl=c("in_phase", "out_of_phase", NA, "neither"), bw=1, to_graph='interval_length') {
-    # narrow down data set
-    d <- copy(inter_state_intervals[type==t])
-    
-    # Get list of labels
-    labs <- levels(d$interval_length_wake_label)
-    dist_dt <- as.data.table(expand.grid(l=labs, p=c("day", "night", "neither"), stringsAsFactors=FALSE))
-    
-    # Compute Distributions
-    dist_calc_fn <- function(d, l) {
-      cat(l)
-      
-      s_d <- d[interval_length_wake_label == l]
-      cat(paste(nrow(s_d),l,sep=" | "))
-      min_bin <- min(s_d[[to_graph]], na.rm = TRUE)
-      
-      s_d <- s_d[get(to_graph) >= (15 + min_bin) & get(to_graph) <= (120 + min_bin)]
-      r <- fitdist(s_d[[to_graph]], 'norm')
-      
-      peak_lengths[[l]] <<- r$estimate[1]
-      avg_wakes[[l]] <<- mean(s_d$interval_length_wake)
-      
-      as.list(r$estimate)
-    }
-    
-    dist_dt[,c("mean", "sd") := dist_calc_fn(d, l),by='l']
-    
-    ps <- list()
-    plot_dists <- function(d, l, ex, oh) {
-      #l <- dist_dt[$l
-      #p <- tddd$p
-      #ex <- tddd$mean
-      #oh <- tddd$sd
-      
-      plot <- ggplot(data=d[interval_length_wake_label==l], aes_string(to_graph)) + 
-        geom_histogram(binwidth=bw, aes(y=..density..))  + 
-        coord_cartesian(xlim=c(0,150)) + 
-        ggtitle(paste(l, "| ", " N:", nrow(d[interval_length_wake_label==l]), "| Mean:", round(ex), "| SD:", round(oh) )) + 
-        stat_function(fun=dnorm, colour="red", args=list(mean=as.numeric(copy(ex)), sd=as.numeric(copy(oh)))) + 
-        theme_Publication(base_size = 30, base_family="helvetica") + scale_colour_few() + 
-        theme(axis.title=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank(), title=element_text(size=11, face='plain'), axis.text.x=element_text(size=14), axis.title.x=element_text(size=16)) + 
-        #labs(x="Interval Length (minutes)") + 
-        scale_x_continuous(expand = c(0,0))
-      plot
-      
-      cat(paste(l,ex,oh,sep=" "))
-      cat('\n')
-      
-      ps[[paste(l,sep=" ")]] <<- plot
-      NULL
-    }   
-    
-    dist_dt[,plot_dists(d, l, mean, sd),by='p,l']
-    
-    
-    
-    
-    ps #grid.arrange(grobs=ps, ncol=1)
-  }
+  peak_lengths <<- list()
+  avg_wakes <<- list()
   
-  p1 <- plot_isi_histogram("REM")
-  p2 <- plot_isi_histogram("REM", to_graph = "interval_length_without_wake")
+  
+  p1 <- plotIsiHist(inter_state_intervals, "REM")
+  p2 <- plotIsiHist(inter_state_intervals, "REM", to_graph = "interval_length_without_wake")
+  
+  grid.arrange(grobs=append(p1,p2), ncol=2, as.table=FALSE)
+}
+
+## Figure 8b
+isiRemHistogram <- function() {
+  source("R/plotting/graph_helper.R")
+  
+  peak_lengths <<- list()
+  avg_wakes <<- list()
+  
+  
+  p1 <- plotIsiHist(inter_state_intervals, "REM")
+  p2 <- plotIsiHist(inter_state_intervals, "REM", to_graph = "interval_length_without_wake")
   
   grid.arrange(grobs=append(p1,p2), ncol=2, as.table=FALSE)
 }
