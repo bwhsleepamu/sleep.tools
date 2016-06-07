@@ -47,7 +47,7 @@ l <- 'WAKE'
 name_x_val <- c("REM_latency", 100)
 draw_latency <- function(l) {
   lat_p <- ggplot(data=sequences[tag=="high_res" & label==l & phase_label %in% c('in_phase', 'out_of_phase', 'neither')])
-  latency_types <- list(c("REM_latency", 250), c("NREM_latency", 50), c("WAKE_latency", 100), c("N2_latency", 100), c("SWS_latency", 400))
+  latency_types <- list(c("REM_latency", 250), c("NREM_latency", 50), c("WAKE_latency", 100), c("NREM2_latency", 100), c("SWS_latency", 400))
   
   lat_graphs <- lapply(latency_types, function(name_x_val){
     print(name_x_val)
@@ -101,12 +101,12 @@ t <- "SWS"
 ps <- lapply(l, function(t){
 #  cat(paste(typeof(t[2], '\n'))
   ll <- as.numeric(t[2])
-  p <- ggplot(data=sequences[protocol_section == 'fd' & tag == "high_res" & label=="WAKE" & prev_label %in% c("REM", "N1", "N2", "SWS")]) + 
+  p <- ggplot(data=high_res_sequences[protocol_section == 'fd' & label=="WAKE" & prev_label %in% c("REM", "NREM1", "NREM2", "SWS")]) + 
     scale_colour_manual(values=cbbbPalette) + 
     theme(axis.text.y = element_blank(), axis.ticks.y=element_blank()) + 
     scale_x_continuous(limits=c(0,ll), breaks=function(x){seq(x[1],x[2],by=30)}) 
   p <- p + geom_line(aes_string(x=paste(t[1],"latency", sep="_")), stat='density') + 
-    facet_grid(length_class ~ ., scales = 'free') + 
+    facet_grid(prev_label ~ ., scales = 'free') + 
     coord_cartesian(xlim=c(0,ll)) + ggtitle(paste(t, "Latency after WAKE by Preceding State",sep=" "))
   p  
 })
@@ -228,16 +228,8 @@ peak_avg_wake <- data.table(average_wake=as.numeric(avg_wakes), mean=as.numeric(
 ggplot(peak_avg_wake, aes(average_wake,mean)) + geom_point()
 
 ## Transition heatmaps
-transition_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "fd") {
-  d <- copy(d[protocol_sectio  ps <- lapply(labs, function(l) {
-    dis <- plot_dists[[l]]
-    ggplot(data=d[interval_length_wake_label==l], aes_string(to_graph)) + 
-      geom_histogram(binwidth=bw, aes(y=..density.., fill=..count..))  + 
-      coord_cartesian(xlim=c(0,180)) + 
-      ggtitle(paste(l, "|  N:", nrow(d[interval_length_wake_label==l]), "| Mean:", round(dis[1]), "| SD:", round(dis[2]) )) + 
-      stat_function(fun=dnorm, colour="red", arg=list(dis[1], dis[2]))
-  })
-n == ps & tag=='high_res' & label != "UNDEF"])
+plot_trans_heatmap <- function(d, breaks=c(0,.5, 1, 2,5,10,15,20,30,60), ps = "fd") {
+  d <- copy(d[protocol_section == ps & tag=='high_res' & label != "UNDEF"])
   
   max_l <- max(d$prev_length, na.rm=TRUE)+1
   breaks <- c(breaks[breaks < max_l], max_l)
@@ -264,6 +256,8 @@ n == ps & tag=='high_res' & label != "UNDEF"])
     #scale_x_discrete(breaks=levels(d$heatmap_data$x_bin), labels=d$x_labs) +
     #scale_y_discrete(breaks=levels(d$heatmap_data$y_bin), labels=d$y_labs)
 }
+
+transition_heatmap(graph_sequences)
 
 ## Hazard Functions
 
@@ -312,7 +306,7 @@ ggplot(data=by_tib[tag=='high_res' & protocol_section=='fd' & time_in_bed_bin !=
 
 ggplot(data=sequences[tag=='high_res' & label=="WAKE" & protocol_section=="fd" & !is.na(phase_angle) ]) + geom_boxplot(aes(x=phase_bin, y=REM_latency)) #+ facet_grid(. ~ ., scales = 'free')
 ggplot(data=sequences[tag=='high_res' & label=="WAKE" & protocol_section=="fd" & !is.na(phase_angle)]) + geom_boxplot(aes(x=time_in_bed_bin, y=REM_latency)) #+ facet_grid(length_class ~ prev_label, scales='free')
-& prev_label %in% c("N1", "N2", "SWS", "REM", "WAKE")
+# & prev_label %in% c("N1", "N2", "SWS", "REM", "WAKE")
 
 
 
