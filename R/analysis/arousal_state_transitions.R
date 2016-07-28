@@ -248,7 +248,7 @@ function() {
 
   
   # Set wake intervals
-  breaks <- c(0,2,5,10,20,30,60)
+  breaks <- c(0,2,5,10,15,20,30,60)
   
   max_l <- max(inter_state_intervals$interval_length_wake, na.rm=TRUE)+1
   breaks <- c(breaks[breaks < max_l], max_l)

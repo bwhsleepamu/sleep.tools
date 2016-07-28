@@ -208,17 +208,17 @@ isiRemHistogram <- function() {
 }
 
 ## Figure 8b
-isiRemHistogram <- function() {
+isiHistogramTrend <- function() {
   source("R/plotting/graph_helper.R")
   
-  peak_lengths <<- list()
-  avg_wakes <<- list()
+
   
+  p1 <- plotIsiTrend(inter_state_intervals, "REM", to_graph='interval_length_without_wake')
+ # p2 <- plotIsiTrend(inter_state_intervals, "NREM")
   
-  p1 <- plotIsiHist(inter_state_intervals, "REM")
-  p2 <- plotIsiHist(inter_state_intervals, "REM", to_graph = "interval_length_without_wake")
+#  grid.arrange(grobs=list(p1,p2), ncol=2, as.table=FALSE)
   
-  grid.arrange(grobs=append(p1,p2), ncol=2, as.table=FALSE)
+  p1
 }
 
 ## Figure 9

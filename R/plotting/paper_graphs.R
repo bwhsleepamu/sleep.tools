@@ -1,6 +1,6 @@
-
 # Mini
 plot_raster("3319GX", plot_double=FALSE, labels=FALSE)
+
 # One day
 plot_raster("3319GX", plot_double=FALSE, first_day = 28, number_of_days = 1)
 
@@ -10,7 +10,6 @@ sequences$label_f <- as.factor(sequences$label)
 # - NREM
 # - REM
 # - WAKE 
-  
   
 seq_len_p <- ggplot(data=sequences[(label!="UNDEF" & tag=="high_res") | (tag=="normal" & label=="NREM")], aes(x=length)) + labs(x="Length (minutes)", y="") + scale_x_continuous(breaks=function(x){seq(x[1],x[2],by=60)})
 seq_len_p + geom_histogram(binwidth=1) + theme(axis.text.y=element_blank(), axis.ticks.y=element_blank()) + facet_grid(phase_label ~ label_f, as.table=TRUE, scales='free') + coord_cartesian(xlim=c(0,300)) + ggtitle("Distribution of Sequence Lengths by State") + scale_y_continuous(trans='log1p')

@@ -89,6 +89,59 @@ setup_raster_data <- function(sleep_data, episodes, cycles, melatonin_phase, nor
 ## Raster plots!
 # Plotting
 
+plot_single_day_raster <- function(subject_code, day_number=1, time_range=c(0.0,24.0), epoch_length=EPOCH_LENGTH, plot_double=FALSE, labels=TRUE) {
+  subject_list <- c(subject_code)
+  
+  # Limit by day
+  days_to_graph <- unique(sleep_data.v[subject_code %in% subject_list]$day_number)
+  days_to_graph <- days_to_graph[day_number]
+  print(days_to_graph)
+  
+  # Get data subset
+  graph_data <<- copy(sleep_data.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_episodes <<- copy(episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0 & label != "UNDEF"])
+  graph_cycles <<- copy(cycles.v[type == "NREM" & subject_code %in% subject_list & day_number %in% days_to_graph & activity_or_bedrest_episode > 0])
+  graph_sleep_episodes <<- copy(sleep_episodes.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_mel_phase <<- copy(melatonin_phase.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_fd_start <<- copy(fd_start.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  graph_fd_end <<- copy(fd_end.v[subject_code %in% subject_list & day_number %in% days_to_graph])
+  
+  .e <- environment()
+  
+  # Main Plot
+  plot <- ggplot(graph_data, aes(x=day_labtime, y=stage_for_raster, group=day_number), environment = .e)
+  
+  # Labels and theming
+  plot <- plot + theme(axis.title.y=element_blank(), legend.title=element_blank(), axis.line = element_blank(),panel.grid.minor=element_blank(),strip.text.x=element_blank())
+  plot <- plot + xlab("Time (hours)")
+  
+  # Scaling and Margins
+  y_breaks <- c(-2.7,-1.15,0.5, 1.5, 2.5, 3, 3.5)
+  plot <- plot + scale_x_continuous(limits=c(time_range[1] - EPOCH_LENGTH, time_range[2] + EPOCH_LENGTH), expand=c(0,0), breaks=c(0,4,8,12,16,20,24)) 
+  plot <- plot + scale_y_continuous(limits=c(-3.25, 3.5), breaks=y_breaks, labels=lapply(y_breaks,y_axis_formatter, TRUE))
+  
+  plot <- plot + theme(panel.margin.x = unit(0.00, "npc"), legend.position="bottom")
+  
+  sc <- subject_code
+  title <- paste(subjects[subject_code == sc]$study, subjects[subject_code == sc]$subject_code, sep="_")
+  plot <- plot + theme(legend.position="top") # + ggtitle(title) + theme(plot.title = element_text(size = rel(.3)))
+  
+#   if(!labels)
+#     plot <- plot + theme(legend.position="none", axis.title.x=element_blank(), axis.text=element_blank(), axis.ticks=element_blank(), strip.text.y=element_blank(), strip.background=element_blank(), plot.margin=unit(c(0,-0.5,-0.5,-0.5) ,'line'), panel.margin=unit(1, "points")) + labs(x=NULL, y=NULL)
+#   
+  # Colors
+  plot <- plot + scale_fill_manual(values=cbbPalette) + scale_color_few() + theme_few(base_size=28, base_family="helvetica") #scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  
+  ## Episodes and Cycles
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -2.15, ymax = -0.05, data = graph_episodes[method=='iterative'])# & keep==TRUE])
+  plot <- plot + geom_line(data=graph_data[activity_or_bedrest_episode>0]) #, aes(colour=epoch_type))
+  plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length), fill=NA, color='black', ymin = -3.2, ymax = -2.25, data=graph_cycles[method=="iterative"]) + 
+    geom_text(aes(x = (start_day_labtime+end_day_labtime)/2, label=cycle_number), y=-2.7, size=11, data=graph_cycles[method=="iterative"]) +
+    labs(y="", fill="")
+  
+  plot
+}
+
 plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_length = EPOCH_LENGTH, plot_double=TRUE, labels=TRUE) {  
   ## SETUPP
 #   subject_code = '3450GX'
@@ -168,11 +221,8 @@ plot_raster <- function(subject_code, number_of_days=NA, first_day=1, epoch_leng
   title <- paste(subjects[subject_code == sc]$study, subjects[subject_code == sc]$subject_code, sep="_")
   plot <- plot + ggtitle(title) + theme(plot.title = element_text(size = rel(.3)))
   
-  if(!labels)
-    plot <- plot + theme(legend.position="none", axis.title.x=element_blank(), axis.text=element_blank(), axis.ticks=element_blank(), strip.text.y=element_blank(), strip.background=element_blank(), plot.margin=unit(c(0,-0.5,-0.5,-0.5) ,'line'), panel.margin=unit(1, "points")) + labs(x=NULL, y=NULL)
-  
   # Colors
-  plot <- plot + scale_fill_few() + scale_color_few() + theme_few(base_size=28, base_family="helvetica") #scale_fill_manual(values=cbbPalette) + scale_colour_manual(values=cbbPalette)
+  plot <- plot + scale_fill_few() + scale_color_few() + theme_few(base_size=28, base_family="helvetica")
   
   ## Episodes and Cycles
   plot <- plot + geom_rect(aes(NULL, NULL, xmin = start_day_labtime, xmax = end_day_labtime + epoch_length, fill = label), ymin = -1.95, ymax = -0.05, data = graph_episodes[method=='raw'])# & keep==TRUE])
@@ -247,7 +297,9 @@ y_axis_formatter <- function(x, labels=TRUE) {
   else if (x == 3) { res <- "NREM2" }
   else if (x == 3.5) { res <- "NREM3/4" }
   else if (x == 0) { res <- ""}
-  else if (x == -1) { res <- "Sequences"}
+  else if (x == -1.15) { res <- "Episodes"}
+  else if (x == -2.7) { res <- "Cycles"}
+  
   else { res <- as.character(x) }
   
   if(labels)
@@ -255,6 +307,7 @@ y_axis_formatter <- function(x, labels=TRUE) {
   else
     ""
 }
+
 
 
 # Double-Plotting

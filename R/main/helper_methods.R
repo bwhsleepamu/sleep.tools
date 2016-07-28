@@ -23,14 +23,18 @@ generate_missing_combinations <- function(bout_type, by) {
 # get index (for main sleep data) of first instance of a given stage in a given list of stages
 ## USED IN EPISODES AND CYCLES
 get_first_stage <- function(stages, start_position, target, not_found=NA) {
-  #print(cat(stages))
+  # print(cat(stages))
+  # print(target)
   first_occurance <- (which(stages == target)[1] - 1 + start_position)
   
   if(is.na(first_occurance)) {
     first_occurance <- not_found
   }
   
+  #print(as.integer(first_occurance))
+  #print("----------")
   as.integer(first_occurance)
+  
 }
 
 

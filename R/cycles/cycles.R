@@ -30,18 +30,38 @@ find_cycles_in_sleep_episode <- function(border_locations, sleep_episode_end, in
   list(start_position=starts, end_position=ends, length=lengths)  
 }
 
+prev_episode_type <- function(labels) {
+  cat(length(labels))
+  append(NA,labels[-length(labels)])
+} 
+
+# N R N R W N W N R N
+has_prev_rem <- function(labels) {
+  to_check <- which(labels %in% c("REM", "NREM"))
+  n <- length(to_check)
+  y <- c(TRUE, !(labels[to_check][-1L] == labels[to_check][-n]))
+  
+  res <- rep(FALSE, length(labels))
+  res[to_check[y]] <- TRUE
+  res
+  
+}
 
 
 # Either REM or NREM
 # For NREM: start at first stage 2 of NREM cycle
 find.cycles <- function(dt, sleep_data, type="NREM", start_fn=find_nrem_start, until_end=TRUE) {
   episodes <- copy(dt)
+  episodes[, not_just_wake:=has_prev_rem(label),by='subject_code,activity_or_bedrest_episode']
   setkey(episodes, label)
+  #setkey(sleep_data, subject_code, activity_or_bedrest_episode)
+  setkey(sleep_data, pk)
   stages <- copy(sleep_data$stage)
-  setkey(sleep_data, subject_code, activity_or_bedrest_episode)
   episodes[,pik:=.I]
+  setkey(sleep_data, subject_code, activity_or_bedrest_episode)
   episodes[, last_position:=last_se_position(sleep_data, subject_code, activity_or_bedrest_episode), by='subject_code,activity_or_bedrest_episode']
-  episodes[type, cycle_start:=start_fn(stages[start_position:end_position], start_position), by=pik]
+  setkey(sleep_data, pk)
+  episodes[label==type & not_just_wake, cycle_start:=start_fn(stages[start_position:end_position], start_position), by=pik]
   cycles <- episodes[type,find_cycles_in_sleep_episode(cycle_start, last_position, until_end),by='subject_code,activity_or_bedrest_episode,method']  
   cycles[,cycle_number:=seq(.N),by='subject_code,activity_or_bedrest_episode,method']
   setkey(sleep_data, pk)
@@ -51,10 +71,10 @@ find.cycles <- function(dt, sleep_data, type="NREM", start_fn=find_nrem_start, u
 
 # Get last position of a sleep episode
 last_se_position <- function(sd, sc, e) {
-  cat(sc, " ", e, "\n")
-  max(sd[c(sc, e)]$pk)
+  #cat(sc, " ", e, "\n")
+  max(sd[c(sc, e)]$pk, na.rm = TRUE)
   
-  #max(sd[subject_code==sc & activity_or_bedrest_episode==e]$pk)
+  # max(sd[subject_code==sc & activity_or_bedrest_episode==e]$pk, na.rm=TRUE)
 }
 
 
