@@ -4,7 +4,7 @@ source("R/plotting/rasters/raster_plot.R")
 # Subject Info
 subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2016a.xls"))
 setnames(subjects, c("Subject", "Age.Group", "Study"), c("subject_code", "age_group", "study"))
-subjects[,file_path:=paste("/I/AMU Cleaned Data Sets/", subject_code, "/Sleep/", subject_code, "Slp.01.csv", sep="")]
+subjects[,file_path:=paste("/home/pwm4/Documents/DATAMISSING/", subject_code, "/Sleep/", subject_code, "Slp.01.csv", sep="")]
 
 subjects[,X:=NULL]
 subjects[,study:=as.character(study)]
