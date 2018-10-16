@@ -2,7 +2,6 @@ source("R/sources.R")
 source("R/plotting/rasters/sequence_raster_plot.R")
 library(fitdistrplus)
 library(gridExtra)
-library(Rcell)
 
 # Helper Methods
 
@@ -147,8 +146,8 @@ function() {
   sequences[,length:=length_in_epochs*length_coefficient]
     
   # Label by Length Bins
-  length_breaks <- c(0, 2, 5, 15, 60, 3000)
-  length_labels <- c("< 2 minutes", "2 - 5 minutes", "5-15 minutes", "15 - 60 minutes", "60+ minutes")
+  length_breaks <- c(0, 1, 3, 3000)
+  length_labels <- c("< 1 minutes", "1 - 2.5 minutes", "3+")
   sequences[,length_class:=cut(length * length_coefficient, length_breaks, include.lowest=TRUE, right=TRUE, labels = length_labels)]
   
   # Phase
@@ -167,7 +166,7 @@ function() {
 
   # Time since bedrest onset
   sequences <- merge(sequences, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime, sleep_onset_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
-  setnames(sequences, 'start_labtime', 'bedrest_episode_start_labtime')
+  setnames(sequences, 'start_labtime.y', 'bedrest_episode_start_labtime')
   setnames(sequences, 'start_labtime.x', 'start_labtime')
   sequences[,time_since_bedrest_onset:=mid_labtime-bedrest_episode_start_labtime]
   sequences[,time_since_sleep_onset:=mid_labtime-sleep_onset_labtime]
@@ -249,7 +248,7 @@ function() {
 
   
   # Set wake intervals
-  breaks <- c(0,2,5,10,20,30,60)
+  breaks <- c(0,2,5,10,15,20,30,60)
   
   max_l <- max(inter_state_intervals$interval_length_wake, na.rm=TRUE)+1
   breaks <- c(breaks[breaks < max_l], max_l)
@@ -264,15 +263,25 @@ function() {
   
   # Time in bed bins
   
-  inter_state_intervals <- merge(inter_state_intervals, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
-  setnames(inter_state_intervals, 'start_labtime.y', 'bed_time')
+  inter_state_intervals <- merge(inter_state_intervals, sleep_episodes[,list(subject_code, activity_or_bedrest_episode, start_labtime, sleep_onset_labtime)], by=c('subject_code', 'activity_or_bedrest_episode'), all.x=TRUE, all.y=FALSE)
+  setnames(inter_state_intervals, 'start_labtime.y', 'bedrest_episode_start_labtime')
   setnames(inter_state_intervals, 'start_labtime.x', 'start_labtime')
-  inter_state_intervals[,time_in_bed:=mid_labtime-bed_time]
+  inter_state_intervals[,time_since_bedrest_onset:=mid_labtime-bedrest_episode_start_labtime]
+  inter_state_intervals[,time_since_sleep_onset:=mid_labtime-sleep_onset_labtime]
   
   in_bed_time_bin_width <- .5
-  breaks <- seq(from=0, to=ceiling(max(inter_state_intervals$time_in_bed)), by=in_bed_time_bin_width)
-  inter_state_intervals[,time_in_bed_bin:=cut(time_in_bed, breaks=breaks, labels=breaks[-1L])]
+  breaks <- seq(from=0, to=ceiling(max(inter_state_intervals$time_since_bedrest_onset)), by=in_bed_time_bin_width)
+  inter_state_intervals[,time_since_bedrest_onset_bin:=cut(time_since_bedrest_onset, breaks=breaks, labels=breaks[-1L])]
   
+  breaks <- seq(from=0, to=ceiling(max(inter_state_intervals$time_since_sleep_onset, na.rm = TRUE)), by=in_bed_time_bin_width)
+  inter_state_intervals[,time_since_sleep_onset_bin:=cut(time_since_sleep_onset, breaks=breaks, labels=breaks[-1L])]
+  
+  
+#     
+#   in_bed_time_bin_width <- .5
+#   breaks <- seq(from=0, to=ceiling(max(inter_state_intervals$time_in_bed)), by=in_bed_time_bin_width)
+#   inter_state_intervals[,time_in_bed_bin:=cut(time_in_bed, breaks=breaks, labels=breaks[-1L])]
+#   
   # Length Bins
   length_breaks <- c(0,2,5,15,30,90)
   max_l <- max(inter_state_intervals$interval_length, na.rm=TRUE)+1
