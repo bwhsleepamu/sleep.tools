@@ -67,7 +67,7 @@ determine_merge_direction <- function(b,a,labels,lengths){
     return(-1)
 }
 
-# USED HERE in relabel_to_biggest_neighbor
+# USED HERE in relabel_to_biggest_neighbor  sleep_data[epoch_type %in% c("WAKE"), sleep_wake_label:="wake"]
 merge_label <- function(labels, lengths, label_to_merge) {
   i <- which(labels==label_to_merge)
   #  cat(sprintf("I: %s", i))

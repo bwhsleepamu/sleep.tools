@@ -2,7 +2,7 @@ source("R/sources.R")
 source("R/plotting/rasters/raster_plot.R")
 
 # Subject Info
-subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2015a.xls"))
+subjects <- as.data.table(read.xls("/I/Projects/Forced Desynchrony data projects/FD-info 2016a.xls"))
 setnames(subjects, c("Subject", "Age.Group", "Study"), c("subject_code", "age_group", "study"))
 subjects[,file_path:=paste("/I/AMU Cleaned Data Sets/", subject_code, "/Sleep/", subject_code, "Slp.01.csv", sep="")]
 
@@ -32,11 +32,11 @@ load_data(subjects = subjects)
 
 sleep_episodes <<- sleep_data[activity_or_bedrest_episode>0,data.table(start_labtime=min(labtime), end_labtime=max(labtime)),by='subject_code,activity_or_bedrest_episode']
 
-setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data,types=c("raw"))
+setup_episodes(sleep_data=sleep_data, full_sleep_data=sleep_data)
 setup_cycles(sleep_data, episodes)
 setup_melatonin_phase(subjects, sleep_episodes)
 
-reoofsetup_raster_data(sleep_data, episodes, cycles, melatonin_phase, normalize_labtime=TRUE, plot_double=FALSE)
+setup_raster_data(sleep_data, episodes, cycles, melatonin_phase, normalize_labtime=TRUE, plot_double=FALSE)
 plot_raster("3450GX", plot_double=FALSE, labels = FALSE)
 
 subjects[subject_code %in% unique(sleep_data$subject_code),{ plot_raster(subject_code, plot_double=FALSE, labels=FALSE) },by='study,subject_code']
